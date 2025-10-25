@@ -3,7 +3,6 @@ package com.codear.user.controller;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 
-
 @RestController
 public class UserController {
     
@@ -11,5 +10,4 @@ public class UserController {
     public String getMethodName(){
         return new String("User service is up and running");
     }
-    
 }
