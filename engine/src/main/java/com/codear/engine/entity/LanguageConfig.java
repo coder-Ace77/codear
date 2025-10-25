@@ -10,6 +10,7 @@ public class LanguageConfig {
 
     private String image;
     private String fileName;
-    private List<String> cmd;
+    private List<String> compileCmd;
+    private List<String> runCmd;
 
 }

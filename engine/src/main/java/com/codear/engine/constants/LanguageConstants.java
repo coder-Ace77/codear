@@ -13,4 +13,11 @@ public class LanguageConstants {
 
     public static final String[] PYTHON_EXECUTION_COMMAND = {"python3", "/app/code.py"};
     public static final String[] CPP_EXECUTION_COMMAND = {"bash", "-c", "g++ /app/code.cpp -o /app/a.out && /app/a.out"};
+
+    public static final String[] CPP_COMPILE_CMD = {"g++", "/app/code.cpp", "-o", "/app/a.out"};
+    public static final String[] CPP_RUN_CMD = {"/app/a.out"};
+
+
+    public static final String[] SUPPORTED_LANGUAGES = {PYTHON, CPP};
+
 }
