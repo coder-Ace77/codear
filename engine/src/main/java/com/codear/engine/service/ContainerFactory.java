@@ -48,7 +48,8 @@ public class ContainerFactory implements AutoCloseable {
         try {
             pullImage(LanguageConstants.PYTHON_DOCKER_IMAGE);
             pullImage(LanguageConstants.CPP_DOCKER_IMAGE);
-        } catch (InterruptedException e) {
+            System.out.println("SKIPPING");
+        } catch (Exception e) {
             System.err.println("[ContainerFactory] Failed to pre-pull images: " + e.getMessage());
             Thread.currentThread().interrupt();
         }
@@ -83,23 +84,47 @@ public class ContainerFactory implements AutoCloseable {
         System.out.println("[PULL_IMAGE] Image pull complete.");
     }
 
+    
     public String createContainer(LanguageConfig config, Path tempDir, Integer memoryLimitMb, int numTestCases) {
         System.out.println("[CREATE_CONTAINER] Creating container...");
         Volume volume = new Volume("/app");
-        String commandString = String.join(" ", config.getCmd());
-        String script = String.format(
-            "for i in $(seq 0 $(($NUM_TESTS - 1))); do " +
-            "    %s < /app/input_$i.txt; " +  
-            "    echo '%s'; " +
-            "done",
-            commandString, OUTPUT_SEPARATOR
-        );
+        
+        String compileString = (config.getCompileCmd() != null) 
+                               ? String.join(" ", config.getCompileCmd()) 
+                               : null;
+        String runString = String.join(" ", config.getRunCmd());
+
+        String script;
+        
+        if (compileString != null) {
+            script = String.format(
+                "%s; " + 
+                "if [ $? -eq 0 ]; then " +
+                "    for i in $(seq 0 $(($NUM_TESTS - 1))); do " + 
+                "        %s < /app/input_$i.txt; " +
+                "        echo '%s'; " +
+                "    done; " +
+                "fi", 
+                compileString, runString, OUTPUT_SEPARATOR
+            );
+        } else {
+            script = String.format(
+                "for i in $(seq 0 $(($NUM_TESTS - 1))); do " +
+                "    %s < /app/input_$i.txt; " +  
+                "    echo '%s'; " +
+                "done",
+                runString, OUTPUT_SEPARATOR
+            );
+        }
+
 
         String[] shellCmd = {
             "/bin/sh",
             "-c",
             script
         };
+
+        System.out.println("SHELL CMD: " + String.join(" ", shellCmd));
 
         Bind bind = new Bind(tempDir.toAbsolutePath().toString(), volume);
 
@@ -116,7 +141,6 @@ public class ContainerFactory implements AutoCloseable {
                 .withEnv("NUM_TESTS=" + numTestCases)
                 .exec();
         
-
         String containerId = container.getId();
         System.out.println("[CREATE_CONTAINER] Container created with ID: " + containerId);
         return containerId;

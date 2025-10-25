@@ -10,13 +10,15 @@ public class LanguageConfigFactory {
             return new LanguageConfig(
                     LanguageConstants.PYTHON_DOCKER_IMAGE,
                     LanguageConstants.PYTHON_FILE_NAME,
+                    null,
                     List.of(LanguageConstants.PYTHON_EXECUTION_COMMAND)
             );
         } else if (lang.equalsIgnoreCase("cpp")) {
             return new LanguageConfig(
                     LanguageConstants.CPP_DOCKER_IMAGE,
                     LanguageConstants.CPP_FILE_NAME,
-                    List.of(LanguageConstants.CPP_EXECUTION_COMMAND)
+                    List.of(LanguageConstants.CPP_COMPILE_CMD),
+                    List.of(LanguageConstants.CPP_RUN_CMD)
             );
         } else {
             throw new UnsupportedOperationException("Unsupported language: " + lang);
