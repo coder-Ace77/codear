@@ -4,16 +4,15 @@ from datetime import datetime
 
 # URL for the Spring Boot endpoint
 # (Assuming your server is running on localhost:8080)
-url = 'http://localhost:8082/submit'
+url = 'http://localhost:8090/submit'
 
 # The payload (body) of the request
 payload = {
     "userId": 123,
-    "code": """n = int(input())
+    "code": """n, target = map(int, input().split())
 arr = list(map(int, input().split()))
 
 # two sum logic
-target = int(input())
 num_map = {}
 for i, num in enumerate(arr):
     complement = target - num
