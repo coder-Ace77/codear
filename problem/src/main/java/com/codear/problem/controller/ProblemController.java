@@ -1,6 +1,7 @@
 package com.codear.problem.controller;
 
 import com.codear.problem.dto.ProblemSummaryDTO;
+import com.codear.problem.dto.ProblemsMetaData;
 import com.codear.problem.entity.Problem;
 import com.codear.problem.service.ProblemService;
 import com.codear.problem.service.SubmitService;
@@ -14,8 +15,10 @@ import java.util.List;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import com.codear.problem.dto.Code;
+import org.springframework.web.bind.annotation.GetMapping;
 
 
+@CrossOrigin("*")
 @RestController
 @RequiredArgsConstructor 
 public class ProblemController {
@@ -24,16 +27,25 @@ public class ProblemController {
     private final SubmitService submitService;
 
     @PostMapping("/addproblem")
-    public ResponseEntity<Problem> createProblem(@RequestBody Problem problem) {
+    public ResponseEntity<Problem> createProblem(@RequestBody Problem problem){
         Problem savedProblem = problemService.addProblem(problem);
         return new ResponseEntity<>(savedProblem, HttpStatus.CREATED);
     }
 
     @GetMapping("/problems")
-    public ResponseEntity<List<ProblemSummaryDTO>> getAllProblems() {
+    public ResponseEntity<List<ProblemSummaryDTO>> getAllProblems(){
         List<ProblemSummaryDTO> problems = problemService.getAllProblems();
         return ResponseEntity.ok(problems);
     }
+
+    @GetMapping("/problemCntAndTags")
+    public ResponseEntity<ProblemsMetaData> getAllProblemsCount(){
+        return ResponseEntity.ok(new ProblemsMetaData(){{
+            setCount(problemService.getProblemCnt());
+            setTags(problemService.getTags()); 
+        }});
+    }
+    
 
     @GetMapping("/problem/{id}")
     public ResponseEntity<Problem> getProblemById(@PathVariable Long id) {
