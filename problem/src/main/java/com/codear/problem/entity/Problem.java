@@ -31,7 +31,7 @@ public class Problem {
     private String outputDescription;
     private String constraints;
     private String difficulty;
-    private String tags;
+    private List<String> tags;
 
     private Long timeLimitMs;
 

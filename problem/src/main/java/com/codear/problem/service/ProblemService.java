@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import com.codear.problem.repository.ProblemRepository;
 import com.codear.problem.dto.ProblemSummaryDTO;
 import com.codear.problem.entity.Problem;
+
 import jakarta.transaction.Transactional;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,16 @@ public class ProblemService {
 
     public List<ProblemSummaryDTO> getAllProblems() {
         return problemRepository.findAllSummaries();
+    }
+
+    public List<String> getTags(){
+        // List<Tag> res = tagsRepository.findAll();
+        // return res.stream().map((e)->e.getTag()).toList();
+        return List.of("Strings","Maths","DP","Graph");
+    }
+
+    public Long getProblemCnt(){
+        return problemRepository.count();
     }
     
 }
