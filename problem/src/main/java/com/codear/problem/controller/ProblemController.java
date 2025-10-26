@@ -10,9 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import java.util.Map;
 import com.codear.problem.dto.Code;
 
 
@@ -46,11 +46,16 @@ public class ProblemController {
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
-    @PostMapping("/submit")
-    public ResponseEntity<String> handleCodeSubmit(@RequestBody Code code){
-        System.out.println("Received code submission: " + code);
-        submitService.processSubmittedCode(code);
-        return ResponseEntity.ok("Code submitted successfully");
-    }
     
+    @PostMapping("/submit")
+    public ResponseEntity<Map<String, String>> handleCodeSubmit(@RequestBody Code code) {
+        String submissionId = submitService.processSubmittedCode(code);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Code submitted successfully");
+        response.put("submissionId", submissionId);
+
+        return ResponseEntity.ok(response);
+    }
+
 }
