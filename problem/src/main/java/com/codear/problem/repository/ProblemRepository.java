@@ -15,7 +15,7 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
      * This query efficiently fetches *only* the id, title, and tags
      * and constructs a ProblemSummaryDTO for each row directly.
      */
-    @Query("SELECT new com.codear.problem.dto.ProblemSummaryDTO(p.id, p.title, p.tags) FROM Problem p")
+    @Query("SELECT new com.codear.problem.dto.ProblemSummaryDTO(p.id, p.title, p.tags,p.difficulty) FROM Problem p")
     List<ProblemSummaryDTO> findAllSummaries();
 
 }
