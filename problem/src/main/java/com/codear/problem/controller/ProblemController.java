@@ -35,6 +35,7 @@ public class ProblemController {
     @GetMapping("/problems")
     public ResponseEntity<List<ProblemSummaryDTO>> getAllProblems(){
         List<ProblemSummaryDTO> problems = problemService.getAllProblems();
+        System.out.println(problems);
         return ResponseEntity.ok(problems);
     }
 
@@ -55,6 +56,7 @@ public class ProblemController {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<String> handleNotFound(RuntimeException ex) {
+        System.out.println(ex.getMessage());
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
