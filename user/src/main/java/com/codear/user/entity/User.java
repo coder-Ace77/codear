@@ -17,8 +17,14 @@ public class User {
     private Long id;
     
     private String username;
+    private String name;
     private String email;
     private String password;
     private String role;
-    
+    private Integer dailyStreak;
+    private Integer problemSolvedEasy;
+    private Integer problemSolvedMedium;
+    private Integer problemSolvedHard;
+    private Integer problemSolvedTotal;
+
 }
