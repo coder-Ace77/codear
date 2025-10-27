@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
 
+@CrossOrigin("*")
 @RestController
 @RequestMapping("/submissions")
 public class SubmissionController {
