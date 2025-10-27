@@ -30,6 +30,7 @@ public class ProblemService {
     }
 
     public List<ProblemSummaryDTO> getAllProblems() {
+        System.out.println("FINding summaries");
         return problemRepository.findAllSummaries();
     }
 

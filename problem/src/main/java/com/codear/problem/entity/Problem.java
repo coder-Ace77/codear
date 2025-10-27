@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.FetchType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -31,6 +32,8 @@ public class Problem {
     private String outputDescription;
     private String constraints;
     private String difficulty;
+
+    @Column(columnDefinition = "text[]")
     private List<String> tags;
 
     private Long timeLimitMs;
