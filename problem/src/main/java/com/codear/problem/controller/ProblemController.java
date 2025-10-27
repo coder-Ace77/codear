@@ -63,6 +63,8 @@ public class ProblemController {
     
     @PostMapping("/submit")
     public ResponseEntity<Map<String, String>> handleCodeSubmit(@RequestBody Code code) {
+        System.out.println("get the request in /submit");
+        System.out.println(code);
         String submissionId = submitService.processSubmittedCode(code);
 
         Map<String, String> response = new HashMap<>();
@@ -70,6 +72,12 @@ public class ProblemController {
         response.put("submissionId", submissionId);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/health-check")
+    public ResponseEntity<String> HealthCheckProblem() {
+        System.out.println("health check");
+        return ResponseEntity.ok("health is running");
     }
 
 }
