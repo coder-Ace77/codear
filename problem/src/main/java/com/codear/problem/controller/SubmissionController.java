@@ -4,7 +4,6 @@ import com.codear.problem.SubmissionService;
 import com.codear.problem.dto.Submission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import java.util.List;
 
 @RestController
 @RequestMapping("api/v1/problem/submissions")
