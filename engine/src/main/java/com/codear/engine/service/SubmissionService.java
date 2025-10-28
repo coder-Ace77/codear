@@ -10,6 +10,9 @@ import com.codear.engine.entity.Submission;
 import com.codear.engine.enums.RunStatus;
 import com.codear.engine.repository.SubmissionRepository;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 
 @Service
@@ -41,7 +44,10 @@ public class SubmissionService {
     /**
      * Update an existing submission in DB after code execution
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Submission updateSubmissionResult(String submissionId, CheckerResponse checkerResponse) {
+        System.out.println("Updating the DB with subID " + submissionId);
+
         Submission submission = submissionRepository.findBySubmissionId(submissionId)
                 .orElseThrow(() -> new RuntimeException("Submission not found: " + submissionId));
 
@@ -49,10 +55,11 @@ public class SubmissionService {
         submission.setResult(checkerResponse.getMsg());
         submission.setTotalTests(checkerResponse.getTotalTests());
         submission.setPassedTests(checkerResponse.getPassedTests());
-
         submission.setTimeTakenMs(submission.getTimeTakenMs() != null ? submission.getTimeTakenMs() : 0L);
         submission.setMemoryUsed(submission.getMemoryUsed() != null ? submission.getMemoryUsed() : "0MB");
 
-        return submissionRepository.save(submission);
+        Submission saved = submissionRepository.save(submission);
+        System.out.println("✅ Submission updated and saved with status: " + saved.getStatus());
+        return saved;
     }
 }
