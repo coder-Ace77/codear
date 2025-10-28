@@ -20,8 +20,8 @@ import com.codear.problem.dto.ProblemSendDTO;
 import org.springframework.web.bind.annotation.GetMapping;
 
 
-@CrossOrigin("*")
 @RestController
+@RequestMapping("/api/v1/problem")
 @RequiredArgsConstructor 
 public class ProblemController {
 
