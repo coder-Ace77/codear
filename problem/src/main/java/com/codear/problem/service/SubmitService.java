@@ -18,10 +18,13 @@ public class SubmitService {
 
     private final KafkaSender kafkaSender;
     private final SubmissionRepository submissionRepository;
+    private final CacheService cacheService;
 
     public String processSubmittedCode(Code code) {
         String submissionId = UUID.randomUUID().toString();
         code.setSubmissionId(submissionId);
+
+        cacheService.setValue(submissionId,SubmissionStatus.IN_PROGRESS.toString());
 
         kafkaSender.sendMessage(code);
 
