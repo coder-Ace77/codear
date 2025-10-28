@@ -15,11 +15,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.codear.problem.dto.Code;
+import com.codear.problem.dto.ProblemSendDTO;
+
 import org.springframework.web.bind.annotation.GetMapping;
 
 
-@CrossOrigin("*")
 @RestController
+@RequestMapping("/api/v1/problem")
 @RequiredArgsConstructor 
 public class ProblemController {
 
@@ -49,8 +51,8 @@ public class ProblemController {
     
 
     @GetMapping("/problem/{id}")
-    public ResponseEntity<Problem> getProblemById(@PathVariable Long id) {
-        Problem problem = problemService.getProblemById(id);
+    public ResponseEntity<ProblemSendDTO> getProblemById(@PathVariable Long id) {
+        ProblemSendDTO problem = problemService.getProblemById(id);
         return ResponseEntity.ok(problem); 
     }
 

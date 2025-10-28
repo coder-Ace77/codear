@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import com.codear.problem.repository.ProblemRepository;
+import com.codear.problem.dto.ProblemSendDTO;
 import com.codear.problem.dto.ProblemSummaryDTO;
 import com.codear.problem.entity.Problem;
 
@@ -25,8 +26,9 @@ public class ProblemService {
         return problemRepository.save(problem);
     }
 
-    public Problem getProblemById(Long id) {
-        return problemRepository.findById(id).orElse(null);
+    public ProblemSendDTO getProblemById(Long id) {
+        // return problemRepository.findById(id).orElse(null);
+        return problemRepository.findProblemByIdOnly(id);
     }
 
     public List<ProblemSummaryDTO> getAllProblems() {

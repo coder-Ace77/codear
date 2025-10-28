@@ -7,9 +7,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
 
-@CrossOrigin("*")
 @RestController
-@RequestMapping("/submissions")
+@RequestMapping("api/v1/problem/submissions")
 public class SubmissionController {
 
     @Autowired
