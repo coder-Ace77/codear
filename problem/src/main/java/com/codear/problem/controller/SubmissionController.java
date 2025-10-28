@@ -17,19 +17,25 @@ public class SubmissionController {
 
     @GetMapping("/{submissionId}")
     public Submission longPollStatus(@PathVariable String submissionId) throws InterruptedException {
-        int maxWaitTime = 15000;  // 30 seconds
-        int pollInterval = 2000;  // 2 seconds
+        int maxWaitTime = 15000;  // 15 seconds
+        int baseInterval = 100;  // 100ms
         int waited = 0;
+        int ct = 0;
 
         Submission submission = submissionService.getSubmissionById(submissionId);
 
         while (submission.getStatus() == SubmissionStatus.IN_PROGRESS && waited < maxWaitTime) {
+            int currentInterval = Math.min(baseInterval * (1 << (ct)), 2000); 
+            // ensure interval caps at 2000ms to avoid too long waits
 
-            Thread.sleep(pollInterval);
-            waited += pollInterval;
+            Thread.sleep(currentInterval);
+            waited += currentInterval;
 
             submission = submissionService.getSubmissionById(submissionId);
+            ct++;
         }
+
+        System.out.println("submission" + submission);
 
         return submission;
     }
