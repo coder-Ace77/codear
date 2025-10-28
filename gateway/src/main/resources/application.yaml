@@ -1,0 +1,35 @@
+server:
+  port: 5000
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: problem
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/v1/problem/**
+        - id: user
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/v1/user/**
+            
+      globalcors:
+        cors-configurations:
+          '[/**]': 
+            allowedOrigins: "*" 
+            allowedMethods:
+              - "GET"
+              - "POST"
+              - "PUT"
+              - "DELETE"
+              - "OPTIONS" 
+            allowedHeaders: "*" 
+            allowCredentials: false 
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web: DEBUG
+    reactor.netty.http.server: DEBUG
