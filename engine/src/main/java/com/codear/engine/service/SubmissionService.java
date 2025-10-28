@@ -10,7 +10,6 @@ import com.codear.engine.entity.Submission;
 import com.codear.engine.enums.RunStatus;
 import com.codear.engine.repository.SubmissionRepository;
 
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
@@ -20,10 +19,8 @@ import lombok.AllArgsConstructor;
 public class SubmissionService {
 
     private final SubmissionRepository submissionRepository;
+    private final CacheService cacheService;
 
-    /**
-     * Create a Submission object from Code and CheckerResponse
-     */
     public Submission getSubmissionObject(Code code, CheckerResponse checkerResponse) {
         Submission submission = new Submission();
         submission.setSubmissionId(code.getSubmissionId());
@@ -41,13 +38,10 @@ public class SubmissionService {
         return submission;
     }
 
-    /**
-     * Update an existing submission in DB after code execution
-     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Submission updateSubmissionResult(String submissionId, CheckerResponse checkerResponse) {
-        System.out.println("Updating the DB with subID " + submissionId);
-
+    public void updateSubmissionResult(String submissionId, CheckerResponse checkerResponse) {
+        
+        System.out.println("Updating the submission id"+submissionId);
         Submission submission = submissionRepository.findBySubmissionId(submissionId)
                 .orElseThrow(() -> new RuntimeException("Submission not found: " + submissionId));
 
@@ -59,7 +53,15 @@ public class SubmissionService {
         submission.setMemoryUsed(submission.getMemoryUsed() != null ? submission.getMemoryUsed() : "0MB");
 
         Submission saved = submissionRepository.save(submission);
-        System.out.println("✅ Submission updated and saved with status: " + saved.getStatus());
-        return saved;
+        
+        System.out.println("Updated the submission id"+submissionId);
+
+        cacheService.setValue(submissionId,checkerResponse.getStatus().toString());
+
+        System.out.println("✅ Submission updated successfully.");
+
+        System.out.println("NEW STATUS UPDATED::"+cacheService.getValue(submissionId));
+
     }
+
 }
