@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import com.codear.engine.dto.CheckerResponse;
 import com.codear.engine.dto.Code;
+import com.codear.engine.dto.TestDTO;
 import com.codear.engine.entity.Submission;
 import com.codear.engine.enums.RunStatus;
 import com.codear.engine.repository.SubmissionRepository;
@@ -62,6 +63,14 @@ public class SubmissionService {
 
         System.out.println("NEW STATUS UPDATED::"+cacheService.getValue(submissionId));
 
+    }
+
+    public void updateTestResult(String submissionId,String result){
+        TestDTO testDTO = cacheService.getObjectValue(submissionId, TestDTO.class);
+        testDTO.setStatus(RunStatus.COMPLETED.toString());
+        testDTO.setOutput(result);
+        cacheService.setObjectValue(submissionId,testDTO);
+        System.out.println("[ENGINE] Updated submission "+testDTO);
     }
 
 }

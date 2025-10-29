@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.codear.engine.dto.CheckerResponse;
 import com.codear.engine.dto.Code;
 import com.codear.engine.dto.ResourceConstraints;
+import com.codear.engine.dto.TestDTO;
 import com.codear.engine.entity.TestCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -46,6 +47,28 @@ public class KafkaReceiver {
             System.out.println("Checker Response: " + checkerResponse);
 
             submissionService.updateSubmissionResult(code.getSubmissionId(), checkerResponse);
+
+        } catch (Exception e) {
+            System.err.println("Error parsing JSON or executing code: " + e.getMessage());
+            System.err.println("Raw message: " + message);
+        }
+    }
+
+    @KafkaListener(topics = "test-topic", groupId = "codear")
+    public void listenTest(String message){
+        try {
+            TestDTO code = mapper.readValue(message, TestDTO.class);
+
+            ResourceConstraints resourceConstraints = problemCrudService.getPromblemConstraints(code.getProblemId());
+
+            List<String> result = engineService.runCode(
+                    code.getCode(),
+                    code.getLanguage(),
+                    List.of(code.getInput()),
+                    resourceConstraints
+            );
+
+            submissionService.updateTestResult(code.getSubmissionId(),result.get(0));
 
         } catch (Exception e) {
             System.err.println("Error parsing JSON or executing code: " + e.getMessage());

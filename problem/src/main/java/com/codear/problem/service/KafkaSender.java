@@ -24,5 +24,14 @@ public class KafkaSender {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }    
+    }  
+    
+    public void sendMessage(Object message,String topic){
+        try {
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            kafkaTemplate.send(topic,jsonMessage);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
