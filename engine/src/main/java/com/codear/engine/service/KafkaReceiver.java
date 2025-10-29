@@ -9,7 +9,6 @@ import com.codear.engine.dto.CheckerResponse;
 import com.codear.engine.dto.Code;
 import com.codear.engine.dto.ResourceConstraints;
 import com.codear.engine.entity.TestCase;
-import com.codear.engine.repository.ProblemRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.AllArgsConstructor;
@@ -22,7 +21,6 @@ public class KafkaReceiver {
     private final EngineService engineService;
     private final ProblemCrudService problemCrudService;
     private final CheckerService checkerService;
-    private final ProblemRepository problemRepository;
     private final SubmissionService submissionService;
 
     @KafkaListener(topics = "code-submit", groupId = "codear")
@@ -35,10 +33,8 @@ public class KafkaReceiver {
             List<TestCase> testCases = problemCrudService.getAllTestCases(code.getProblemId());
             List<String> inputs = testCases.stream().map(TestCase::getInput).toList();
 
-            ResourceConstraints resourceConstraints = problemRepository.findConstraintsById(code.getProblemId())
-                    .orElseThrow(() -> new IllegalArgumentException("Problem not found with id: " + code.getProblemId()));
+            ResourceConstraints resourceConstraints = problemCrudService.getPromblemConstraints(code.getProblemId());
 
-            // 3️⃣ Run code
             List<String> result = engineService.runCode(
                     code.getCode(),
                     code.getLanguage(),
@@ -46,11 +42,9 @@ public class KafkaReceiver {
                     resourceConstraints
             );
 
-            // 4️⃣ Check results
             CheckerResponse checkerResponse = checkerService.check(result, testCases);
             System.out.println("Checker Response: " + checkerResponse);
 
-            // 5️⃣ Update submission in DB
             submissionService.updateSubmissionResult(code.getSubmissionId(), checkerResponse);
 
         } catch (Exception e) {
