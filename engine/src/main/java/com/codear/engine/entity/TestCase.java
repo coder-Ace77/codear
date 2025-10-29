@@ -1,5 +1,6 @@
 package com.codear.engine.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -14,7 +15,9 @@ public class TestCase {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(columnDefinition = "TEXT")
     private String input;
+    @Column(columnDefinition = "TEXT")
     private String output;
     private boolean isSample; 
     private Long problemId;
