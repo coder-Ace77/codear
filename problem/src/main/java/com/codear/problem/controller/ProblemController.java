@@ -2,9 +2,12 @@ package com.codear.problem.controller;
 
 import com.codear.problem.dto.ProblemSummaryDTO;
 import com.codear.problem.dto.ProblemsMetaData;
+import com.codear.problem.dto.TestDTO;
 import com.codear.problem.entity.Problem;
+import com.codear.problem.entity.TestCase;
 import com.codear.problem.service.ProblemService;
 import com.codear.problem.service.SubmitService;
+import com.codear.problem.service.TestCaseRun;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,6 +21,11 @@ import com.codear.problem.dto.Code;
 import com.codear.problem.dto.ProblemSendDTO;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+
 
 
 @RestController
@@ -27,6 +35,7 @@ public class ProblemController {
 
     private final ProblemService problemService;
     private final SubmitService submitService;
+    private final TestCaseRun testCaseRun;
 
     @PostMapping("/addproblem")
     public ResponseEntity<Problem> createProblem(@RequestBody Problem problem){
@@ -82,4 +91,14 @@ public class ProblemController {
         return ResponseEntity.ok("health is running");
     }
 
+    @PostMapping("/test")
+    public ResponseEntity<Map<String, String>> postMethodName(@RequestBody TestDTO testDTO){
+        System.out.println("ENTRY PUT IN KAFKA ::"+testDTO);
+        String submissionId = testCaseRun.processSubmittedCode(testDTO);
+        Map<String,String> response = new HashMap<>();
+        response.put("message","Test in queue");
+        response.put("submissionId",submissionId);
+        return ResponseEntity.ok(response);
+    }
+    
 }

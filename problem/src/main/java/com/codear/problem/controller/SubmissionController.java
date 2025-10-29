@@ -1,17 +1,22 @@
 package com.codear.problem.controller;
 
 import com.codear.problem.dto.Submission;
+import com.codear.problem.dto.TestDTO;
 import com.codear.problem.service.SubmissionService;
+import com.codear.problem.service.TestCaseRun;
+
+import lombok.RequiredArgsConstructor;
 
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
 
 @RestController
 @RequestMapping("api/v1/problem/submissions")
+@RequiredArgsConstructor
 public class SubmissionController {
 
-    @Autowired
-    private SubmissionService submissionService;
+    private final SubmissionService submissionService;
+    private final TestCaseRun testCaseRun;
 
     @GetMapping("/{submissionId}")
     public Submission longPollStatus(@PathVariable String submissionId) throws InterruptedException {
@@ -19,8 +24,9 @@ public class SubmissionController {
         return submissionService.longPollingService(submissionId);
     }
 
-    // @GetMapping("/all")
-    // public List<Submission> getSubmissionsByProblemId(@RequestParam Long problemId) {
-    //     return submissionService.getSubmissionsByProblemId(problemId);
-    // }
+    @GetMapping("/test/{submissionId}")
+    public TestDTO testPolling(@PathVariable String submissionId) throws InterruptedException{
+        return testCaseRun.longPollingService(submissionId);
+    }
+    
 }
