@@ -1,8 +1,7 @@
-package com.codear.problem;
+package com.codear.problem.service;
 
 import com.codear.problem.dto.Submission;
 import com.codear.problem.enums.SubmissionStatus;
-import com.codear.problem.service.CacheService;
 
 import lombok.AllArgsConstructor;
 
@@ -48,5 +47,4 @@ public class SubmissionService {
         submission2.setStatus(submission);
         return submission2;
     }
-
 }

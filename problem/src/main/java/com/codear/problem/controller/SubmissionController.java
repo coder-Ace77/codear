@@ -1,10 +1,10 @@
 package com.codear.problem.controller;
 
-import com.codear.problem.SubmissionService;
 import com.codear.problem.dto.Submission;
+import com.codear.problem.service.SubmissionService;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import java.util.List;
 
 @RestController
 @RequestMapping("api/v1/problem/submissions")
