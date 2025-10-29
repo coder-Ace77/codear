@@ -4,10 +4,10 @@ import com.codear.problem.dto.ProblemSummaryDTO;
 import com.codear.problem.dto.ProblemsMetaData;
 import com.codear.problem.dto.TestDTO;
 import com.codear.problem.entity.Problem;
-import com.codear.problem.entity.TestCase;
 import com.codear.problem.service.ProblemService;
 import com.codear.problem.service.SubmitService;
 import com.codear.problem.service.TestCaseRun;
+import com.codear.problem.service.UserServiceJWT;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,14 +20,6 @@ import java.util.Map;
 import com.codear.problem.dto.Code;
 import com.codear.problem.dto.ProblemSendDTO;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-
-
-
-
 @RestController
 @RequestMapping("/api/v1/problem")
 @RequiredArgsConstructor 
@@ -36,6 +28,7 @@ public class ProblemController {
     private final ProblemService problemService;
     private final SubmitService submitService;
     private final TestCaseRun testCaseRun;
+    private final UserServiceJWT userServiceJWT;
 
     @PostMapping("/addproblem")
     public ResponseEntity<Problem> createProblem(@RequestBody Problem problem){
@@ -73,8 +66,10 @@ public class ProblemController {
 
     
     @PostMapping("/submit")
-    public ResponseEntity<Map<String, String>> handleCodeSubmit(@RequestBody Code code) {
+    public ResponseEntity<Map<String, String>> handleCodeSubmit(@RequestHeader(name="Authorization") String authString,@RequestBody Code code){
         System.out.println("get the request in /submit");
+        Long userId = userServiceJWT.getUserIdByToken(authString);
+        code.setUserId(userId);
         System.out.println(code);
         String submissionId = submitService.processSubmittedCode(code);
 
