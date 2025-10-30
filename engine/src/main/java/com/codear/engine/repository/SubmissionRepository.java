@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import com.codear.engine.entity.Submission;
 import com.codear.engine.enums.RunStatus;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
@@ -30,4 +31,12 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
         @Param("totalTests") Integer totalTests,
         @Param("passedTests") Integer passedTests);
 
+
+    @Query("SELECT count(s.problemId) from Submission s where s.problemId=:problemId and s.userId=:userId")
+    int countSolved(@Param("problemId") Long problemId,@Param("userId") Long userId);
+
+    @Query("SELECT MAX(s.submittedAt) FROM Submission s WHERE s.userId = :userId")
+    LocalDateTime findLastSubmissionTime(@Param("userId") Long userId);
+
 }
+
