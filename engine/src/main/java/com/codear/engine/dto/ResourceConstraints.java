@@ -11,4 +11,5 @@ public class ResourceConstraints {
 
     private Long timeLimitMs;
     private Integer memoryLimitMb;
+    private String difficulty;
 }

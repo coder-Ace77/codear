@@ -1,5 +1,6 @@
 package com.codear.engine.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import com.codear.engine.dto.TestDTO;
 import com.codear.engine.entity.Submission;
 import com.codear.engine.enums.RunStatus;
 import com.codear.engine.repository.SubmissionRepository;
+import com.codear.engine.repository.UserRepository;
 
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,8 @@ public class SubmissionService {
 
     private final SubmissionRepository submissionRepository;
     private final CacheService cacheService;
+    private final ProblemCrudService problemCrudService;
+    private final UserRepository userRepository;
 
     public Submission getSubmissionObject(Code code, CheckerResponse checkerResponse) {
         Submission submission = new Submission();
@@ -52,6 +56,26 @@ public class SubmissionService {
         submission.setPassedTests(checkerResponse.getPassedTests());
         submission.setTimeTakenMs(submission.getTimeTakenMs() != null ? submission.getTimeTakenMs() : 0L);
         submission.setMemoryUsed(submission.getMemoryUsed() != null ? submission.getMemoryUsed() : "0MB");
+        
+        if(submission.getStatus().equals(RunStatus.PASSED)){
+            int cnt = submissionRepository.countSolved(submission.getProblemId(),submission.getUserId());
+            LocalDateTime lastSubmission = submissionRepository.findLastSubmissionTime(submission.getUserId());
+            LocalDate lastDate = lastSubmission.toLocalDate();
+            LocalDate today = LocalDate.now();
+            if (lastSubmission != null && lastDate.equals(today.minusDays(1))){
+                userRepository.incrementStreak(submission.getUserId());
+            }else{
+                userRepository.updateStreak(submission.getUserId(),1);
+            }
+
+            if(cnt==1){
+                System.out.println("[Note]Earlier solved"+submissionId+"  [  CNT ]"+cnt);
+                String difficulty = problemCrudService.getPromblemConstraints(submission.getProblemId()).getDifficulty();
+                System.out.println("[DIFF] "+difficulty);
+                userRepository.incrementProblemCount(submission.getUserId(), difficulty);
+            }
+
+        }
 
         Submission saved = submissionRepository.save(submission);
         

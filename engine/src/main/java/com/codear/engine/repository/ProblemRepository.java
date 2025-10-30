@@ -8,6 +8,6 @@ import java.util.Optional;
 
 public interface ProblemRepository extends JpaRepository<Problem, Long>{
         
-    @Query("SELECT new com.codear.engine.dto.ResourceConstraints(p.timeLimitMs, p.memoryLimitMb) FROM Problem p WHERE p.id = :problemId")
+    @Query("SELECT new com.codear.engine.dto.ResourceConstraints(p.timeLimitMs, p.memoryLimitMb,p.difficulty) FROM Problem p WHERE p.id = :problemId")
     Optional<ResourceConstraints> findConstraintsById(Long problemId);
 }
