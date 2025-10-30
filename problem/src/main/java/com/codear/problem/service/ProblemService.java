@@ -1,8 +1,10 @@
 package com.codear.problem.service;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit; 
+import java.util.concurrent.TimeUnit;
+import org.springframework.data.domain.Pageable;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import com.codear.problem.repository.ProblemRepository;
 import com.codear.problem.dto.ProblemSendDTO;
@@ -105,6 +107,11 @@ public class ProblemService {
         cacheService.setValue(PROBLEM_COUNT_KEY, dbCount.toString(), 30, TimeUnit.MINUTES);
         
         return dbCount;
+    }
+
+    public List<ProblemSummaryDTO> getProblemSummaryRecent(Long userId) {
+        Pageable topFive = PageRequest.of(0, 5);
+        return problemRepository.findRecentProblemSummariesByUserId(userId, topFive);
     }
     
 }

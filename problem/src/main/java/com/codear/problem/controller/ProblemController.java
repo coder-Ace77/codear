@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Map;
 import com.codear.problem.dto.Code;
 import com.codear.problem.dto.ProblemSendDTO;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 @RestController
 @RequestMapping("/api/v1/problem")
@@ -95,5 +98,10 @@ public class ProblemController {
         response.put("submissionId",submissionId);
         return ResponseEntity.ok(response);
     }
-    
+
+    @GetMapping("/recent")
+    public ResponseEntity<List<ProblemSummaryDTO>> getMethodName(@RequestHeader(name="Authorization") String authString){
+        Long userId = userServiceJWT.getUserIdByToken(authString);
+        return ResponseEntity.ok(problemService.getProblemSummaryRecent(userId));
+    }   
 }
