@@ -1,17 +1,23 @@
 package com.codear.problem.service;
-
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit; 
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.stereotype.Service;
+
 import com.codear.problem.repository.ProblemRepository;
 import com.codear.problem.dto.ProblemSendDTO;
 import com.codear.problem.dto.ProblemSummaryDTO;
 import com.codear.problem.entity.Problem;
 
 import jakarta.transaction.Transactional;
-
 import lombok.RequiredArgsConstructor;
+
+
+
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +30,7 @@ public class ProblemService {
     private static final String ALL_PROBLEMS_SUMMARY_KEY = "all_problems_summary";
     private static final String ALL_TAGS_KEY = "all_tags";
     private static final String PROBLEM_COUNT_KEY = "problem_count";
+    private static final String PROBLEM_SEARCH_KEY = "Search_problem";
 
     @Transactional 
     public Problem addProblem(Problem problem) {
@@ -65,7 +72,7 @@ public class ProblemService {
             return cachedList;
         }
 
-        System.out.println("Finding summaries from DB");
+        System.out.println("Finding summaries from DB`");
         List<ProblemSummaryDTO> dbList = problemRepository.findAllSummaries();
 
         cacheService.setObjectValue(ALL_PROBLEMS_SUMMARY_KEY, dbList, 30, TimeUnit.MINUTES);
@@ -106,5 +113,61 @@ public class ProblemService {
         
         return dbCount;
     }
+
+    public List<ProblemSummaryDTO> searchProblems(String search, String difficulty, List<String> tags, int page, int size) {
+        // System.out.println("processing the search problem service");
+        String tagString = (tags != null && !tags.isEmpty()) ? String.join(",", tags) : null;
+        int offset = page * size;
+
+        String key = String.format(
+            "%s_search:%s_diff:%s_tags:%s_page:%d_size:%d",
+            PROBLEM_SEARCH_KEY,
+            search != null ? search.trim().toLowerCase() : "none",
+            difficulty != null ? difficulty.toLowerCase() : "none",
+            tagString,
+            page,
+            size
+        );
+
+
+        List<ProblemSummaryDTO> cachedProblemSummaryDTOsforSearch = cacheService.getObjectListValue(key, ProblemSummaryDTO.class);
+
+        if(cachedProblemSummaryDTOsforSearch != null) {
+            System.out.println("Problem summary DTO for search from cache");
+            System.out.println(cachedProblemSummaryDTOsforSearch);
+            return cachedProblemSummaryDTOsforSearch;
+        }
+
+        // System.out.println("before repo called");
+
+        List<Object[]> rows = problemRepository.searchProblemsNative(search, difficulty, tagString, size, offset);
+
+        // System.out.println("after repo called");
+
+        // System.out.println("result from prob service" + rows);
+
+        List<ProblemSummaryDTO> result = rows.stream()
+            .map(row -> {
+                Long id = ((Number) row[0]).longValue();
+                String title = (String) row[1];
+                List<String> tagList = Collections.emptyList();
+
+                String diff = (String) row[3];
+                return new ProblemSummaryDTO(id, title, tagList, diff);
+            })
+            .toList();
+
+        cacheService.setObjectValue(key, result, 24, TimeUnit.HOURS);
+
+        return result;
+    }
+
+
+    public long countFilteredProblems(String search, String difficulty, List<String> tags) {
+        String tagString = (tags != null && !tags.isEmpty()) ? String.join(",", tags) : null;
+        return problemRepository.countFilteredProblems(search, difficulty, tagString);
+    }
+
+
     
 }
