@@ -7,12 +7,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
+import java.util.*;
 
 @Service
 @AllArgsConstructor
 public class SubmissionReadService {
 
     private final SubmissionRepository submissionRepository;
+    private final UserServiceJWT userServiceJWT;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public Submission getSubmissionById(String submissionId, int waited) {
@@ -29,5 +31,10 @@ public class SubmissionReadService {
         return submissionRepository.findBySubmissionId(submissionId)
                 .map(Submission::getStatus) 
                 .orElseThrow(() -> new RuntimeException("Submission not found"));
+    }
+
+    public List<Submission> getSubmissionByIdAndProblem(String authString,Long problemId){
+        Long userId = userServiceJWT.getUserIdByToken(authString);
+        return submissionRepository.getSubmissionByIdAndProblem(problemId, userId);
     }
 }

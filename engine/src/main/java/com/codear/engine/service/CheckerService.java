@@ -18,11 +18,6 @@ public class CheckerService {
         int passedCount = 0;
         String firstFailureDetail = null;
 
-        System.out.println("[CHECKER] Starting output verification for " + size + " test cases.");
-
-        System.out.println("[CHECKER] Normalizing and comparing outputs...");
-        System.out.println("[CHECKER] Received Outputs: " + outputs);
-
         for (int index = 0; index < size; index++) {
             String actualRaw = outputs.get(index);
             String expectedRaw = tests.get(index).getOutput();
