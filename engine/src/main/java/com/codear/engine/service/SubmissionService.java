@@ -46,7 +46,6 @@ public class SubmissionService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updateSubmissionResult(String submissionId, CheckerResponse checkerResponse) {
         
-        System.out.println("Updating the submission id"+submissionId);
         Submission submission = submissionRepository.findBySubmissionId(submissionId)
                 .orElseThrow(() -> new RuntimeException("Submission not found: " + submissionId));
 
@@ -69,24 +68,13 @@ public class SubmissionService {
             }
 
             if(cnt==1){
-                System.out.println("[Note]Earlier solved"+submissionId+"  [  CNT ]"+cnt);
                 String difficulty = problemCrudService.getPromblemConstraints(submission.getProblemId()).getDifficulty();
-                System.out.println("[DIFF] "+difficulty);
                 userRepository.incrementProblemCount(submission.getUserId(), difficulty);
             }
 
         }
-
-        Submission saved = submissionRepository.save(submission);
-        
-        System.out.println("Updated the submission id"+submissionId);
-
         cacheService.setValue(submissionId,checkerResponse.getStatus().toString());
-
-        System.out.println("✅ Submission updated successfully.");
-
-        System.out.println("NEW STATUS UPDATED::"+cacheService.getValue(submissionId));
-
+        submissionRepository.save(submission);
     }
 
     public void updateTestResult(String submissionId,String result){
@@ -94,7 +82,6 @@ public class SubmissionService {
         testDTO.setStatus(RunStatus.COMPLETED.toString());
         testDTO.setOutput(result);
         cacheService.setObjectValue(submissionId,testDTO);
-        System.out.println("[ENGINE] Updated submission "+testDTO);
     }
 
 }

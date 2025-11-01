@@ -33,60 +33,42 @@ public class ProblemService {
             problem.getTestCases().forEach(testCase -> testCase.setProblem(problem));
         }        
         Problem savedProblem = problemRepository.save(problem);
-
-        System.out.println("Invalidating caches for all_problems_summary and problem_count");
         cacheService.deleteKey(ALL_PROBLEMS_SUMMARY_KEY);
         cacheService.deleteKey(PROBLEM_COUNT_KEY);
-
         return savedProblem;
     }
 
     public ProblemSendDTO getProblemById(Long id) {
         String key = PROBLEM_KEY_PREFIX + id;
-        
         ProblemSendDTO cachedProblem = cacheService.getObjectValue(key, ProblemSendDTO.class);
         if (cachedProblem != null) {
-            System.out.println("Fetching problem " + id + " from CACHE");
             return cachedProblem;
         }
-
-        System.out.println("Fetching problem " + id + " from DB");
         ProblemSendDTO dbProblem = problemRepository.findProblemByIdOnly(id);
-
         if (dbProblem != null) {
             cacheService.setObjectValue(key, dbProblem, 1, TimeUnit.HOURS);
         }
-        
         return dbProblem;
     }
 
     public List<ProblemSummaryDTO> getAllProblems() {
         List<ProblemSummaryDTO> cachedList = cacheService.getObjectListValue(ALL_PROBLEMS_SUMMARY_KEY, ProblemSummaryDTO.class);
         if (cachedList != null) {
-            System.out.println("Finding summaries from CACHE");
             return cachedList;
         }
-
-        System.out.println("Finding summaries from DB");
         List<ProblemSummaryDTO> dbList = problemRepository.findAllSummaries();
-
         cacheService.setObjectValue(ALL_PROBLEMS_SUMMARY_KEY, dbList, 30, TimeUnit.MINUTES);
-        
         return dbList;
     }
 
+    @Deprecated
     public List<String> getTags(){
         List<String> cachedTags = cacheService.getObjectListValue(ALL_TAGS_KEY, String.class);
         if (cachedTags != null) {
-            System.out.println("Fetching tags from CACHE");
             return cachedTags;
         }
-
-        System.out.println("Generating tags list");
         List<String> tags = List.of("Strings","Maths","DP","Graph");
-
         cacheService.setObjectValue(ALL_TAGS_KEY, tags, 24, TimeUnit.HOURS);
-        
         return tags;
     }
 
@@ -100,12 +82,9 @@ public class ProblemService {
                 System.err.println("Failed to parse cached count: " + cachedCountStr);
             }
         }
-
         System.out.println("Fetching problem count from DB");
         Long dbCount = problemRepository.count();
-
         cacheService.setValue(PROBLEM_COUNT_KEY, dbCount.toString(), 30, TimeUnit.MINUTES);
-        
         return dbCount;
     }
 

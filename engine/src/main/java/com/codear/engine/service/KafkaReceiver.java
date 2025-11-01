@@ -27,27 +27,17 @@ public class KafkaReceiver {
     @KafkaListener(topics = "code-submit", groupId = "codear")
     public void listen(String message) {
         try {
-            // 1️⃣ Parse Kafka message
             Code code = mapper.readValue(message, Code.class);
-
-            // 2️⃣ Fetch test cases & constraints
             List<TestCase> testCases = problemCrudService.getAllTestCases(code.getProblemId());
             List<String> inputs = testCases.stream().map(TestCase::getInput).toList();
-
             ResourceConstraints resourceConstraints = problemCrudService.getPromblemConstraints(code.getProblemId());
-
             List<String> result = engineService.runCode(
                     code.getCode(),
                     code.getLanguage(),
                     inputs,
                     resourceConstraints
             );
-
-            CheckerResponse checkerResponse = checkerService.check(result, testCases);
-            System.out.println("Checker Response: " + checkerResponse);
-
-            submissionService.updateSubmissionResult(code.getSubmissionId(), checkerResponse);
-
+            submissionService.updateSubmissionResult(code.getSubmissionId(),checkerService.check(result, testCases));
         } catch (Exception e) {
             System.err.println("Error parsing JSON or executing code: " + e.getMessage());
             System.err.println("Raw message: " + message);
@@ -58,18 +48,14 @@ public class KafkaReceiver {
     public void listenTest(String message){
         try {
             TestDTO code = mapper.readValue(message, TestDTO.class);
-
             ResourceConstraints resourceConstraints = problemCrudService.getPromblemConstraints(code.getProblemId());
-
             List<String> result = engineService.runCode(
                     code.getCode(),
                     code.getLanguage(),
                     List.of(code.getInput()),
                     resourceConstraints
             );
-
             submissionService.updateTestResult(code.getSubmissionId(),result.get(0));
-
         } catch (Exception e) {
             System.err.println("Error parsing JSON or executing code: " + e.getMessage());
             System.err.println("Raw message: " + message);

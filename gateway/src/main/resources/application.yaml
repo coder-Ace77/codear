@@ -1,23 +1,23 @@
 server:
-  port: 5000
+  port: ${SERVER_PORT}
 
 spring:
   cloud:
     gateway:
       routes:
         - id: problem
-          uri: http://localhost:8082
+          uri: ${PROBLEM_URL}
           predicates:
             - Path=/api/v1/problem/**
         - id: user
-          uri: http://localhost:8083
+          uri: ${USER_URL}
           predicates:
             - Path=/api/v1/user/**
             
       globalcors:
         cors-configurations:
           '[/**]': 
-            allowedOrigins: "*" 
+            allowedOrigins: ${ALLOWED_ORIGIN}
             allowedMethods:
               - "GET"
               - "POST"
