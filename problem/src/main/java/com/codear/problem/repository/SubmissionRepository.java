@@ -7,6 +7,5 @@ import java.util.List;
 
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     Optional<Submission> findBySubmissionId(String submissionId);
-
     List<Submission> findByProblemId(Long problemId);
 }

@@ -1,11 +1,14 @@
 package com.codear.problem.service;
 import java.lang.reflect.Array;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.springframework.data.domain.Pageable;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import com.codear.problem.repository.ProblemRepository;
@@ -114,60 +117,76 @@ public class ProblemService {
         return dbCount;
     }
 
-    public List<ProblemSummaryDTO> searchProblems(String search, String difficulty, List<String> tags, int page, int size) {
-        // System.out.println("processing the search problem service");
-        String tagString = (tags != null && !tags.isEmpty()) ? String.join(",", tags) : null;
-        int offset = page * size;
-
-        String key = String.format(
-            "%s_search:%s_diff:%s_tags:%s_page:%d_size:%d",
-            PROBLEM_SEARCH_KEY,
-            search != null ? search.trim().toLowerCase() : "none",
-            difficulty != null ? difficulty.toLowerCase() : "none",
-            tagString,
-            page,
-            size
-        );
-
-
-        List<ProblemSummaryDTO> cachedProblemSummaryDTOsforSearch = cacheService.getObjectListValue(key, ProblemSummaryDTO.class);
-
-        if(cachedProblemSummaryDTOsforSearch != null) {
-            System.out.println("Problem summary DTO for search from cache");
-            System.out.println(cachedProblemSummaryDTOsforSearch);
-            return cachedProblemSummaryDTOsforSearch;
-        }
-
-        // System.out.println("before repo called");
-
-        List<Object[]> rows = problemRepository.searchProblemsNative(search, difficulty, tagString, size, offset);
-
-        // System.out.println("after repo called");
-
-        // System.out.println("result from prob service" + rows);
-
-        List<ProblemSummaryDTO> result = rows.stream()
-            .map(row -> {
-                Long id = ((Number) row[0]).longValue();
-                String title = (String) row[1];
-                List<String> tagList = Collections.emptyList();
-
-                String diff = (String) row[3];
-                return new ProblemSummaryDTO(id, title, tagList, diff);
-            })
-            .toList();
-
-        cacheService.setObjectValue(key, result, 24, TimeUnit.HOURS);
-
-        return result;
+    public List<ProblemSummaryDTO> getProblemSummaryRecent(Long userId) {
+        Pageable topFive = PageRequest.of(0, 5);
+        return problemRepository.findRecentProblemSummariesByUserId(userId, topFive);
     }
 
+    public List<ProblemSummaryDTO> searchProblems(
+            String search, String difficulty, List<String> tags,
+            int page, int size
+    ) {
+        String tagString = (tags != null && !tags.isEmpty()) ? String.join(",", tags) : null;
+
+        Long lastSeenId = (long) (page * size);
+
+        String key = String.format("%s:search=%s:difficulty=%s:tags=%s:lastId=%s:size=%d",
+                PROBLEM_SEARCH_KEY,
+                (search == null ? "none" : search),
+                (difficulty == null ? "none" : difficulty),
+                (tagString == null ? "none" : tagString),
+                (lastSeenId == null ? "none" : lastSeenId),
+                size
+        );
+
+        System.out.println(search + " " + difficulty + " " + tagString + " " + lastSeenId);
+
+        List<ProblemSummaryDTO> cached = cacheService.getObjectListValue(key, ProblemSummaryDTO.class);
+        if (cached != null) {
+            System.out.println("✅ Cache hit for " + key);
+            return cached;
+        }
+
+        System.out.println("🧭 Cache miss. Querying DB for: " + key);
+
+        List<Object[]> rows = problemRepository.searchProblemsNative(search, difficulty, tagString, size, lastSeenId);
+
+        List<ProblemSummaryDTO> result = rows.stream().map(row -> {
+            Long id = ((Number) row[0]).longValue();
+            String title = (String) row[1];
+            List<String> tagList = Collections.emptyList();
+            if (row[2] != null) {
+                if (row[2] instanceof java.sql.Array sqlArray) {
+                    try {
+                        String[] array = (String[]) sqlArray.getArray();
+                        tagList = Arrays.asList(array);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                } else if (row[2] instanceof String[]) {
+                    tagList = Arrays.asList((String[]) row[2]);
+                } else {
+                    // fallback for unexpected string format like "{tag1,tag2}"
+                    String tagsStr = row[2].toString().replaceAll("[{}\"]", "");
+                    tagList = tagsStr.isEmpty() ? List.of() : List.of(tagsStr.split(","));
+                }
+            }
+
+            String diff = (String) row[3];
+
+            return new ProblemSummaryDTO(id, title, tagList, diff);
+        }).toList();
+
+        System.out.println("result in prob service " + result);
+
+        cacheService.setObjectValue(key, result, 30, TimeUnit.MINUTES);
+        return result;
+    }
 
     public long countFilteredProblems(String search, String difficulty, List<String> tags) {
         String tagString = (tags != null && !tags.isEmpty()) ? String.join(",", tags) : null;
         return problemRepository.countFilteredProblems(search, difficulty, tagString);
     }
-
 
     
 }
