@@ -78,4 +78,11 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
             @Param("tags") String tags
     );
 
+
+    @Query(value = """
+        SELECT DISTINCT UNNEST(tags)
+        FROM problems
+        WHERE tags IS NOT NULL
+    """, nativeQuery = true)
+    List<String> findAllDistinctTags();
 }

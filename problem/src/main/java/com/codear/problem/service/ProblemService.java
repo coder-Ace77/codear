@@ -80,6 +80,29 @@ public class ProblemService {
         return tags;
     }
 
+    public List<String> getTagsForProblem() {
+        List<String> cachedTags = cacheService.getObjectListValue(ALL_TAGS_KEY, String.class);
+        if (cachedTags != null) {
+            System.out.println("✅ Returning tags from cache");
+            return cachedTags;
+        }
+
+        System.out.println("🧭 Cache miss. Fetching unique tags from DB");
+
+        
+        List<String> tags = problemRepository.findAllDistinctTags();
+
+        Collections.sort(tags);
+
+        
+        cacheService.setObjectValue(ALL_TAGS_KEY, tags, 24, TimeUnit.HOURS);
+
+        System.out.println("tags from service" + tags);
+
+        return tags;
+    }
+
+
     public Long getProblemCnt(){
         String cachedCountStr = cacheService.getValue(PROBLEM_COUNT_KEY);
         if (cachedCountStr != null) {

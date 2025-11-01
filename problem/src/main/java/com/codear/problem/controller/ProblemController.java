@@ -46,9 +46,10 @@ public class ProblemController {
 
     @GetMapping("/problemCntAndTags")
     public ResponseEntity<ProblemsMetaData> getAllProblemsCount(){
+        System.out.println("at controller for tags");
         return ResponseEntity.ok(new ProblemsMetaData(){{
             setCount(problemService.getProblemCnt());
-            setTags(problemService.getTags()); 
+            setTags(problemService.getTagsForProblem()); 
         }});
     }
     
