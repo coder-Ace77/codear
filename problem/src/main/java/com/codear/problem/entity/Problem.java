@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.OneToMany;
@@ -17,7 +18,13 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Entity
-@Table(name = "problems")
+
+@Table(name = "problems",
+    indexes = {
+        @Index(name = "idx_problem_title" , columnList = "title"),
+        @Index(name = "idx_problem_difficulty" , columnList = "difficulty")
+    }
+)
 @Data
 @EqualsAndHashCode(exclude = "testCases") 
 public class Problem {

@@ -78,6 +78,30 @@ public class ProblemController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/search")
+    public Map<String, Object> getProblems(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String difficulty,
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        System.out.println("get the request at /search");
+
+        List<ProblemSummaryDTO> problems = problemService.searchProblems(search, difficulty, tags, page, size);
+        long totalCount = problemService.countFilteredProblems(search, difficulty, tags);
+
+        System.out.println("result from service " + problems);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", problems);
+        response.put("totalCount", totalCount);
+        response.put("totalPages", (int) Math.ceil((double) totalCount / size));
+
+        return response;
+    }
+
+
     @GetMapping("/health-check")
     public ResponseEntity<String> HealthCheckProblem() {
         System.out.println("health check");

@@ -38,4 +38,44 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
         @Param("userId") Long userId, 
         Pageable pageable
     );
+
+
+    @Query(value = """
+        SELECT 
+            p.id, 
+            p.title, 
+            p.tags, 
+            p.difficulty
+        FROM problems p
+        WHERE
+            (COALESCE(:search, '') = '' OR 
+                to_tsvector('english', p.title || ' ' || p.description) @@ plainto_tsquery(:search))
+            AND (COALESCE(:difficulty, '') = '' OR LOWER(p.difficulty) = LOWER(:difficulty))
+            AND (COALESCE(:tags, '') = '' OR p.tags && string_to_array(:tags, ','))
+        ORDER BY p.id
+        LIMIT :limit OFFSET :offset
+    """, nativeQuery = true)
+    List<Object[]> searchProblemsNative(
+            @Param("search") String search,
+            @Param("difficulty") String difficulty,
+            @Param("tags") String tags,
+            @Param("limit") int limit,
+            @Param("offset") Long offset
+    );
+
+    @Query(value = """
+        SELECT COUNT(*) 
+        FROM problems p
+        WHERE
+            (COALESCE(:search, '') = '' OR 
+                to_tsvector('english', p.title || ' ' || p.description) @@ plainto_tsquery(:search))
+            AND (COALESCE(:difficulty, '') = '' OR LOWER(p.difficulty) = LOWER(:difficulty))
+            AND (COALESCE(:tags, '') = '' OR p.tags && string_to_array(:tags, ','))
+    """, nativeQuery = true)
+    long countFilteredProblems(
+            @Param("search") String search,
+            @Param("difficulty") String difficulty,
+            @Param("tags") String tags
+    );
+
 }
