@@ -20,8 +20,6 @@ import java.util.Map;
 import com.codear.problem.dto.Code;
 import com.codear.problem.dto.ProblemSendDTO;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-
 
 @RestController
 @RequestMapping("/api/v1/problem")
@@ -70,16 +68,13 @@ public class ProblemController {
     
     @PostMapping("/submit")
     public ResponseEntity<Map<String, String>> handleCodeSubmit(@RequestHeader(name="Authorization") String authString,@RequestBody Code code){
-        System.out.println("get the request in /submit");
         Long userId = userServiceJWT.getUserIdByToken(authString);
         code.setUserId(userId);
         System.out.println(code);
         String submissionId = submitService.processSubmittedCode(code);
-
         Map<String, String> response = new HashMap<>();
         response.put("message", "Code submitted successfully");
         response.put("submissionId", submissionId);
-
         return ResponseEntity.ok(response);
     }
 
@@ -115,7 +110,6 @@ public class ProblemController {
 
     @PostMapping("/test")
     public ResponseEntity<Map<String, String>> postMethodName(@RequestBody TestDTO testDTO){
-        System.out.println("ENTRY PUT IN KAFKA ::"+testDTO);
         String submissionId = testCaseRun.processSubmittedCode(testDTO);
         Map<String,String> response = new HashMap<>();
         response.put("message","Test in queue");

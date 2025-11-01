@@ -29,16 +29,10 @@ public class ProblemCrudService {
         
         List<TestCase> cachedList = cacheService.getObjectListValue(key, TestCase.class);
         if (cachedList != null) {
-            System.out.println("Fetching test cases for problem " + problemId + " from CACHE");
             return cachedList;
         }
-
-        System.out.println("Fetching test cases for problem " + problemId + " from DB");
         List<TestCase> dbList = testCaseRepository.findByProblemId(problemId);
-
         cacheService.setObjectValue(key, dbList, 1, TimeUnit.HOURS);
-        
-
         return dbList;
     }
 
@@ -46,7 +40,6 @@ public class ProblemCrudService {
         String key=CONSTRAINTS_KEY_PREFIX+problemId;
         ResourceConstraints cachedResourceConstraints = cacheService.getObjectValue(key,ResourceConstraints.class);
         if(cachedResourceConstraints!=null){
-            System.out.println("[CACHE HIT] fetching Constraints from cache");
             return cachedResourceConstraints;
         }
         ResourceConstraints resourceConstraints = problemRepository.findConstraintsById(problemId).orElse(null);

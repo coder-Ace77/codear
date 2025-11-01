@@ -23,10 +23,7 @@ public class EngineService {
 
     public List<String> runCode(String code, String lang, List<String> inputs,ResourceConstraints resourceConstraints){
 
-        System.out.println("[RUN_CODE] Received new request. Language: " + lang);
-
         if (inputs == null || inputs.isEmpty()) {
-            System.out.println("[RUN_CODE] No inputs provided. Skipping execution.");
             return Collections.emptyList();
         }
 
@@ -38,14 +35,9 @@ public class EngineService {
 
             tempDir = containerFactory.createTempCodeFiles(code, inputs, config.getFileName());
 
-            // containerFactory.pullImage(config.getImage());
-
             containerId = containerFactory.createContainer(config, tempDir, resourceConstraints.getMemoryLimitMb(),inputs.size());
-
             
-            String logs = containerFactory.runContainerAndGetLogs(containerId,resourceConstraints.getTimeLimitMs());
-            System.out.println("[RUN_CODE]   Raw Combined Output:\n" + logs);
-            
+            String logs = containerFactory.runContainerAndGetLogs(containerId,resourceConstraints.getTimeLimitMs());            
             String[] outputs = logs.split(ContainerFactory.OUTPUT_SEPARATOR + "\n?");
             
             return Arrays.stream(outputs).collect(Collectors.toList());
@@ -62,10 +54,8 @@ public class EngineService {
             e.printStackTrace();
             return List.of("Unexpected error: " + e.getMessage());
         } finally {
-            System.out.println("[RUN_CODE] Starting cleanup...");
             containerFactory.cleanupContainer(containerId);
             containerFactory.cleanupTempDirectory(tempDir);
-            System.out.println("--- [ END ] ---");
         }
     }
 }
