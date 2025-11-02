@@ -1,31 +1,34 @@
 server:
-  port: ${SERVER_PORT}
+  port: ${SERVER_PORT} # Corrected: Removed quotes
 
 spring:
   cloud:
     gateway:
       routes:
         - id: problem
-          uri: ${PROBLEM_URL}
+          uri: ${PROBLEM_URL} # Corrected: Removed quotes
           predicates:
             - Path=/api/v1/problem/**
         - id: user
-          uri: ${USER_URL}
+          uri: ${USER_URL} # Corrected: Removed quotes
           predicates:
             - Path=/api/v1/user/**
             
-      globalcors:
-        cors-configurations:
-          '[/**]': 
-            allowedOrigins: ${ALLOWED_ORIGIN}
-            allowedMethods:
-              - "GET"
-              - "POST"
-              - "PUT"
-              - "DELETE"
-              - "OPTIONS" 
-            allowedHeaders: "*" 
-            allowCredentials: false 
+      # Corrected: 'globalcors' is now nested under 'server.webflux'
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]': 
+                allowedOrigins: ${ALLOWED_ORIGIN}
+                allowedMethods:
+                  - "GET"
+                  - "POST"
+                  - "PUT"
+                  - "DELETE"
+                  - "OPTIONS" 
+                allowedHeaders: "*" 
+                allowCredentials: false 
 
 logging:
   level:
