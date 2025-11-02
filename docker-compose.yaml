@@ -1,6 +1,105 @@
+version: '3.9'
+
 services:
+  user:
+    image: acecoder121/codear:user
+    container_name: user
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    env_file:
+      - .env
+    environment:
+      SERVER_PORT: ${USER_SERVER_PORT}
+    networks:
+      - backend
+    ports:
+      - "${USER_SERVER_PORT}:${USER_SERVER_PORT}"
+
+  problem:
+    image: acecoder121/codear:problem
+    container_name: problem
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    env_file:
+      - .env
+    environment:
+      SERVER_PORT: ${PROBLEM_SERVER_PORT}
+    networks:
+      - backend
+    ports:
+      - "${PROBLEM_SERVER_PORT}:${PROBLEM_SERVER_PORT}"
+
+  engine:
+    image: acecoder121/codear:engine
+    container_name: engine
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    env_file:
+      - .env
+    environment:
+      SERVER_PORT: ${ENGINE_SERVER_PORT}
+    networks:
+      - backend
+    ports:
+      - "${ENGINE_SERVER_PORT}:${ENGINE_SERVER_PORT}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  gateway:
+    image: acecoder121/codear:gateway
+    container_name: gateway
+    env_file:
+      - .env
+    environment:
+      SERVER_PORT: ${GATEWAY_SERVER_PORT}
+    networks:
+      - backend
+    ports:
+      - "${GATEWAY_SERVER_PORT}:${GATEWAY_SERVER_PORT}"
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+
   kafka:
     image: apache/kafka:latest
     container_name: kafka
     ports:
-      - "9092:9092"
+      - "${KAFKA_PORT}:${KAFKA_PORT}"
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:
+
+networks:
+  backend:
+    driver: bridge

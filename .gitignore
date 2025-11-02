@@ -4,6 +4,8 @@
 */setenv.sh
 */run.sh
 
+*.env
+
 # Log file
 *.log
 

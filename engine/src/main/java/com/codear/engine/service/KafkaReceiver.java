@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
-import com.codear.engine.dto.CheckerResponse;
 import com.codear.engine.dto.Code;
 import com.codear.engine.dto.ResourceConstraints;
 import com.codear.engine.dto.TestDTO;
