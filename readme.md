@@ -1,91 +1,66 @@
-.
-# CodeAR — Online Code Execution & Problem Solving Platform
+# CodeAR  - A Problem Solving Platform
 
-CodeAR is a scalable, microservice-based online coding platform that allows users to solve programming problems, execute code securely in Docker containers, and view submission results in real-time.
-The platform follows a distributed, event-driven architecture using Spring Boot, Kafka, and Redis, with React + TypeScript for the frontend.
+CodeAR is an online coding platform that enables users to solve programming problems, run their code securely inside isolated Docker environments, and view submission results in real time. Users can register, log in, browse coding challenges, and submit their solutions seamlessly.
 
-# ⚡ Features
+The platform is built using a highly scalable microservice architecture, ensuring reliability, performance, and smooth handling of increasing traffic and workload.
 
-✅ JWT Authentication via Gateway
-✅ Problem search and filtering
-✅ Code execution in multiple languages (C++, Java, Python)
-✅ Run and Submit functionality
-✅ View all past submissions and results
-✅ User profile with problem-solving statistics
-✅ Redis caching for high performance
-✅ Kafka-based async code execution pipeline
-✅ Docker-based sandboxing for safe execution
+## Features
 
-.
+User authentication (register/login via JWT)
 
-# Architecture Overview
+Browse and solve coding problems
 
-CodeAR is composed of multiple microservices that communicate via REST and Kafka message queues.
+Real-time code execution in isolated Docker containers
 
-# Microservices
-## Service	Description
-## Gateway Service	Acts as the API gateway, handling authentication (JWT), routing, and request forwarding.
-## User Service	Manages user registration, login, profiles, and stats (e.g., problems solved, submissions made).
-## Problem Service	Manages problem creation, metadata, filtering, and submission handling. Publishes execution jobs to Kafka and caches problem data in Redis.
-## Engine Service (Worker)	Consumes execution jobs from Kafka, runs user code securely inside Docker containers, polls Redis for submission status, and updates results back to the database.
+Secure runtime with resource limits
 
-                ┌────────────────┐
-                │   Frontend     │
-                │ (React + TS)   │
-                └──────┬─────────┘
-                       │
-                       ▼
-               ┌─────────────────┐
-               │   Gateway API   │
-               │ (JWT + Routing) │
-               └──────┬──────────┘
-                      │
-    ┌─────────────────┼───────────────────┐
-    ▼                 ▼                   ▼
-┌─────────┐     ┌────────────┐      ┌───────────────┐
-│ UserSvc │     │ ProblemSvc │ ---> │  Redis Cache  │
-└─────────┘     └──────┬─────┘      └───────────────┘
-                       │
-                       ▼
-                ┌─────────────┐
-                │   Kafka MQ  │
-                └──────┬──────┘
-                       │
-                       ▼
-                 ┌──────────────┐
-                 │ EngineSvc 🧠 │
-                 │ (Docker Run) │
-                 └──────────────┘
+Fully async judging using Kafka
 
+Live submission updates via long polling
 
-# System Flow
-1. User Submits Code
+Highly scalable microservice architecture
 
-The frontend sends a request (code, language, inputs) to the Problem Service through the Gateway.
+Caching using Redis (cache-aside strategy)
 
-The Problem Service:
+## Architecture Overview
 
-Caches submission info in Redis.
+CodeAR is designed to be highly available and scalable using microservice architecture.
+It has following microserices -
 
-Publishes a job message to Kafka.
+1. User service
+1. Problem service
+1. Engine service
 
-2. Code Execution (Engine Service)
+![Architecture diagram](./images/arch_diag.svg)
 
-Runs code in an isolated Docker container.
+The User Service handles user registration, login, and all user-related CRUD operations.
 
-Collects logs/output.
+The Problem Service manages problem creation, updates, and retrieval of coding challenges. It also accepts code submissions from users and places them into the processing pipeline.
 
-Updates submission status in Redis and DB.
+The Engine Service is responsible for executing the submitted code. It uses the Docker API to run each submission inside a fully isolated environment, captures the output, and performs the necessary checks before updating the results.
 
-Publishes the final result.
+A Java-based API Gateway serves as the unified entry point for all backend microservices, ensuring secure, controlled, and efficient routing of requests.
 
-3. Result Delivery
+Additionally, the platform uses Redis with a cache-aside strategy to store frequently accessed data, significantly improving performance and reducing load on the database.
 
-The frontend polls or subscribes to the submission status.
+### Components
 
-The Gateway routes the request to the Problem Service, which fetches results from Redis or DB.
+1. User service
+1. Problem service
+1. Engine service
+1. API gateway
+1. Front end(React)
+1. Kafka
+1. Redis
+1. Postgres database
+1. Docker deamon(Running so that code can be executed)
 
-.
+### Code judging flow
+
+The user submits a problem along with their code, which is first received by the Problem Service. This service handles the necessary CRUD operations on the database and then pushes the code submission into a Kafka queue. The Engine Service consumes submissions from the queue and executes them one by one. After execution, it updates the database with the appropriate status and results. Meanwhile, the frontend uses long polling to check for updates, allowing the user to receive the execution results as soon as they become available.
+
+![alt text](./images/sequence-diagram.svg)
+
 
 # Database Design
 
@@ -95,80 +70,90 @@ Problems Table — Problem metadata, difficulty, and test cases.
 
 Submissions Table — Stores submission ID, problem ID, code, status, language, and output.
 
-(All microservices share the same PostgreSQL instance for relational consistency.)
+## Set up 
 
+### User service
 
-# Environment file
-## for user microservice
+Following environment variables should be present to run the user microservice
 
-export DB_HOST=
-export DB_PORT=
-export DB_NAME=
-export USER=
-export PASSWORD=
-export SERVER_PORT=
+```text
+DB_HOST
+DB_PORT
+DB_NAME
+USER
+PASSWORD
+SERVER_PORT
 
-export JWT_SECRET=
-export JWT_EXPIRY=
+JWT_SECRET
+JWT_EXPIRY
+```
 
-### run the application
+To run application run using the maven spring boot
+
+```bash
 ./mvnw spring-boot:run
+```
 
-## for problem service
+### Problem Service
 
-export DB_HOST=
-export DB_PORT=
-export DB_NAME=
-export USER=
-export PASSWORD=
-export SERVER_PORT=
+```
 
-export REDIS_HOST=
-export REDIS_PORT=
+DB_HOST
+DB_PORT
+DB_NAME
+USER
+PASSWORD
+SERVER_PORT
 
-export JWT_SECRET=
-export JWT_EXPIRY=
+REDIS_HOST
+REDIS_PORT
 
+JWT_SECRET
+JWT_EXPIRY
 
-### run the application
+```
+
+```bash
 ./mvnw spring-boot:run
+```
 
+### API gateway
 
-# for gateway service
+```text
+PROBLEM_URL
+USER_URL
+ALLOWED_ORIGIN
+SERVER_PORT
+```
 
-export PROBLEM_URL=
-export USER_URL=
-export ALLOWED_ORIGIN=
-
-export SERVER_PORT=
-
-### run the application
+```bash
 ./mvnw spring-boot:run
+```
 
+### Engine service
 
-# for engine service
+```text
+DB_HOST
+DB_PORT
+DB_NAME
+USER
+PASSWORD
+SERVER_PORT
+KAFKA_BOOTSTRAP_SERVERS
 
-export DB_HOST=
-export DB_PORT=
-export DB_NAME=
-export USER=
-export PASSWORD=
-export SERVER_PORT=
-export KAFKA_BOOTSTRAP_SERVERS=
+REDIS_HOST
+REDIS_PORT
+```
 
-export REDIS_HOST=
-export REDIS_PORT=
-
-
-
-### run the application
+```bash
 ./mvnw spring-boot:run
+```
 
+## Tech Stack
 
-# Tech Stack
-## Backend
+### Backend
 
-Spring Boot (Java)
+Spring Boot (Java 21)
 
 PostgreSQL — Persistent storage for users, problems, and submissions.
 
@@ -179,3 +164,31 @@ Kafka — Message queue for asynchronous communication between Problem and Engin
 Docker — Used by the Engine service to run user code safely in isolated containers.
 
 JWT (JSON Web Tokens) — Authentication and authorization mechanism.
+
+### Front end
+
+React+Vite with typescript and tailwind.
+
+[front end repository link](https://github.com/coder-Ace77/codear-front)
+
+## Security 🔒
+
+The API Gateway sits in front of all microservices to ensure controlled access and keep the internal services protected. It also handles JWT authentication so only authorized users can reach the intended endpoints.
+
+User code executes inside an isolated Docker container with no access to the host filesystem or external environment, ensuring a secure and sandboxed deployment.
+
+## System design 📈
+
+Horizontal microservice scaling allows the system to handle increased traffic by running multiple instances of individual services. This ensures higher availability, improved fault tolerance, and consistently smooth performance under varying loads.
+
+Kafka is used for asynchronous processing, enabling services to communicate efficiently without blocking. In the context of a problem-submission workflow, Kafka plays a critical role: the Problem Service submits user code to a Kafka topic, and the Engine Service consumes submissions from the queue at its own pace. This decoupled architecture ensures stable operation even when execution times vary or code runs for longer durations. It also smooths out traffic spikes throughout the day allowing the system to continue functioning even when resources are limited because incoming submissions no longer depend on immediate engine availability.
+
+Redis is integrated for caching, providing rapid in-memory data access and significantly boosting system performance. By storing frequently accessed metadata, problem data, or user information, it reduces database load and helps maintain fast response times across services.
+
+Load balancing is managed through the API Gateway, which distributes incoming traffic evenly across all microservices. This prevents bottlenecks, ensures optimal resource utilization, and improves system reliability by routing requests intelligently based on service health and availability.
+
+## Future enhancements 🛣️
+
+1. Real time contests
+1. Logging and monitoring 
+1. User blogs and editorials
