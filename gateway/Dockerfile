@@ -7,7 +7,7 @@ COPY src ./src
 RUN --mount=type=cache,target=/root/.m2 \
     mvn clean package -DskipTests
 
-FROM openjdk:21
+FROM eclipse-temurin:21
 
 WORKDIR /app
 

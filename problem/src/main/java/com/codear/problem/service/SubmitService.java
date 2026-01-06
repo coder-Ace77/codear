@@ -16,7 +16,7 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class SubmitService {
 
-    private final KafkaSender kafkaSender;
+    private final SqsSender sqsSender;
     private final SubmissionRepository submissionRepository;
     private final CacheService cacheService;
 
@@ -26,7 +26,7 @@ public class SubmitService {
 
         cacheService.setValue(submissionId,SubmissionStatus.IN_PROGRESS.toString());
 
-        kafkaSender.sendMessage(code);
+        sqsSender.sendMessage(code);
 
         Submission submission = Submission.builder()
                 .submissionId(submissionId)

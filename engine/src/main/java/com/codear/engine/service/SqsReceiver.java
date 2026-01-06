@@ -2,8 +2,7 @@ package com.codear.engine.service;
 
 import java.util.List;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.kafka.annotation.KafkaListener;
+import io.awspring.cloud.sqs.annotation.SqsListener;
 import org.springframework.stereotype.Service;
 
 import com.codear.engine.dto.Code;
@@ -13,53 +12,62 @@ import com.codear.engine.entity.TestCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @AllArgsConstructor
-@ConditionalOnProperty(prefix = "feature.kafka", name = "enabled", havingValue = "true")
-public class KafkaReceiver {
+public class SqsReceiver {
 
-    private final ObjectMapper mapper; 
+    private final ObjectMapper mapper;
     private final EngineService engineService;
     private final ProblemCrudService problemCrudService;
     private final CheckerService checkerService;
     private final SubmissionService submissionService;
 
-    @KafkaListener(topics = "code-submit", groupId = "codear")
+    @SqsListener("codear-queue") 
     public void listen(String message) {
         try {
+            System.out.println("Received submission message via SQS");
+            
             Code code = mapper.readValue(message, Code.class);
             List<TestCase> testCases = problemCrudService.getAllTestCases(code.getProblemId());
             List<String> inputs = testCases.stream().map(TestCase::getInput).toList();
             ResourceConstraints resourceConstraints = problemCrudService.getPromblemConstraints(code.getProblemId());
+            
             List<String> result = engineService.runCode(
                     code.getCode(),
                     code.getLanguage(),
                     inputs,
                     resourceConstraints
             );
-            submissionService.updateSubmissionResult(code.getSubmissionId(),checkerService.check(result, testCases));
+            
+            submissionService.updateSubmissionResult(code.getSubmissionId(), checkerService.check(result, testCases));
         } catch (Exception e) {
-            System.err.println("Error parsing JSON or executing code: " + e.getMessage());
-            System.err.println("Raw message: " + message);
+            log.error("Error processing SQS submission: {}", e.getMessage());
+            log.error("Raw message: {}", message);
         }
     }
 
-    @KafkaListener(topics = "test-topic", groupId = "codear")
-    public void listenTest(String message){
+    @SqsListener("codear-test")
+    public void listenTest(String message) {
         try {
+            System.out.println("Received test-run message via SQS");
+
             TestDTO code = mapper.readValue(message, TestDTO.class);
             ResourceConstraints resourceConstraints = problemCrudService.getPromblemConstraints(code.getProblemId());
+            
             List<String> result = engineService.runCode(
                     code.getCode(),
                     code.getLanguage(),
                     List.of(code.getInput()),
                     resourceConstraints
             );
-            submissionService.updateTestResult(code.getSubmissionId(),result.get(0));
+            
+            submissionService.updateTestResult(code.getSubmissionId(), result.get(0));
         } catch (Exception e) {
-            System.err.println("Error parsing JSON or executing code: " + e.getMessage());
-            System.err.println("Raw message: " + message);
+            log.error("Error processing SQS test request: {}", e.getMessage());
+            log.error("Raw message: {}", message);
         }
     }
 }

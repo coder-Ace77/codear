@@ -100,6 +100,13 @@
 			<artifactId>httpcore5-h2</artifactId>
 			<version>5.2</version>
 		</dependency>
+
+		<dependency>
+			<groupId>io.awspring.cloud</groupId>
+			<artifactId>spring-cloud-aws-starter-sqs</artifactId>
+			<version>3.1.0</version>
+		</dependency>
+		
 	</dependencies>
 
 	<build>

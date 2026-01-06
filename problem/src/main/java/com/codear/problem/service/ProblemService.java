@@ -60,10 +60,10 @@ public class ProblemService {
     }
 
     public List<ProblemSummaryDTO> getAllProblems() {
-        List<ProblemSummaryDTO> cachedList = cacheService.getObjectListValue(ALL_PROBLEMS_SUMMARY_KEY, ProblemSummaryDTO.class);
-        if (cachedList != null) {
-            return cachedList;
-        }
+        // List<ProblemSummaryDTO> cachedList = cacheService.getObjectListValue(ALL_PROBLEMS_SUMMARY_KEY, ProblemSummaryDTO.class);
+        // if (cachedList != null) {
+        //     return cachedList;
+        // }
         List<ProblemSummaryDTO> dbList = problemRepository.findAllSummaries();
         cacheService.setObjectValue(ALL_PROBLEMS_SUMMARY_KEY, dbList, 30, TimeUnit.MINUTES);
         return dbList;

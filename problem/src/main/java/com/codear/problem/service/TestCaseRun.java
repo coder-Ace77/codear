@@ -2,6 +2,7 @@ package com.codear.problem.service;
 
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.codear.problem.dto.TestDTO;
@@ -14,15 +15,16 @@ import lombok.AllArgsConstructor;
 public class TestCaseRun {
 
     private final CacheService cacheService;
-    private final KafkaSender kafkaSender;
+    private final SqsSender sqsSender;
+    
+    private static final String SQS_TEST_QUEUE = "https://sqs.ap-south-1.amazonaws.com/829108230523/codear-test";
 
-    private static final String KAFKA_TOPIC = "test-topic";
 
     public String processSubmittedCode(TestDTO testDTO) {
         String submissionId = UUID.randomUUID().toString();
         testDTO.setSubmissionId(submissionId);
         testDTO.setStatus(SubmissionStatus.IN_PROGRESS.toString());
-        kafkaSender.sendMessage(testDTO,KAFKA_TOPIC);
+        sqsSender.sendMessage(testDTO,SQS_TEST_QUEUE);
         testDTO.setSubmissionId(submissionId);
         cacheService.setObjectValue(submissionId,testDTO);
         return submissionId;
