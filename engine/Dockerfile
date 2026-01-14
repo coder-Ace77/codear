@@ -1,16 +1,17 @@
-FROM maven:3.9-eclipse-temurin-21 AS build
-
+FROM eclipse-temurin:17-jdk-alpine AS build
 WORKDIR /app
-COPY pom.xml .
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:go-offline
 COPY src ./src
+RUN ./mvnw clean package -DskipTests
 
-RUN --mount=type=cache,target=/root/.m2 \
-    mvn clean package -DskipTests
-
-FROM eclipse-temurin:21
-
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
+
+RUN apk add --no-cache docker-cli
 
 COPY --from=build /app/target/*.jar app.jar
 
+EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]

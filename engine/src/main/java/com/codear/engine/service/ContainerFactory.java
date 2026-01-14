@@ -54,17 +54,45 @@ public class ContainerFactory implements AutoCloseable {
         System.out.println("[ContainerFactory] Image warmup complete.");
     }
 
-    public Path createTempCodeFiles(String code, List<String> inputs, String codeFileName) throws IOException {
-        Path tempDir = Files.createTempDirectory("codear_");
+    // public Path createTempCodeFiles(String code, List<String> inputs, String codeFileName) throws IOException {
         
+    //     Path tempDir = Files.createTempDirectory("codear_");
+        
+    //     Files.writeString(tempDir.resolve(codeFileName), code);
+
+    //     for (int i = 0; i < inputs.size(); i++) {
+    //         String inputFileName = "input_" + i + ".txt";
+    //         Files.writeString(tempDir.resolve(inputFileName), inputs.get(i));
+    //     }
+
+    //     return tempDir;
+    // }
+
+    public Path createTempCodeFiles(String code, List<String> inputs, String codeFileName) throws IOException {
+    // Force use of /tmp specifically
+        Path rootTmp = Path.of("/tmp");
+        if (!Files.exists(rootTmp)) {
+            Files.createDirectories(rootTmp);
+        }
+
+        // Create the directory specifically in /tmp
+        Path tempDir = Files.createTempDirectory(rootTmp, "codear_");
+        
+        // Set permissions so the Docker daemon (running as a different user) can read it
+        tempDir.toFile().setReadable(true, false);
+        tempDir.toFile().setExecutable(true, false);
 
         Files.writeString(tempDir.resolve(codeFileName), code);
 
         for (int i = 0; i < inputs.size(); i++) {
             String inputFileName = "input_" + i + ".txt";
-            Files.writeString(tempDir.resolve(inputFileName), inputs.get(i));
+            Path inputPath = tempDir.resolve(inputFileName);
+            Files.writeString(inputPath, inputs.get(i));
+            // Ensure the file is readable
+            inputPath.toFile().setReadable(true, false);
         }
 
+        System.out.println("[DEBUG] Created temp files at: " + tempDir.toAbsolutePath());
         return tempDir;
     }
 
@@ -75,16 +103,16 @@ public class ContainerFactory implements AutoCloseable {
         System.out.println("[PULL_IMAGE] Image pull complete.");
     }
 
-    
     public String createContainer(LanguageConfig config, Path tempDir, Integer memoryLimitMb, int numTestCases) {
         Volume volume = new Volume("/app");
         String compileString = (config.getCompileCmd() != null) 
-                               ? String.join(" ", config.getCompileCmd()) 
-                               : null;
+                            ? String.join(" ", config.getCompileCmd()) 
+                            : null;
         String runString = String.join(" ", config.getRunCmd());
 
+        // --- DEBUGGING: List files inside the worker container before running code ---
+
         String script;
-        
         if (compileString != null) {
             script = String.format(
                 "%s; " + 
@@ -106,15 +134,17 @@ public class ContainerFactory implements AutoCloseable {
             );
         }
 
+        String[] shellCmd = {"/bin/sh", "-c", script};
 
-        String[] shellCmd = {
-            "/bin/sh",
-            "-c",
-            script
-        };
+        // --- PATH LOGGING ---
+        String absolutePath = tempDir.toAbsolutePath().toString();
+        System.out.println("[DEBUG] Host Path to bind: " + absolutePath);
+        
+        // Ensure the directory is actually readable/traversable by Docker
+        tempDir.toFile().setReadable(true, false);
+        tempDir.toFile().setExecutable(true, false);
 
-
-        Bind bind = new Bind(tempDir.toAbsolutePath().toString(), volume);
+        Bind bind = new Bind(absolutePath, volume);
 
         long memoryInBytes = memoryLimitMb * 1024L * 1024L;
         HostConfig hostConfig = HostConfig.newHostConfig()
@@ -127,10 +157,9 @@ public class ContainerFactory implements AutoCloseable {
                 .withEnv("NUM_TESTS=" + numTestCases)
                 .exec();
         
-        String containerId = container.getId();
-        return containerId;
+        return container.getId();
     }
-
+    
     public String runContainerAndGetLogs(String containerId, long totalTimeLimitMs) throws InterruptedException {
         dockerClient.startContainerCmd(containerId).exec();
 

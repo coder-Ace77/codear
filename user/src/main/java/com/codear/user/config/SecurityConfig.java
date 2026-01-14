@@ -7,12 +7,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 public class SecurityConfig {
-
-    /**
-     * Defines the bean for password encoding.
-     * Spring will use this instance whenever a PasswordEncoder is required.
-     * @return A BCryptPasswordEncoder instance.
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
