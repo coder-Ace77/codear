@@ -86,7 +86,6 @@ public class ContainerFactory implements AutoCloseable {
     }
 
     public String createContainer(LanguageConfig config, Path tempDir, Integer memoryLimitMb, int numTestCases) {
-        Volume volume = new Volume("/app");
         String compileString = (config.getCompileCmd() != null)
                 ? config.getCompileCmd().stream()
                         .map(arg -> arg.contains(" ") ? "\"" + arg + "\"" : arg)
@@ -101,6 +100,13 @@ public class ContainerFactory implements AutoCloseable {
         String script;
         String timeCmd = "/usr/bin/time -f \"METRICS:%e:%M\"";
 
+        // IMPORTANT: Inputs are now local to working directory, so "input_$i.txt"
+        // instead
+        // of "/app/input_$i.txt"
+        // Also assuming we copy 'tempDir' to '/app', so the dir name inside will be
+        // 'codear_xxxx'
+        // So WorkingDir should be /app/codear_xxxx
+
         if (compileString != null) {
             script = String.format(
                     "%s; " +
@@ -108,8 +114,9 @@ public class ContainerFactory implements AutoCloseable {
                             "    /bin/sh -c 'for i in $(seq 0 $(($NUM_TESTS - 1))); do " +
                             "        echo \"[TEST-START-$i]\"; " +
                             "        echo \"[TEST-OUTPUT-START]\"; " +
-                            "        %s %s < /app/input_$i.txt; " +
+                            "        %s %s < input_$i.txt; " +
                             "        EXIT_CODE=$?; " +
+                            "        echo \"\"; " +
                             "        echo \"[TEST-OUTPUT-END]\"; " +
                             "        if [ $EXIT_CODE -ne 0 ]; then echo \"[TEST-FAILED-$i-CODE-$EXIT_CODE]\"; fi; "
                             +
@@ -122,31 +129,37 @@ public class ContainerFactory implements AutoCloseable {
                     "/bin/sh -c 'for i in $(seq 0 $(($NUM_TESTS - 1))); do " +
                             "    echo \"[TEST-START-$i]\"; " +
                             "    echo \"[TEST-OUTPUT-START]\"; " +
-                            "    %s %s < /app/input_$i.txt; " +
+                            "    %s %s < input_$i.txt; " +
                             "    EXIT_CODE=$?; " +
+                            "    echo \"\"; " +
                             "    echo \"[TEST-OUTPUT-END]\"; " +
                             "    if [ $EXIT_CODE -ne 0 ]; then echo \"[TEST-FAILED-$i-CODE-$EXIT_CODE]\"; fi; " +
                             "    echo \"%s\"; " +
-                            "done'",
+                            "    done'",
                     timeCmd, runString, OUTPUT_SEPARATOR);
         }
 
         String[] shellCmd = { "/bin/sh", "-c", script };
 
-        String absolutePath = tempDir.toAbsolutePath().toString();
-        tempDir.toFile().setReadable(true, false);
-        tempDir.toFile().setExecutable(true, false);
-
-        Bind bind = new Bind(absolutePath, volume);
+        // Construct working directory path: /app/codear_...
+        String folderName = tempDir.getFileName().toString();
+        String containerWorkDir = "/app/" + folderName;
 
         HostConfig hostConfig = HostConfig.newHostConfig()
-                .withMemory(memoryInBytes)
-                .withBinds(bind);
+                .withMemory(memoryInBytes);
+        // No binds!
+
         CreateContainerResponse container = dockerClient.createContainerCmd(config.getImage())
                 .withCmd(shellCmd)
                 .withHostConfig(hostConfig)
                 .withEnv("NUM_TESTS=" + numTestCases)
+                .withWorkingDir(containerWorkDir)
                 .exec();
+
+        // COPY files to container
+        dockerClient.copyArchiveToContainerCmd(container.getId()).withHostResource(tempDir.toString())
+                .withRemotePath("/app").exec();
+
         return container.getId();
     }
 

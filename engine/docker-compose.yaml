@@ -1,0 +1,12 @@
+services:
+  engine:
+    container_name: engine
+    build: .
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+    restart: unless-stopped

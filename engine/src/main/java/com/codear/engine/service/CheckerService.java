@@ -16,12 +16,12 @@ public class CheckerService {
         int size = tests.size();
         int passedCount = 0;
         String firstFailureDetail = null;
-        for (int index=0;index<size;index++){
-            String actualRaw=(index<outputs.size())?outputs.get(index):"";
-            String expectedRaw=tests.get(index).getOutput();
+        for (int index = 0; index < size; index++) {
+            String actualRaw = (index < outputs.size()) ? outputs.get(index) : "";
+            String expectedRaw = tests.get(index).getOutput();
 
-            String actualNormalized=normalize(actualRaw);
-            String expectedNormalized=normalize(expectedRaw);
+            String actualNormalized = normalize(actualRaw);
+            String expectedNormalized = normalize(expectedRaw);
 
             if (actualNormalized.equals(expectedNormalized)) {
                 passedCount++;
@@ -30,7 +30,8 @@ public class CheckerService {
                 if (Boolean.TRUE.equals(failedTest.getIsHidden())) {
                     firstFailureDetail = String.format("Test Case %d Failed: Hidden Test Case", index + 1);
                 } else {
-                    firstFailureDetail = String.format("Test Case %d Failed:\n OUTPUT: %s \n EXPECTED: %s",index + 1,actualNormalized,expectedNormalized);
+                    firstFailureDetail = String.format("Test Case %d Failed:\n OUTPUT: %s \n EXPECTED: %s", index + 1,
+                            actualNormalized, expectedNormalized);
                 }
             }
         }
@@ -46,6 +47,7 @@ public class CheckerService {
             return "";
         }
         return input.lines()
+                .map(line -> line.replace("[TEST-OUTPUT-END]", "")) // Remove marker if on same line
                 .map(String::trim)
                 .filter(line -> !line.isEmpty())
                 .filter(line -> !line.startsWith("[TEST-"))
