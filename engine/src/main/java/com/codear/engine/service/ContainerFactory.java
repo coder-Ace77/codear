@@ -24,8 +24,10 @@ import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
 import org.springframework.stereotype.Component;
 import java.util.List;
-
-import org.springframework.util.StopWatch;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import com.codear.engine.dto.CodeExecutionResult;
 
 @Component
 public class ContainerFactory implements AutoCloseable {
@@ -53,213 +55,175 @@ public class ContainerFactory implements AutoCloseable {
         } catch (Exception e) {
             Thread.currentThread().interrupt();
         }
-        System.out.println("[ContainerFactory] Image warmup complete.");
     }
 
-    // public Path createTempCodeFiles(String code, List<String> inputs, String
-    // codeFileName) throws IOException {
-
-    // Path tempDir = Files.createTempDirectory("codear_");
-
-    // Files.writeString(tempDir.resolve(codeFileName), code);
-
-    // for (int i = 0; i < inputs.size(); i++) {
-    // String inputFileName = "input_" + i + ".txt";
-    // Files.writeString(tempDir.resolve(inputFileName), inputs.get(i));
-    // }
-
-    // return tempDir;
-    // }
-
     public Path createTempCodeFiles(String code, List<String> inputs, String codeFileName) throws IOException {
-        StopWatch stopWatch = new StopWatch("ContainerFactory.createTempCodeFiles");
-        try {
-            stopWatch.start("check-root-tmp");
-            // Force use of /tmp specifically
-            Path rootTmp = Path.of("/tmp");
-            if (!Files.exists(rootTmp)) {
-                Files.createDirectories(rootTmp);
-            }
-            stopWatch.stop();
-
-            stopWatch.start("create-dir");
-            // Create the directory specifically in /tmp
-            Path tempDir = Files.createTempDirectory(rootTmp, "codear_");
-
-            // Set permissions so the Docker daemon (running as a different user) can read
-            // it
-            tempDir.toFile().setReadable(true, false);
-            tempDir.toFile().setExecutable(true, false);
-            stopWatch.stop();
-
-            stopWatch.start("write-code-file");
-            Files.writeString(tempDir.resolve(codeFileName), code);
-            stopWatch.stop();
-
-            stopWatch.start("write-inputs");
-            for (int i = 0; i < inputs.size(); i++) {
-                String inputFileName = "input_" + i + ".txt";
-                Path inputPath = tempDir.resolve(inputFileName);
-                Files.writeString(inputPath, inputs.get(i));
-                // Ensure the file is readable
-                inputPath.toFile().setReadable(true, false);
-            }
-            stopWatch.stop();
-
-            System.out.println("[DEBUG] Created temp files at: " + tempDir.toAbsolutePath());
-            return tempDir;
-        } finally {
-            if (stopWatch.isRunning())
-                stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
+        Path executionRoot = Path.of(System.getProperty("user.home"), "codear_executions");
+        if (!Files.exists(executionRoot)) {
+            Files.createDirectories(executionRoot);
         }
+        Path tempDir = Files.createTempDirectory(executionRoot, "codear_");
+        tempDir.toFile().setReadable(true, false);
+        tempDir.toFile().setWritable(true, false);
+        tempDir.toFile().setExecutable(true, false);
+        Files.writeString(tempDir.resolve(codeFileName), code);
+        for (int i = 0; i < inputs.size(); i++) {
+            String inputFileName = "input_" + i + ".txt";
+            Path inputPath = tempDir.resolve(inputFileName);
+            Files.writeString(inputPath, inputs.get(i));
+            inputPath.toFile().setReadable(true, false);
+        }
+        return tempDir;
     }
 
     public void pullImage(String image) throws InterruptedException {
-        StopWatch stopWatch = new StopWatch();
-        stopWatch.start("ContainerFactory.pullImage");
-        try {
-            dockerClient.pullImageCmd(image)
-                    .exec(new PullImageResultCallback())
-                    .awaitCompletion(5, TimeUnit.MINUTES);
-            System.out.println("[PULL_IMAGE] Image pull complete.");
-        } finally {
-            stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
+        if (image.startsWith("codear-")) {
+            return;
         }
+        dockerClient.pullImageCmd(image)
+                .exec(new PullImageResultCallback())
+                .awaitCompletion(5, TimeUnit.MINUTES);
     }
 
     public String createContainer(LanguageConfig config, Path tempDir, Integer memoryLimitMb, int numTestCases) {
-        StopWatch stopWatch = new StopWatch("ContainerFactory.createContainer");
-        try {
-            stopWatch.start("prepare-config");
-            Volume volume = new Volume("/app");
-            String compileString = (config.getCompileCmd() != null)
-                    ? String.join(" ", config.getCompileCmd())
-                    : null;
-            String runString = String.join(" ", config.getRunCmd());
+        Volume volume = new Volume("/app");
+        String compileString = (config.getCompileCmd() != null)
+                ? config.getCompileCmd().stream()
+                        .map(arg -> arg.contains(" ") ? "\"" + arg + "\"" : arg)
+                        .collect(Collectors.joining(" "))
+                : null;
+        String runString = config.getRunCmd().stream()
+                .map(arg -> arg.contains(" ") ? "\"" + arg + "\"" : arg)
+                .collect(Collectors.joining(" "));
 
-            // --- DEBUGGING: List files inside the worker container before running code ---
+        long memoryInBytes = (memoryLimitMb != null ? memoryLimitMb : 256) * 1024L * 1024L;
 
-            String script;
-            if (compileString != null) {
-                script = String.format(
-                        "%s; " +
-                                "if [ $? -eq 0 ]; then " +
-                                "    for i in $(seq 0 $(($NUM_TESTS - 1))); do " +
-                                "        %s < /app/input_$i.txt; " +
-                                "        echo '%s'; " +
-                                "    done; " +
-                                "fi",
-                        compileString, runString, OUTPUT_SEPARATOR);
-            } else {
-                script = String.format(
-                        "for i in $(seq 0 $(($NUM_TESTS - 1))); do " +
-                                "    %s < /app/input_$i.txt; " +
-                                "    echo '%s'; " +
-                                "done",
-                        runString, OUTPUT_SEPARATOR);
-            }
+        String script;
+        String timeCmd = "/usr/bin/time -f \"METRICS:%e:%M\"";
 
-            String[] shellCmd = { "/bin/sh", "-c", script };
-
-            // --- PATH LOGGING ---
-            String absolutePath = tempDir.toAbsolutePath().toString();
-            System.out.println("[DEBUG] Host Path to bind: " + absolutePath);
-
-            // Ensure the directory is actually readable/traversable by Docker
-            tempDir.toFile().setReadable(true, false);
-            tempDir.toFile().setExecutable(true, false);
-
-            Bind bind = new Bind(absolutePath, volume);
-
-            long memoryInBytes = memoryLimitMb * 1024L * 1024L;
-            HostConfig hostConfig = HostConfig.newHostConfig()
-                    .withMemory(memoryInBytes)
-                    .withBinds(bind);
-            stopWatch.stop();
-
-            stopWatch.start("docker-api-create");
-            CreateContainerResponse container = dockerClient.createContainerCmd(config.getImage())
-                    .withCmd(shellCmd)
-                    .withHostConfig(hostConfig)
-                    .withEnv("NUM_TESTS=" + numTestCases)
-                    .exec();
-            stopWatch.stop();
-
-            return container.getId();
-        } finally {
-            if (stopWatch.isRunning())
-                stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
+        if (compileString != null) {
+            script = String.format(
+                    "%s; " +
+                            "if [ $? -eq 0 ]; then " +
+                            "    /bin/sh -c 'for i in $(seq 0 $(($NUM_TESTS - 1))); do " +
+                            "        echo \"[TEST-START-$i]\"; " +
+                            "        echo \"[TEST-OUTPUT-START]\"; " +
+                            "        %s %s < /app/input_$i.txt; " +
+                            "        EXIT_CODE=$?; " +
+                            "        echo \"[TEST-OUTPUT-END]\"; " +
+                            "        if [ $EXIT_CODE -ne 0 ]; then echo \"[TEST-FAILED-$i-CODE-$EXIT_CODE]\"; fi; "
+                            +
+                            "        echo \"%s\"; " +
+                            "    done'; " +
+                            "fi",
+                    compileString, timeCmd, runString, OUTPUT_SEPARATOR);
+        } else {
+            script = String.format(
+                    "/bin/sh -c 'for i in $(seq 0 $(($NUM_TESTS - 1))); do " +
+                            "    echo \"[TEST-START-$i]\"; " +
+                            "    echo \"[TEST-OUTPUT-START]\"; " +
+                            "    %s %s < /app/input_$i.txt; " +
+                            "    EXIT_CODE=$?; " +
+                            "    echo \"[TEST-OUTPUT-END]\"; " +
+                            "    if [ $EXIT_CODE -ne 0 ]; then echo \"[TEST-FAILED-$i-CODE-$EXIT_CODE]\"; fi; " +
+                            "    echo \"%s\"; " +
+                            "done'",
+                    timeCmd, runString, OUTPUT_SEPARATOR);
         }
+
+        String[] shellCmd = { "/bin/sh", "-c", script };
+
+        String absolutePath = tempDir.toAbsolutePath().toString();
+        tempDir.toFile().setReadable(true, false);
+        tempDir.toFile().setExecutable(true, false);
+
+        Bind bind = new Bind(absolutePath, volume);
+
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withMemory(memoryInBytes)
+                .withBinds(bind);
+        CreateContainerResponse container = dockerClient.createContainerCmd(config.getImage())
+                .withCmd(shellCmd)
+                .withHostConfig(hostConfig)
+                .withEnv("NUM_TESTS=" + numTestCases)
+                .exec();
+        return container.getId();
     }
 
-    public String runContainerAndGetLogs(String containerId, long totalTimeLimitMs) throws InterruptedException {
-        StopWatch stopWatch = new StopWatch();
-        stopWatch.start("ContainerFactory.runContainerAndGetLogs");
-        try {
-            dockerClient.startContainerCmd(containerId).exec();
+    public CodeExecutionResult runContainerAndGetLogs(String containerId, int numTestCases, long timeLimitPerTestMs)
+            throws InterruptedException {
+        dockerClient.startContainerCmd(containerId).exec();
 
-            final StringBuilder logs = new StringBuilder();
-            ResultCallback.Adapter<Frame> callback = new ResultCallback.Adapter<Frame>() {
-                @Override
-                public void onNext(Frame frame) {
-                    if (frame != null) {
-                        logs.append(new String(Objects.requireNonNull(frame.getPayload())));
-                    }
+        final StringBuilder logs = new StringBuilder();
+        ResultCallback.Adapter<Frame> callback = new ResultCallback.Adapter<Frame>() {
+            @Override
+            public void onNext(Frame frame) {
+                if (frame != null) {
+                    logs.append(new String(Objects.requireNonNull(frame.getPayload())));
                 }
-            };
+            }
+        };
 
-            long timeoutWithBuffer = totalTimeLimitMs + 20000;
-            dockerClient.logContainerCmd(containerId)
-                    .withStdOut(true)
-                    .withStdErr(true)
-                    .withFollowStream(true)
-                    .exec(callback)
-                    .awaitCompletion(timeoutWithBuffer, TimeUnit.MILLISECONDS); // Use dynamic timeout
-            return logs.toString();
-        } finally {
-            stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
+        long totalTimeout = (numTestCases * timeLimitPerTestMs) + 20000;
+
+        dockerClient.logContainerCmd(containerId)
+                .withStdOut(true)
+                .withStdErr(true)
+                .withFollowStream(true)
+                .exec(callback)
+                .awaitCompletion(totalTimeout, TimeUnit.MILLISECONDS);
+
+        String rawLogs = logs.toString();
+        Pattern pattern = Pattern.compile("METRICS:([\\d\\.]+):(\\d+)");
+        Matcher matcher = pattern.matcher(rawLogs);
+
+        long totalCpuTimeMs = 0L;
+        long maxMemoryKb = 0L;
+
+        while (matcher.find()) {
+            try {
+                double seconds = Double.parseDouble(matcher.group(1));
+                totalCpuTimeMs += (long) (seconds * 1000);
+
+                long kb = Long.parseLong(matcher.group(2));
+                if (kb > maxMemoryKb) {
+                    maxMemoryKb = kb;
+                }
+            } catch (NumberFormatException e) {
+                System.err.println("Failed to parse metrics: " + e.getMessage());
+            }
         }
+
+        String memoryUsed = String.format("%.2fMB", maxMemoryKb / 1024.0);
+
+        return CodeExecutionResult.builder()
+                .logs(rawLogs)
+                .cpuTimeMs(totalCpuTimeMs)
+                .memoryUsedPk(memoryUsed)
+                .build();
     }
 
     public void cleanupContainer(String containerId) {
-        StopWatch stopWatch = new StopWatch();
-        stopWatch.start("ContainerFactory.cleanupContainer");
-        try {
-            if (containerId != null) {
-                try {
-                    dockerClient.removeContainerCmd(containerId).withForce(true).exec();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+        if (containerId != null) {
+            try {
+                dockerClient.removeContainerCmd(containerId).withForce(true).exec();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } finally {
-            stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
         }
     }
 
     public void cleanupTempDirectory(Path tempDir) {
-        StopWatch stopWatch = new StopWatch();
-        stopWatch.start("ContainerFactory.cleanupTempDirectory");
-        try {
-            if (tempDir != null) {
-                try {
-                    try (var stream = Files.walk(tempDir)) {
-                        stream.sorted(Comparator.reverseOrder())
-                                .map(Path::toFile)
-                                .forEach(File::delete);
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
+        if (tempDir != null) {
+            try {
+                try (var stream = Files.walk(tempDir)) {
+                    stream.sorted(Comparator.reverseOrder())
+                            .map(Path::toFile)
+                            .forEach(File::delete);
                 }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } finally {
-            stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
         }
     }
 

@@ -28,8 +28,9 @@ public class TestCase {
     private String input;
     @Column(columnDefinition = "TEXT")
     private String output;
-    
-    private boolean isSample; 
+
+    private boolean isSample;
+    private Boolean isHidden = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "problem_id", nullable = false)

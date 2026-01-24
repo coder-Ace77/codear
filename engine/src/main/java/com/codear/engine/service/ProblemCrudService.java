@@ -16,9 +16,8 @@ import lombok.AllArgsConstructor;
 public class ProblemCrudService {
 
     private final TestCaseRepository testCaseRepository;
-    private final CacheService cacheService;
     private final ProblemRepository problemRepository;
-    private final LocalCacheService localCacheService;
+    private final CacheService cacheService;
 
     private static final String TESTCASES_KEY_PREFIX = "testcases:problem:";
     private static final String CONSTRAINTS_KEY_PREFIX = "constraints:problem";
@@ -28,21 +27,20 @@ public class ProblemCrudService {
                 "ProblemCrudService.getAllTestCases");
         try {
             String key = TESTCASES_KEY_PREFIX + problemId;
-
-            stopWatch.start("local-cache-get");
-            List<TestCase> localCachedList = localCacheService.get(key);
+            stopWatch.start("redis-cache-get");
+            List<TestCase> cachedList = cacheService.getObjectListValue(key, TestCase.class);
             stopWatch.stop();
 
-            if (localCachedList != null) {
-                return localCachedList;
+            if (cachedList != null) {
+                return cachedList;
             }
 
             stopWatch.start("db-get");
             List<TestCase> dbList = testCaseRepository.findByProblemId(problemId);
             stopWatch.stop();
 
-            stopWatch.start("local-cache-set");
-            localCacheService.put(key, dbList);
+            stopWatch.start("redis-cache-set");
+            cacheService.setObjectValue(key, dbList);
             stopWatch.stop();
 
             return dbList;
@@ -55,20 +53,14 @@ public class ProblemCrudService {
 
     public ResourceConstraints getPromblemConstraints(Long problemId) {
         String key = CONSTRAINTS_KEY_PREFIX + problemId;
-
-        // Use local cache for constraints too
-        ResourceConstraints cachedResourceConstraints = localCacheService.get(key);
+        ResourceConstraints cachedResourceConstraints = cacheService.getObjectValue(key, ResourceConstraints.class);
         if (cachedResourceConstraints != null) {
             return cachedResourceConstraints;
         }
-
-        // Bypassing Redis as per instruction to use local cache
         ResourceConstraints resourceConstraints = problemRepository.findConstraintsById(problemId).orElse(null);
-
         if (resourceConstraints != null) {
-            localCacheService.put(key, resourceConstraints);
+            cacheService.setObjectValue(key, resourceConstraints);
         }
-
         return resourceConstraints;
     }
 }

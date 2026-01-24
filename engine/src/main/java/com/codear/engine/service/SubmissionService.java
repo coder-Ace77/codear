@@ -2,6 +2,8 @@ package com.codear.engine.service;
 
 import java.time.LocalDateTime;
 
+import com.codear.engine.dto.CodeExecutionResult;
+
 import org.springframework.stereotype.Service;
 
 import com.codear.engine.dto.CheckerResponse;
@@ -48,21 +50,21 @@ public class SubmissionService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateSubmissionResult(String submissionId, CheckerResponse checkerResponse) {
+    public void updateSubmissionResult(String submissionId, CheckerResponse checkerResponse,
+            CodeExecutionResult executionResult) {
         StopWatch stopWatch = new StopWatch("SubmissionService.updateSubmissionResult");
         try {
-            // Replaced find+save with direct update to avoid SELECT overhead (~300ms)
             stopWatch.start("update-db-direct");
             submissionRepository.updateSubmissionResult(
                     submissionId,
                     checkerResponse.getStatus() != null ? checkerResponse.getStatus() : RunStatus.FAILED,
                     checkerResponse.getMsg(),
+                    executionResult.getLogs(),
                     checkerResponse.getTotalTests(),
-                    checkerResponse.getPassedTests());
+                    checkerResponse.getPassedTests(),
+                    executionResult.getCpuTimeMs(),
+                    executionResult.getMemoryUsedPk());
             stopWatch.stop();
-
-            // Streak logic disabled (requires entity fetch which we are avoiding)
-
             stopWatch.start("update-cache");
             cacheService.setValue(submissionId, checkerResponse.getStatus().toString());
             stopWatch.stop();

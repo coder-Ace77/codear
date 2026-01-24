@@ -21,5 +21,6 @@ public class TestCase {
     @Column(columnDefinition = "TEXT")
     private String output;
     private boolean isSample;
+    private Boolean isHidden = true;
     private Long problemId;
 }

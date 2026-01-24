@@ -10,11 +10,9 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.codear.engine.dto.ResourceConstraints;
+import com.codear.engine.dto.CodeExecutionResult;
 import com.codear.engine.entity.LanguageConfig;
-
 import lombok.AllArgsConstructor;
-
-import org.springframework.util.StopWatch;
 
 @Service
 @AllArgsConstructor
@@ -22,50 +20,47 @@ public class EngineService {
 
     private final ContainerFactory containerFactory;
 
-    public List<String> runCode(String code, String lang, List<String> inputs,
-            ResourceConstraints resourceConstraints) {
-        StopWatch stopWatch = new StopWatch();
-        stopWatch.start("EngineService.runCode");
+    public CodeExecutionResult runCode(String code, String lang, List<String> inputs,
+            ResourceConstraints resourceConstraints){
+        if (inputs == null || inputs.isEmpty()){
+            return CodeExecutionResult.builder()
+                    .logs("No inputs provided")
+                    .outputs(Collections.emptyList())
+                    .cpuTimeMs(0L)
+                    .memoryUsedPk("0MB")
+                    .build();
+        }
+
+        Path tempDir = null;
+        String containerId = null;
+
         try {
-            if (inputs == null || inputs.isEmpty()) {
-                return Collections.emptyList();
-            }
+            LanguageConfig config = LanguageConfigFactory.getLanguageConfig(lang);
+            tempDir = containerFactory.createTempCodeFiles(code, inputs, config.getFileName());
+            containerId = containerFactory.createContainer(config, tempDir, resourceConstraints.getMemoryLimitMb(),inputs.size());
 
-            Path tempDir = null;
-            String containerId = null;
+            CodeExecutionResult executionResult = containerFactory.runContainerAndGetLogs(containerId,inputs.size(),
+                    resourceConstraints.getTimeLimitMs() != null ? resourceConstraints.getTimeLimitMs() : 1000L);
 
-            try {
-                LanguageConfig config = LanguageConfigFactory.getLanguageConfig(lang);
-
-                tempDir = containerFactory.createTempCodeFiles(code, inputs, config.getFileName());
-
-                containerId = containerFactory.createContainer(config, tempDir, resourceConstraints.getMemoryLimitMb(),
-                        inputs.size());
-
-                String logs = containerFactory.runContainerAndGetLogs(containerId,
-                        resourceConstraints.getTimeLimitMs());
-                String[] outputs = logs.split(ContainerFactory.OUTPUT_SEPARATOR + "\n?");
-
-                return Arrays.stream(outputs).collect(Collectors.toList());
-
-            } catch (UnsupportedOperationException e) {
-                System.err.println("[RUN_CODE] Error: " + e.getMessage());
-                return List.of(e.getMessage());
-            } catch (IOException | InterruptedException e) {
-                System.err.println("[RUN_CODE] Execution failed (IO/Interrupted/Timeout): " + e.getMessage());
-                e.printStackTrace();
-                return List.of("Execution failed (e.g., timeout or I/O error): " + e.getMessage());
-            } catch (Exception e) {
-                System.err.println("[RUN_CODE] Unexpected error: " + e.getMessage());
-                e.printStackTrace();
-                return List.of("Unexpected error: " + e.getMessage());
-            } finally {
-                containerFactory.cleanupContainer(containerId);
-                containerFactory.cleanupTempDirectory(tempDir);
-            }
+            String[] outputArray = executionResult.getLogs().split(ContainerFactory.OUTPUT_SEPARATOR + "\\n?");
+            List<String> cleanedOutputs = Arrays.stream(outputArray)
+                    .map(s -> s.replaceAll("METRICS:[\\d\\.]+:\\d+\\n?", "").trim()) // Remove metrics and trim
+                    .collect(Collectors.toList());
+            executionResult.setOutputs(cleanedOutputs);
+            return executionResult;
+        }catch(UnsupportedOperationException e){
+            return CodeExecutionResult.builder().logs(e.getMessage()).outputs(List.of(e.getMessage())).build();
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+            return CodeExecutionResult.builder().logs(e.getMessage())
+                    .outputs(List.of("Execution failed: " + e.getMessage())).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return CodeExecutionResult.builder().logs(e.getMessage())
+                    .outputs(List.of("Unexpected error: " + e.getMessage())).build();
         } finally {
-            stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
+            containerFactory.cleanupContainer(containerId);
+            containerFactory.cleanupTempDirectory(tempDir);
         }
     }
 }

@@ -39,6 +39,9 @@ public class Submission {
     @Column(columnDefinition = "TEXT")
     private String result;
 
+    @Column(columnDefinition = "TEXT")
+    private String errorLog;
+
     private Integer totalTests;
 
     private Integer passedTests;
