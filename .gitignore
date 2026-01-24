@@ -3,8 +3,18 @@
 */target
 */setenv.sh
 */run.sh
+*/ci.sh
+
+**/.mvn
+**/.vscode
+
+**/venv
 
 *.env
+
+**/workspace
+
+codear-front.code-workspace
 
 # Log file
 *.log
