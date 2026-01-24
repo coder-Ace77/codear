@@ -13,10 +13,8 @@ import com.codear.engine.entity.LanguageConfig;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.CreateContainerResponse;
-import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.HostConfig;
-import com.github.dockerjava.api.model.Volume;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.command.PullImageResultCallback;
@@ -100,13 +98,6 @@ public class ContainerFactory implements AutoCloseable {
         String script;
         String timeCmd = "/usr/bin/time -f \"METRICS:%e:%M\"";
 
-        // IMPORTANT: Inputs are now local to working directory, so "input_$i.txt"
-        // instead
-        // of "/app/input_$i.txt"
-        // Also assuming we copy 'tempDir' to '/app', so the dir name inside will be
-        // 'codear_xxxx'
-        // So WorkingDir should be /app/codear_xxxx
-
         if (compileString != null) {
             script = String.format(
                     "%s; " +
@@ -141,13 +132,10 @@ public class ContainerFactory implements AutoCloseable {
 
         String[] shellCmd = { "/bin/sh", "-c", script };
 
-        // Construct working directory path: /app/codear_...
         String folderName = tempDir.getFileName().toString();
         String containerWorkDir = "/app/" + folderName;
 
-        HostConfig hostConfig = HostConfig.newHostConfig()
-                .withMemory(memoryInBytes);
-        // No binds!
+        HostConfig hostConfig = HostConfig.newHostConfig().withMemory(memoryInBytes);
 
         CreateContainerResponse container = dockerClient.createContainerCmd(config.getImage())
                 .withCmd(shellCmd)
@@ -156,7 +144,6 @@ public class ContainerFactory implements AutoCloseable {
                 .withWorkingDir(containerWorkDir)
                 .exec();
 
-        // COPY files to container
         dockerClient.copyArchiveToContainerCmd(container.getId()).withHostResource(tempDir.toString())
                 .withRemotePath("/app").exec();
 

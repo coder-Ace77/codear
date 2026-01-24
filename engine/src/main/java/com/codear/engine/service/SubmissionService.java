@@ -49,7 +49,6 @@ public class SubmissionService {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updateSubmissionResult(String submissionId, CheckerResponse checkerResponse,
             CodeExecutionResult executionResult) {
         StopWatch stopWatch = new StopWatch("SubmissionService.updateSubmissionResult");

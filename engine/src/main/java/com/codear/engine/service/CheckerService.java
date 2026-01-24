@@ -47,7 +47,7 @@ public class CheckerService {
             return "";
         }
         return input.lines()
-                .map(line -> line.replace("[TEST-OUTPUT-END]", "")) // Remove marker if on same line
+                .map(line -> line.replace("[TEST-OUTPUT-END]", "")) 
                 .map(String::trim)
                 .filter(line -> !line.isEmpty())
                 .filter(line -> !line.startsWith("[TEST-"))

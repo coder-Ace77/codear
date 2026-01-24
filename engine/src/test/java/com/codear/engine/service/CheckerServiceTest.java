@@ -19,7 +19,6 @@ class CheckerServiceTest {
         testCase.setOutput("20");
         testCase.setId(1L);
 
-        // Simulate output with marker on same line
         List<String> userOutputs = Collections.singletonList("20[TEST-OUTPUT-END]");
         List<TestCase> testCases = Collections.singletonList(testCase);
 
