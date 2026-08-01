@@ -13,31 +13,6 @@ scrape_configs:
     static_configs:
       - targets: ['127.0.0.1:9100']
 
-  # Needs "metrics-addr": "127.0.0.1:9323" in /etc/docker/daemon.json.
-  # See README step 3.
   - job_name: docker
     static_configs:
       - targets: ['127.0.0.1:9323']
-
-  # --- Phase 2: application metrics -------------------------------------
-  # Uncomment each job once the service actually exposes metrics, otherwise
-  # it just sits red on the Targets page.
-  #
-  # engine: add spring-boot-starter-actuator + micrometer-registry-prometheus
-  # and management.endpoints.web.exposure.include=health,prometheus
-  #
-  # - job_name: engine
-  #   metrics_path: /actuator/prometheus
-  #   static_configs:
-  #     - targets: ['127.0.0.1:8081']
-  #
-  # user / problem: add prometheus-fastapi-instrumentator and call
-  # Instrumentator().instrument(app).expose(app) in app/main.py
-  #
-  # - job_name: user
-  #   static_configs:
-  #     - targets: ['127.0.0.1:8083']
-  #
-  # - job_name: problem
-  #   static_configs:
-  #     - targets: ['127.0.0.1:8082']

@@ -15,9 +15,6 @@ scrape_configs:
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
         refresh_interval: 30s
-    # On first run promtail reads each container's log from the beginning.
-    # Anything older than Loki's retention window would just be rejected with a
-    # 400, so drop it here instead of shipping it.
     pipeline_stages:
       - drop:
           older_than: 167h
