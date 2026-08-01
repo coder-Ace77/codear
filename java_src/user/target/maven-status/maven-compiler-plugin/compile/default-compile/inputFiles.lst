@@ -1,0 +1,13 @@
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/UserApplication.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/config/SecurityConfig.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/controller/ChatController.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/controller/UserController.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/dto/LoginDTO.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/dto/RegisterDTO.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/entity/ChatMessage.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/entity/User.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/repository/ChatRepository.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/repository/UserRepository.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/service/AiService.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/service/JwtService.java
+/home/mohd-adil/Desktop/codear/user/src/main/java/com/codear/user/service/UserService.java

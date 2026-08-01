@@ -1,0 +1,15 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+.env
+.env.*
+
+tests/
+pytest.ini
+requirements-dev.txt
+locustfile.py
+docker-compose.yaml
+ci.sh
+run.sh
