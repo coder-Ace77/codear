@@ -6,7 +6,9 @@
 **/ci.sh
 .claude
 
-**/.mvn
+target/
+
+# .mvn/wrapper must stay tracked: mvnw and the engine Dockerfile both need it
 **/.vscode
 
 **/venv/

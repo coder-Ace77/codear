@@ -207,7 +207,7 @@ class ProblemService:
             SELECT id, title, tags, difficulty FROM problems p
             WHERE (:search IS NULL OR :search = '' OR to_tsvector('english', p.title || ' ' || p.description) @@ plainto_tsquery(:search))
             AND (:difficulty IS NULL OR :difficulty = '' OR LOWER(p.difficulty) = LOWER(:difficulty))
-            AND (:tags IS NULL OR :tags = '' OR p.tags && string_to_array(:tags, ','))
+            AND (:tags IS NULL OR :tags = '' OR p.tags::text[] && string_to_array(:tags, ','))
             ORDER BY p.id LIMIT :limit OFFSET :offset
         """)
         
@@ -242,7 +242,7 @@ class ProblemService:
             SELECT COUNT(*) FROM problems p
             WHERE (:search IS NULL OR :search = '' OR to_tsvector('english', p.title || ' ' || p.description) @@ plainto_tsquery(:search))
             AND (:difficulty IS NULL OR :difficulty = '' OR LOWER(p.difficulty) = LOWER(:difficulty))
-            AND (:tags IS NULL OR :tags = '' OR p.tags && string_to_array(:tags, ','))
+            AND (:tags IS NULL OR :tags = '' OR p.tags::text[] && string_to_array(:tags, ','))
         """)
         count = self.db.execute(query, {"search": search, "difficulty": difficulty, "tags": tag_str}).scalar()
         CacheService.set_object(cache_key, count, expire_seconds=300)
