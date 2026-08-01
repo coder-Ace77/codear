@@ -1,0 +1,93 @@
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: prometheus
+    network_mode: host
+    restart: unless-stopped
+    mem_limit: 200m
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--storage.tsdb.retention.size=1GB'
+      - '--web.listen-address=127.0.0.1:9090'
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    container_name: grafana
+    network_mode: host
+    restart: unless-stopped
+    mem_limit: 180m
+    depends_on:
+      - prometheus
+    env_file:
+      - .env
+    environment:
+      GF_SERVER_HTTP_ADDR: 127.0.0.1
+      GF_SERVER_HTTP_PORT: '3000'
+      GF_SERVER_ROOT_URL: https://backend.apilabs.top/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: 'true'
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    mem_limit: 40m
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - '--path.rootfs=/host'
+      - '--web.listen-address=127.0.0.1:9100'
+      - '--collector.disable-defaults'
+      - '--collector.cpu'
+      - '--collector.meminfo'
+      - '--collector.loadavg'
+      - '--collector.filesystem'
+      - '--collector.netdev'
+      - '--collector.diskstats'
+      - '--collector.uname'
+      - '--collector.time'
+      - '--collector.stat'
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    network_mode: host
+    restart: unless-stopped
+    mem_limit: 160m
+    volumes:
+      - ./loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/loki.yml
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: promtail
+    network_mode: host
+    restart: unless-stopped
+    mem_limit: 80m
+    depends_on:
+      - loki
+    volumes:
+      - ./promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_positions:/tmp
+    command: -config.file=/etc/promtail/promtail.yml
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  promtail_positions:

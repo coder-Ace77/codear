@@ -37,13 +37,24 @@ Currently, the AI assistant is integrated into the User service, but in the futu
 * **Message Broker:** SQS/Apache Kafka (Asynchronous task distribution)
 * **Caching:** Redis (Speeding up problem metadata and session access)
 * **Containerization:** Docker (Isolated runtime environments)
+* **Monitoring:** Prometheus + Grafana + Loki (Metrics, dashboards and log search)
 
 ### Frontend
 
 * **Framework:** React + Vite
 * **Styling:** Tailwind CSS
 * **Language:** TypeScript
-s
+
+## Observability
+
+The live deployment ships its own monitoring stack, running next to the services on the same EC2 host and published over HTTPS at `/grafana/`.
+
+* **Prometheus** scrapes host metrics (via node_exporter) and Docker daemon metrics every 60 seconds, with 7 day retention.
+* **Grafana** serves a provisioned host dashboard — CPU, memory, swap, disk, network and container counts — plus alerting.
+* **Loki** collects the logs of every container, searchable by service from the same Grafana instance.
+
+Only Grafana is reachable from the internet; Prometheus, Loki and all microservice ports bind to localhost and are reachable solely through nginx. Configuration lives in [`observability/`](observability/).
+
 ## Reliability & Security
 
 User-submitted code has zero access to the host file system or the network. Each container is ephemeral and destroyed after execution. Each microservice can be scaled independently. If the engine is under heavy load, we can spin up more execution nodes without affecting the login or problem browsing services. The API Gateway acts as a shield, ensuring that internal service ports are never exposed to the public internet.
@@ -51,5 +62,3 @@ User-submitted code has zero access to the host file system or the network. Each
 ## The Road Ahead
 
 * **Live Contests:** Supporting scheduled, time-bound competitive events.
-* **Observability:** Integrating Prometheus and Grafana for deep system monitoring.
-* **Community Features:** Adding user blogs, editorials, and discussion forums for every problem.
