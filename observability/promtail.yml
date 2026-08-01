@@ -1,0 +1,33 @@
+server:
+  http_listen_address: 127.0.0.1
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://127.0.0.1:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 30s
+    # On first run promtail reads each container's log from the beginning.
+    # Anything older than Loki's retention window would just be rejected with a
+    # 400, so drop it here instead of shipping it.
+    pipeline_stages:
+      - drop:
+          older_than: 167h
+          drop_counter_reason: older_than_retention
+
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: container
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: stream
+      - target_label: host
+        replacement: codear-ap-south
