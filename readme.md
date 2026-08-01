@@ -32,7 +32,7 @@ Currently, the AI assistant is integrated into the User service, but in the futu
 
 ### Backend & Infrastructure
 
-* **Language:** Java 21 (Spring Boot)
+* **Language:** Java 21 (Spring Boot) , Python + FastAPI
 * **Database:** PostgreSQL (Primary persistent storage)
 * **Message Broker:** SQS/Apache Kafka (Asynchronous task distribution)
 * **Caching:** Redis (Speeding up problem metadata and session access)
@@ -43,8 +43,7 @@ Currently, the AI assistant is integrated into the User service, but in the futu
 * **Framework:** React + Vite
 * **Styling:** Tailwind CSS
 * **Language:** TypeScript
-* *Frontend Repository:* [Explore the Code](https://github.com/coder-Ace77/codear-front)
-
+s
 ## Reliability & Security
 
 User-submitted code has zero access to the host file system or the network. Each container is ephemeral and destroyed after execution. Each microservice can be scaled independently. If the engine is under heavy load, we can spin up more execution nodes without affecting the login or problem browsing services. The API Gateway acts as a shield, ensuring that internal service ports are never exposed to the public internet.
