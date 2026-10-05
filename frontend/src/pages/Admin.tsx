@@ -3,6 +3,7 @@ import Button from "@/atoms/Button";
 import Input from "@/atoms/Input";
 import Label from "@/atoms/Label";
 import Select from "@/atoms/Select";
+import Badge from "@/atoms/Badge";
 import { Plus, X, Trash2 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { Textarea } from "@/components/ui/textarea";
@@ -142,43 +143,38 @@ const Admin = () => {
 
 
   return (
-    <div className="min-h-screen py-10 md:py-14 px-6 md:px-10">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-10 border-b border-border pb-8">
-          <p className="font-['Space_Mono'] text-[11px] tracking-[0.35em] text-muted-foreground mb-4">
-            CONTROL&nbsp;ROOM
-          </p>
-          <h1 className="font-['Cormorant_Garamond'] uppercase leading-[0.9] text-5xl md:text-7xl text-foreground">
+    <main className="mx-auto max-w-[1600px] px-6 pb-16 pt-12">
+      <div>
+        <div className="mb-6">
+          <h1 className="font-serif text-5xl font-medium leading-[1.05] tracking-[-0.02em] md:text-[56px] md:leading-[60px]">
             Admin
           </h1>
-          <p className="font-['Space_Mono'] text-xs tracking-[0.15em] text-muted-foreground mt-4">
-            Manage coding problems
-          </p>
+          <p className="mt-1 text-muted-foreground">Create and manage coding problems.</p>
         </div>
 
         <Tabs defaultValue="create" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="inline-flex h-auto gap-2 bg-transparent p-0 mb-8">
+          <TabsList className="mb-6 flex h-auto w-full justify-start gap-6 rounded-none border-b border-border bg-transparent p-0">
             <TabsTrigger
               value="create"
-              className="font-['Space_Mono'] text-[11px] tracking-[0.2em] uppercase rounded-full border border-border px-6 py-2.5 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:border-accent data-[state=active]:shadow-none"
+              className="rounded-none border-0 bg-transparent px-0 pb-2 pt-0 text-sm font-medium text-muted-foreground shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-[inset_0_-2px_0_hsl(var(--ink))]"
             >
-              Create Problem
+              Create problem
             </TabsTrigger>
             <TabsTrigger
               value="manage"
-              className="font-['Space_Mono'] text-[11px] tracking-[0.2em] uppercase rounded-full border border-border px-6 py-2.5 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:border-accent data-[state=active]:shadow-none"
+              className="rounded-none border-0 bg-transparent px-0 pb-2 pt-0 text-sm font-medium text-muted-foreground shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-[inset_0_-2px_0_hsl(var(--ink))]"
             >
-              Manage Problems
+              Manage problems
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="create">
-            <div className="bg-card border border-border rounded-lg p-6 md:p-8">
+            <div>
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Basic Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="md:col-span-2">
-                    <Label htmlFor="title">Problem Title</Label>
+                    <Label htmlFor="title">Problem title</Label>
                     <Input
                       id="title"
                       placeholder="Two Sum"
@@ -205,14 +201,14 @@ const Admin = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Problem Description</Label>
+                  <Label htmlFor="description">Problem description</Label>
                   <textarea
                     id="description"
                     rows={6}
-                    placeholder="Describe the problem in detail..."
+                    placeholder="Describe the problem in detail"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 resize-none"
+                    className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none"
                     required
                   />
                 </div>
@@ -220,27 +216,27 @@ const Admin = () => {
                 {/* Example */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="exampleInput">Example Input</Label>
+                    <Label htmlFor="exampleInput">Example input</Label>
                     <textarea
                       id="exampleInput"
                       rows={4}
                       placeholder="1 100 200"
                       value={formData.exampleInput}
                       onChange={(e) => setFormData({ ...formData, exampleInput: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 resize-none font-mono text-sm"
+                      className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none font-mono text-sm"
                       required
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="exampleOutput">Example Output</Label>
+                    <Label htmlFor="exampleOutput">Example output</Label>
                     <textarea
                       id="exampleOutput"
                       rows={4}
                       placeholder="2"
                       value={formData.exampleOutput}
                       onChange={(e) => setFormData({ ...formData, exampleOutput: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 resize-none font-mono text-sm"
+                      className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none font-mono text-sm"
                       required
                     />
                   </div>
@@ -250,7 +246,7 @@ const Admin = () => {
                 {/* Time and Memory Limits */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="timeLimit">Time Limit (ms)</Label>
+                    <Label htmlFor="timeLimit">Time limit (ms)</Label>
                     <Input
                       id="timeLimit"
                       type="number"
@@ -261,7 +257,7 @@ const Admin = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="memoryLimit">Memory Limit (MB)</Label>
+                    <Label htmlFor="memoryLimit">Memory limit (MB)</Label>
                     <Input
                       id="memoryLimit"
                       type="number"
@@ -276,16 +272,16 @@ const Admin = () => {
                 {/* Test Cases */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <Label>Test Cases</Label>
+                    <Label>Test cases</Label>
                     <Button type="button" variant="secondary" size="sm" onClick={addTestCase}>
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Test Case
+                      <Plus className="h-4 w-4" aria-hidden="true" />
+                      Add test case
                     </Button>
                   </div>
 
                   <div className="space-y-4">
                     {testCases.map((testCase, index) => (
-                      <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-lg bg-secondary border border-border">
+                      <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-md bg-secondary border border-border">
                         <div>
                           <Label htmlFor={`test-input-${index}`}>Input {index + 1}</Label>
                           <Textarea
@@ -293,18 +289,19 @@ const Admin = () => {
                             placeholder="5 abc"
                             value={testCase.input}
                             onChange={(e) => updateTestCase(index, "input", e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 resize-none font-mono text-sm"
+                            className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none font-mono text-sm"
                             required
                           />
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <Label htmlFor={`test-output-${index}`}>Expected Output {index + 1}</Label>
+                            <Label htmlFor={`test-output-${index}`}>Expected output {index + 1}</Label>
                             {testCases.length > 1 && (
                               <button
                                 type="button"
                                 onClick={() => removeTestCase(index)}
-                                className="text-destructive hover:text-destructive/80 transition-colors"
+                                aria-label="Remove test case"
+                                className="text-danger transition-colors hover:opacity-70"
                               >
                                 <X className="w-4 h-4" />
                               </button>
@@ -315,7 +312,7 @@ const Admin = () => {
                             placeholder="0"
                             value={testCase.output}
                             onChange={(e) => updateTestCase(index, "output", e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-lg bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 resize-none font-mono text-sm"
+                            className="w-full rounded-sm border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none font-mono text-sm"
                             required
                           />
                         </div>
@@ -324,9 +321,9 @@ const Admin = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-4 pt-4">
-                  <Button type="submit" variant="primary" size="lg" className="flex-1">
-                    Create Problem
+                <div className="flex justify-end pt-2">
+                  <Button type="submit" variant="accent" size="lg">
+                    Create problem
                   </Button>
                 </div>
               </form>
@@ -334,16 +331,16 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="manage">
-            <div className="bg-card border border-border rounded-lg p-6 md:p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="font-['Cormorant_Garamond'] text-3xl md:text-4xl text-foreground">Existing Problems</h2>
+            <div>
+              <div className="mb-4 flex items-baseline justify-between">
+                <h2 className="font-serif text-2xl font-medium">Existing problems</h2>
                 <Button variant="outline" size="sm" onClick={loadProblems}>Refresh</Button>
               </div>
 
               {loading ? (
-                <div>Loading problems...</div>
+                <p className="py-8 text-center text-muted-foreground">Loading problems…</p>
               ) : (
-                <div className="border rounded-md">
+                <div>
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -367,20 +364,14 @@ const Admin = () => {
                             <TableCell className="font-medium">{problem.id}</TableCell>
                             <TableCell>{problem.title}</TableCell>
                             <TableCell>
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border ${
-                                problem.difficulty === "Easy"
-                                  ? "bg-brand-olive/20 text-brand-olive border-brand-olive/40"
-                                  : problem.difficulty === "Medium"
-                                  ? "bg-brand-yellow/20 text-brand-yellow border-brand-yellow/40"
-                                  : "bg-brand-orange/20 text-brand-orange border-brand-orange/40"
-                              }`}>
+                              <Badge variant={problem.difficulty.toLowerCase() as "easy" | "medium" | "hard"}>
                                 {problem.difficulty}
-                              </span>
+                              </Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {problem.tags && problem.tags.map(tag => (
-                                  <span key={tag} className="text-xs bg-secondary px-2 py-1 rounded">{tag}</span>
+                                  <span key={tag} className="inline-flex h-6 items-center rounded-full border border-border px-2 text-xs text-muted-foreground">{tag}</span>
                                 ))}
                               </div>
                             </TableCell>
@@ -390,7 +381,7 @@ const Admin = () => {
                                 size="sm"
                                 onClick={() => handleDelete(problem.id)}
                               >
-                                <Trash2 className="w-4 h-4 mr-1" />
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
                                 Delete
                               </Button>
                             </TableCell>
@@ -404,8 +395,8 @@ const Admin = () => {
             </div>
           </TabsContent>
         </Tabs>
-      </div >
-    </div >
+      </div>
+    </main>
   );
 };
 

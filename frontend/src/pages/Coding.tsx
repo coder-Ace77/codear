@@ -8,7 +8,6 @@ import CodingLoading from "@/atoms/CodifingLoading";
 import CodingError from "@/atoms/CodingError";
 import CodingProblemNotFound from "@/atoms/CodingProblemNotFound";
 import type { Tab } from "@/types/Tabs";
-import AssistantSidebar from "@/components/ui/AssistantSidebar";
 
 const Coding = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,8 +29,6 @@ const Coding = () => {
     );
   }, [id]);
 
-  console.log(problem);
-
   useEffect(() => {
     if (problem) {
       setProblemId(problem.id);
@@ -44,16 +41,8 @@ const Coding = () => {
   if (!problem) { return <CodingProblemNotFound />; }
 
   return (
-    <div className="relative flex w-full h-[calc(100vh-4rem)] overflow-y-auto lg:overflow-hidden bg-background"> {/* Scroll on mobile, fixed on desktop */}
-
-      {/* 2. Add the Sidebar */}
-      <AssistantSidebar
-        problemStatement={problem.description}
-        code={code}
-        problemId={String(problem.id)}
-      />
-
-      <div className="min-h-full w-full flex flex-col lg:flex-row gap-4 p-4 transition-all">
+    <div className="relative flex h-[calc(100vh-3.5rem)] w-full overflow-y-auto bg-background lg:overflow-hidden">
+      <div className="flex min-h-full w-full flex-col lg:h-full lg:min-h-0 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[minmax(0,1fr)]">
         <ProblemPanel
           problem={problem}
           activeTab={activeTab}
@@ -61,7 +50,7 @@ const Coding = () => {
           submissionId={submissionId}
         />
 
-        <div className="w-full lg:w-3/5 h-[600px] lg:h-full shrink-0">
+        <div className="h-[640px] shrink-0 lg:h-full lg:min-h-0 lg:overflow-y-auto">
           <EditorPanel
             code={code}
             setCode={setCode}

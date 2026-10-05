@@ -7,7 +7,7 @@ const FINAL_STATES = ["PASSED", "FAILED", "COMPLETED"];
 
 const SubmissionResult = () => {
   const { submissionId } = useParams();
-  const [output, setOutput] = useState("⏳ Waiting for result...");
+  const [output, setOutput] = useState("Waiting for result…");
   const [isLoading, setIsLoading] = useState(true);
 
   const intervalRef = useRef(null);
@@ -30,13 +30,13 @@ const SubmissionResult = () => {
           }
           setIsLoading(false);
         } else {          
-          setOutput(`⏳ Status: ${data.status}... still processing...`);
+          setOutput(`Status: ${data.status}. Still processing…`);
           setIsLoading(true); 
           toast.loading("Running code",{id:toastId});
         }
       } catch (error) {
         clearInterval(intervalRef.current);
-        setOutput("❌ Failed to fetch submission result.");
+        setOutput("Failed to fetch the submission result.");
       } finally {
         setIsLoading(false);
         toast.error("Failed to get result",{id:toastId});
@@ -48,23 +48,17 @@ const SubmissionResult = () => {
   }, [submissionId]); 
 
   return (
-    <div className="p-6 min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
-      <div className="w-full max-w-2xl border border-border rounded-xl bg-card p-6 shadow-md">
-        <h1 className="text-2xl font-bold mb-4 text-center">
-          Submission Result
-        </h1>
+    <main className="mx-auto max-w-2xl px-6 py-12">
+      <h1 className="mb-4 font-serif text-[32px] font-medium leading-[38px] tracking-[-0.01em]">
+        Submission result
+      </h1>
 
-        {isLoading && (
-          <div className="text-muted-foreground text-center mb-4">
-            (Fetching result...)
-          </div>
-        )}
+      {isLoading && <p className="mb-3 text-muted-foreground">Fetching result…</p>}
 
-        <pre className="bg-secondary p-4 rounded-lg text-sm whitespace-pre-wrap font-mono">
-          {output}
-        </pre>
-      </div>
-    </div>
+      <pre className="whitespace-pre-wrap rounded-md border border-border bg-secondary p-4 font-mono text-[13px] leading-5">
+        {output}
+      </pre>
+    </main>
   );
 };
 

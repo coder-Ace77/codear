@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { editorialService, Editorial } from '@/service/editorialService';
-import { Loader2, Plus, PenTool, Check, ShieldCheck, X } from 'lucide-react';
 import CodeBlock from './CodeBlock';
 
-const mono = "font-['Space_Mono']";
-const serif = "font-['Cormorant_Garamond']";
+// Timestamps come back without a timezone and are UTC; an empty or unparsable value shows no date.
+const formatDate = (value?: string) => {
+    if (!value) return "";
+    const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`);
+    return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+};
 
 interface EditorialTabProps {
     problemId: number;
@@ -52,98 +55,80 @@ const EditorialTab: React.FC<EditorialTabProps> = ({ problemId }) => {
     };
 
     if (loading) {
-        return (
-            <div className="flex justify-center items-center gap-3 p-10">
-                <Loader2 className="animate-spin text-brand-orange" />
-                <span className={`${mono} text-xs tracking-[0.2em] uppercase text-muted-foreground`}>Loading editorials</span>
-            </div>
-        );
+        return <p className="p-10 text-center text-muted-foreground">Loading editorials…</p>;
     }
 
+    const field = "w-full rounded-sm border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground";
+
     return (
-        <div className="p-4 md:p-6 space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <p className={`${mono} text-[10px] tracking-[0.3em] uppercase text-brand-orange mb-1`}>Community</p>
-                    <h2 className={`${serif} text-3xl text-foreground`}>Editorials</h2>
-                </div>
+        <div className="space-y-6 px-6 py-6">
+            <div className="flex items-baseline justify-between">
+                <h2 className="font-serif text-2xl font-medium">Editorials</h2>
                 {!isComposing && (
                     <button
                         onClick={() => setIsComposing(true)}
-                        className={`${mono} flex items-center gap-2 text-[11px] tracking-[0.15em] uppercase px-4 py-2.5 rounded-full border border-border text-foreground hover:border-brand-orange hover:text-brand-orange transition-colors`}
+                        className="inline-flex h-7 items-center rounded-sm border border-input px-3 text-[13px] font-semibold transition-colors hover:border-foreground hover:bg-highlight-wash"
                     >
-                        <Plus size={15} /> Write
+                        Write one
                     </button>
                 )}
             </div>
 
             {isComposing && (
-                <div className="bg-card border border-border rounded-lg p-4 space-y-4">
+                <div className="space-y-3 rounded-md border border-border bg-card p-4">
                     <input
                         type="text"
-                        placeholder="Title — e.g. Approach 1: Dynamic Programming"
-                        className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-brand-orange transition-colors"
+                        aria-label="Title"
+                        placeholder="Title, for example: Approach 1, dynamic programming"
+                        className={`${field} h-9`}
                         value={newTitle}
                         onChange={e => setNewTitle(e.target.value)}
                     />
                     <textarea
-                        placeholder="Write your explanation here... Markdown & code fences supported!"
+                        aria-label="Explanation"
+                        placeholder="Write your explanation. Markdown and code fences are supported."
                         rows={8}
-                        className="w-full bg-background border border-border rounded-md px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-brand-orange transition-colors resize-none font-mono"
+                        className={`${field} resize-none font-mono`}
                         value={newContent}
                         onChange={e => setNewContent(e.target.value)}
                     />
                     <div className="flex justify-end gap-2">
                         <button
                             onClick={() => setIsComposing(false)}
-                            className={`${mono} flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase px-3 py-2 text-muted-foreground hover:text-foreground transition-colors`}
+                            className="inline-flex h-7 items-center rounded-sm border border-input px-3 text-[13px] font-semibold transition-colors hover:bg-highlight-wash"
                         >
-                            <X size={14} /> Cancel
+                            Cancel
                         </button>
                         <button
                             onClick={handleSubmit}
                             disabled={submitting}
-                            className={`${mono} flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase px-4 py-2 rounded-full bg-brand-olive text-background hover:opacity-90 transition-opacity disabled:opacity-50`}
+                            className="inline-flex h-7 items-center rounded-sm border border-highlight bg-highlight px-3 text-[13px] font-semibold text-highlight-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-secondary disabled:text-muted-foreground"
                         >
-                            {submitting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                            Submit
+                            {submitting ? "Submitting…" : "Submit"}
                         </button>
                     </div>
                 </div>
             )}
 
             {editorials.length === 0 ? (
-                <div className="text-center text-muted-foreground py-12">
-                    <PenTool size={30} className="mx-auto mb-3 text-brand-orange opacity-70" />
-                    <p className={`${mono} text-xs tracking-[0.15em] uppercase`}>No editorials yet — be the first to explain this problem</p>
-                </div>
+                <p className="py-12 text-center text-muted-foreground">No editorials yet. Be the first to explain this problem.</p>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-8">
                     {editorials.map((editorial) => (
-                        <div
-                            key={editorial.id}
-                            className={`rounded-lg border p-4 ${editorial.isAdmin ? 'bg-brand-yellow/[0.06] border-brand-yellow/30' : 'bg-card border-border'}`}
-                        >
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-9 h-9 rounded-full bg-brand-orange/20 flex items-center justify-center text-sm font-bold text-brand-orange">
-                                    {editorial.username.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h3 className={`${serif} font-semibold text-foreground text-lg leading-tight flex items-center gap-2`}>
-                                        {editorial.title}
-                                        {editorial.isAdmin && (
-                                            <span className={`${mono} flex items-center gap-1 text-[9px] bg-brand-yellow/10 text-brand-yellow px-1.5 py-0.5 rounded border border-brand-yellow/30 uppercase tracking-[0.15em] font-bold`}>
-                                                <ShieldCheck size={10} /> Official
-                                            </span>
-                                        )}
-                                    </h3>
-                                    <p className={`${mono} text-[10px] tracking-[0.1em] text-muted-foreground mt-0.5`}>
-                                        {editorial.username} · {new Date(editorial.createdAt).toLocaleDateString()}
-                                    </p>
-                                </div>
-                            </div>
+                        <article key={editorial.id} className="border-t border-border pt-4">
+                            <h3 className="font-serif text-xl font-medium leading-tight">
+                                {editorial.title}
+                                {editorial.isAdmin && (
+                                    <span className="mark-fill ml-2 px-1.5 py-0.5 align-middle font-sans text-[11px] font-semibold uppercase tracking-[0.06em]">
+                                        Official
+                                    </span>
+                                )}
+                            </h3>
+                            <p className="mb-3 mt-1 font-mono text-[13px] text-muted-foreground">
+                                {editorial.username}{formatDate(editorial.createdAt) && ` · ${formatDate(editorial.createdAt)}`}
+                            </p>
 
-                            <div className="prose prose-invert prose-sm max-w-none text-foreground/80 prose-headings:text-foreground prose-a:text-brand-orange prose-strong:text-foreground">
+                            <div className="prose prose-sm max-w-none font-serif text-[17px] leading-[28px] text-foreground prose-headings:font-serif prose-headings:font-medium prose-headings:text-foreground prose-a:text-foreground prose-a:underline prose-strong:text-foreground">
                                 <ReactMarkdown
                                     components={{
                                         code({ inline, className, children, ...props }: any) {
@@ -152,11 +137,10 @@ const EditorialTab: React.FC<EditorialTabProps> = ({ problemId }) => {
                                                 <CodeBlock
                                                     code={String(children).replace(/\n$/, '')}
                                                     language={match[1]}
-                                                    dots={false}
                                                     className="my-3"
                                                 />
                                             ) : (
-                                                <code className="bg-secondary px-1.5 py-0.5 rounded text-brand-orange font-mono text-xs" {...props}>
+                                                <code className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-sm text-foreground" {...props}>
                                                     {children}
                                                 </code>
                                             );
@@ -166,7 +150,7 @@ const EditorialTab: React.FC<EditorialTabProps> = ({ problemId }) => {
                                     {editorial.content}
                                 </ReactMarkdown>
                             </div>
-                        </div>
+                        </article>
                     ))}
                 </div>
             )}

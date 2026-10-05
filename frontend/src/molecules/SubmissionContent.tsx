@@ -3,52 +3,30 @@ import type { Submission } from "@/types/submission";
 import apiClient from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
-import {
-  CheckCircle,
-  Loader2,
-  ChevronDown,
-  Code,
-  LineChart,
-  Database,
-  FileText,
-  RefreshCw,
-  Terminal,
-} from "lucide-react";
-import { getStatusStyles } from "@/constants/subStyles";
+import { ChevronDown } from "lucide-react";
+import Verdict from "@/atoms/Verdict";
 import CodeBlock, { CopyButton } from "./CodeBlock";
 
-const mono = "font-['Space_Mono']";
-const serif = "font-['Cormorant_Garamond']";
-
-const LogBlock = ({
-  label,
-  color,
-  text,
-}: {
-  label: string;
-  color: string;
-  text: string;
-}) => (
-  <details className="border-t border-border group">
-    <summary className={`px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-white/5 ${mono} text-[11px] tracking-[0.15em] uppercase list-none`}>
-      <div className="flex items-center gap-2" style={{ color }}>
-        <Terminal className="w-4 h-4" />
-        <span>{label}</span>
-      </div>
-      <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
+const LogBlock = ({ label, text }: { label: string; text: string }) => (
+  <details className="group border-t border-border">
+    <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-[13px] font-medium text-danger hover:bg-highlight-wash">
+      <span>{label}</span>
+      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
     </summary>
-    <div className="relative" style={{ backgroundColor: "#282828" }}>
-      <div className="absolute top-2 right-2 z-10">
+    <div className="relative bg-secondary">
+      <div className="absolute right-2 top-2 z-10">
         <CopyButton text={text} />
       </div>
-      <pre
-        className="p-4 pr-16 font-mono text-xs overflow-x-auto whitespace-pre-wrap"
-        style={{ color }}
-      >
-        {text}
-      </pre>
+      <pre className="overflow-x-auto whitespace-pre-wrap p-4 pr-20 font-mono text-xs leading-5">{text}</pre>
     </div>
   </details>
+);
+
+const Stat = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div>
+    <span className="overline block">{label}</span>
+    <p className="font-mono text-[13px] font-medium">{value}</p>
+  </div>
 );
 
 export const SubmissionsContent = ({ problemId }: { problemId: number | string }) => {
@@ -85,85 +63,44 @@ export const SubmissionsContent = ({ problemId }: { problemId: number | string }
 
   const renderContent = () => {
     if (isLoading) {
-      return (
-        <div className="flex justify-center items-center h-48 gap-3">
-          <Loader2 className="w-6 h-6 animate-spin text-brand-orange" />
-          <p className={`${mono} text-xs tracking-[0.2em] uppercase text-muted-foreground`}>
-            Loading submissions
-          </p>
-        </div>
-      );
+      return <p className="py-12 text-center text-muted-foreground">Loading submissions…</p>;
     }
 
     if (!submissions || submissions.length === 0) {
-      return (
-        <p className={`${mono} text-xs tracking-[0.15em] uppercase text-muted-foreground text-center py-12`}>
-          No submissions for this problem yet.
-        </p>
-      );
+      return <p className="py-12 text-center text-muted-foreground">You have not submitted a solution yet.</p>;
     }
 
     return (
       <div className="space-y-4">
         {submissions.map((sub) => {
-          const { icon, color, bgColor } = getStatusStyles(sub.status);
           const formattedDate = format(new Date(sub.submittedAt), "MMM d, yyyy 'at' h:mm a");
 
           return (
-            <div key={sub.id} className="bg-card border border-border rounded-lg overflow-hidden transition-all hover:border-brand-orange/40">
-              <div className={`px-4 py-2.5 flex items-center justify-between gap-3 ${bgColor}`}>
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className={color}>{icon}</span>
-                  <span className={`${mono} text-xs tracking-[0.12em] uppercase ${color}`}>{sub.status}</span>
-                  <span className="text-muted-foreground/50">·</span>
-                  <span className="text-[11px] text-muted-foreground truncate">{formattedDate}</span>
+            <div key={sub.id} className="overflow-hidden rounded-md border border-border bg-card">
+              <div className="flex items-center justify-between gap-3 px-4 py-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Verdict status={sub.status} />
+                  <span className="truncate text-[13px] text-muted-foreground">{formattedDate}</span>
                 </div>
-
-                <div className={`${mono} flex items-center gap-1.5 text-[10px] tracking-[0.15em] uppercase text-muted-foreground shrink-0`}>
-                  <FileText className="w-3.5 h-3.5 text-brand-orange" />
-                  <span>{sub.language}</span>
-                </div>
+                <span className="shrink-0 font-mono text-[13px] text-muted-foreground">{sub.language}</span>
               </div>
 
-              <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm border-t border-border">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-brand-olive" />
-                  <div>
-                    <span className={`${mono} text-[9px] tracking-[0.15em] uppercase text-muted-foreground`}>Tests</span>
-                    <p className="font-semibold text-foreground">{sub.passedTests} / {sub.totalTests}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <LineChart className="w-4 h-4 text-brand-clay" />
-                  <div>
-                    <span className={`${mono} text-[9px] tracking-[0.15em] uppercase text-muted-foreground`}>Time</span>
-                    <p className="font-semibold text-foreground">{sub.timeTakenMs} ms</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Database className="w-4 h-4 text-brand-yellow" />
-                  <div>
-                    <span className={`${mono} text-[9px] tracking-[0.15em] uppercase text-muted-foreground`}>Memory</span>
-                    <p className="font-semibold text-foreground">{sub.memoryUsed}</p>
-                  </div>
-                </div>
+              <div className="grid grid-cols-3 gap-4 border-t border-border px-4 py-3">
+                <Stat label="Tests" value={`${sub.passedTests}/${sub.totalTests}`} />
+                <Stat label="Time" value={`${sub.timeTakenMs} ms`} />
+                <Stat label="Memory" value={sub.memoryUsed} />
               </div>
 
               {sub.errorLog ? (
-                <LogBlock label="Execution Logs" color="hsl(var(--brand-rust))" text={sub.errorLog} />
+                <LogBlock label="Execution log" text={sub.errorLog} />
               ) : (
-                sub.status === "FAILED" && sub.result && (
-                  <LogBlock label="Failure Details" color="hsl(var(--brand-orange))" text={sub.result} />
-                )
+                sub.status === "FAILED" && sub.result && <LogBlock label="Failure details" text={sub.result} />
               )}
 
-              <details className="border-t border-border group">
-                <summary className={`px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-white/5 ${mono} text-[11px] tracking-[0.15em] uppercase text-muted-foreground list-none`}>
-                  <div className="flex items-center gap-2">
-                    <Code className="w-4 h-4" />
-                    <span>View Submitted Code</span>
-                  </div>
-                  <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+              <details className="group border-t border-border">
+                <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-[13px] font-medium hover:bg-highlight-wash">
+                  <span>View submitted code</span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
                 </summary>
                 <CodeBlock code={sub.code} language={sub.language} bare />
               </details>
@@ -175,18 +112,13 @@ export const SubmissionsContent = ({ problemId }: { problemId: number | string }
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <p className={`${mono} text-[10px] tracking-[0.3em] uppercase text-brand-orange mb-1`}>Your History</p>
-          <h2 className={`${serif} text-3xl text-foreground`}>Submissions</h2>
-        </div>
-
+    <div className="max-w-4xl px-6 py-6">
+      <div className="mb-4 flex items-baseline justify-between">
+        <h2 className="font-serif text-2xl font-medium">Submissions</h2>
         <button
           onClick={handleRefresh}
-          className={`${mono} flex items-center gap-2 text-[11px] tracking-[0.15em] uppercase px-4 py-2.5 rounded-full border border-border text-foreground hover:border-brand-orange hover:text-brand-orange transition-colors`}
+          className="inline-flex h-7 items-center rounded-sm border border-input px-3 text-[13px] font-semibold transition-colors hover:border-foreground hover:bg-highlight-wash"
         >
-          <RefreshCw className="w-4 h-4" />
           Refresh
         </button>
       </div>

@@ -44,7 +44,7 @@ const BackendHealthCheck = () => {
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="sm:max-w-md border-destructive/50 bg-destructive/10">
+            <DialogContent className="sm:max-w-md border-border bg-card">
                 <DialogHeader>
                     <div className="flex items-center gap-2 text-destructive">
                         <WifiOff className="h-6 w-6" />
@@ -56,8 +56,8 @@ const BackendHealthCheck = () => {
                 </DialogHeader>
 
                 <div className="flex flex-col gap-4 py-2">
-                    <div className="flex items-start gap-3 text-sm text-muted-foreground p-3 bg-background/50 rounded-md border">
-                        <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 text-sm text-muted-foreground p-3 bg-secondary rounded-md border">
+                        <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
                         <p>
                             If you are on a <strong>company network or VPN</strong>, the firewall is likely blocking the connection to our servers.
                         </p>

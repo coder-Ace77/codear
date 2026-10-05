@@ -7,16 +7,17 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
-const SearchBar = ({ value, onChange, placeholder = "Search problems..." }: SearchBarProps) => {
+const SearchBar = ({ value, onChange, placeholder = "Search problems" }: SearchBarProps) => {
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
       <Input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="pl-10"
+        aria-label="Search problems"
+        className="pl-9"
       />
     </div>
   );

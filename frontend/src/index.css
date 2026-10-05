@@ -1,61 +1,102 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Proof design language: paper, ink, one yellow marker.
+   Raw tokens are HSL triplets; the shadcn names below map onto them. */
 @layer base {
   :root {
-    /* ── Editorial palette: warm charcoal-brown + gold + cream ── */
-    --background: 37 15% 14%;
-    --foreground: 40 35% 72%;
+    --paper: 44 35% 94%;
+    --paper-raised: 43 47% 97%;
+    --paper-sunken: 44 28% 90%;
+    --ink: 45 8% 10%;
+    --ink-muted: 42 7% 35%;
+    --rule: 43 19% 82%;
+    --rule-strong: 43 7% 51%;
+    --highlight: 47 100% 65%;
+    --on-highlight: 45 8% 10%;
+    --highlight-wash: 48 88% 87%;
+    --success: 173 82% 24%;
+    --success-wash: 161 37% 90%;
+    --danger: 4 76% 40%;
+    --danger-wash: 11 73% 91%;
+    --warning: 39 100% 27%;
+    --info: 222 72% 44%;
+    --syn-keyword: 15 79% 34%;
+    --shadow-pop: 0 8px 24px rgb(28 27 24 / 0.14);
+    color-scheme: light;
+  }
 
-    --card: 37 15% 17%;
-    --card-foreground: 40 35% 72%;
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: 40 7% 8%;
+      --paper-raised: 45 7% 11%;
+      --paper-sunken: 30 7% 6%;
+      --ink: 43 28% 90%;
+      --ink-muted: 42 9% 63%;
+      --rule: 43 7% 19%;
+      --rule-strong: 43 7% 41%;
+      --highlight: 46 79% 57%;
+      --highlight-wash: 44 29% 18%;
+      --success: 169 52% 59%;
+      --success-wash: 168 35% 14%;
+      --danger: 7 100% 74%;
+      --danger-wash: 7 40% 16%;
+      --warning: 28 83% 65%;
+      --info: 222 100% 78%;
+      --syn-keyword: 28 83% 65%;
+      --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.5);
+      color-scheme: dark;
+    }
+  }
 
-    --popover: 37 16% 16%;
-    --popover-foreground: 40 35% 72%;
+  :root[data-theme="dark"] {
+    --paper: 40 7% 8%;
+    --paper-raised: 45 7% 11%;
+    --paper-sunken: 30 7% 6%;
+    --ink: 43 28% 90%;
+    --ink-muted: 42 9% 63%;
+    --rule: 43 7% 19%;
+    --rule-strong: 43 7% 41%;
+    --highlight: 46 79% 57%;
+    --highlight-wash: 44 29% 18%;
+    --success: 169 52% 59%;
+    --success-wash: 168 35% 14%;
+    --danger: 7 100% 74%;
+    --danger-wash: 7 40% 16%;
+    --warning: 28 83% 65%;
+    --info: 222 100% 78%;
+    --syn-keyword: 28 83% 65%;
+    --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
 
-    --primary: 40 34% 67%;
-    --primary-foreground: 40 16% 12%;
+  :root {
+    /* shadcn names, mapped onto Proof */
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: var(--paper-raised);
+    --card-foreground: var(--ink);
+    --popover: var(--paper-raised);
+    --popover-foreground: var(--ink);
+    --primary: var(--ink);
+    --primary-foreground: var(--paper);
+    --secondary: var(--paper-sunken);
+    --secondary-foreground: var(--ink);
+    --muted: var(--paper-sunken);
+    --muted-foreground: var(--ink-muted);
+    --accent: var(--highlight-wash);
+    --accent-foreground: var(--ink);
+    --destructive: var(--danger);
+    --destructive-foreground: var(--paper-raised);
+    --error: var(--danger);
+    --border: var(--rule);
+    --input: var(--rule-strong);
+    --ring: var(--info);
 
-    --secondary: 37 14% 21%;
-    --secondary-foreground: 40 35% 72%;
+    --radius: 6px;
 
-    --muted: 37 13% 20%;
-    --muted-foreground: 40 22% 58%;
-
-    --accent: 39 33% 55%;
-    --accent-foreground: 40 16% 12%;
-
-    --destructive: 6 55% 52%;
-    --destructive-foreground: 40 38% 90%;
-
-    --success: 140 38% 46%;
-    --warning: 38 55% 55%;
-    --error: 6 62% 56%;
-
-    /* ── Warm secondary palette for variety across the app ── */
-    --brand-orange: 22 68% 55%;
-    --brand-yellow: 42 74% 60%;
-    --brand-olive: 62 30% 46%;
-    --brand-rust: 12 58% 50%;
-    --brand-clay: 30 45% 52%;
-
-    --border: 37 16% 24%;
-    --input: 37 16% 19%;
-    --ring: 39 40% 55%;
-
-    --radius: 0.5rem;
-
-    --gradient-primary: linear-gradient(135deg, hsl(40 34% 67%), hsl(39 33% 55%));
-    --gradient-accent: linear-gradient(135deg, hsl(39 33% 55%), hsl(36 30% 48%));
-    --gradient-hero: linear-gradient(135deg, hsl(37 15% 14%), hsl(37 18% 20%));
-
-    --shadow-glow: 0 0 30px hsl(39 40% 50% / 0.22);
-    --shadow-card: 0 6px 24px hsl(37 25% 4% / 0.5);
-
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.15s ease-out;
   }
 }
 
@@ -66,86 +107,112 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-size: 15px;
+    line-height: 24px;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+    @apply font-serif font-medium tracking-tight;
   }
 
   code, pre {
     @apply font-mono;
   }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--info));
+    outline-offset: 2px;
+  }
 }
 
-/* ── Landing page ambient animations ── */
-@keyframes wf-breathe {
-  0%, 100% { transform: scaleY(1); }
-  50% { transform: scaleY(0.82); }
-}
-.wf-breathe {
-  animation: wf-breathe 3.6s ease-in-out infinite;
-}
-
-@keyframes spin-slow {
-  to { transform: rotate(360deg); }
-}
-.animate-spin-slow {
-  animation: spin-slow 26s linear infinite;
+/* Show the moon in light mode and the sun in dark mode, following data-theme or the system */
+.light-hidden { display: none; }
+:root[data-theme="dark"] .dark-hidden { display: none; }
+:root[data-theme="dark"] .light-hidden { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dark-hidden { display: none; }
+  :root:not([data-theme="light"]) .light-hidden { display: block; }
 }
 
-@keyframes float-y {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-.animate-float-y {
-  animation: float-y 6s ease-in-out infinite;
-}
-
-@keyframes shimmer-star {
-  0%, 100% { opacity: 0.35; letter-spacing: 0.5em; }
-  50% { opacity: 1; letter-spacing: 0.62em; }
-}
-.animate-shimmer-star {
-  animation: shimmer-star 3.2s ease-in-out infinite;
-}
-
-@keyframes ping-ring {
-  0% { transform: scale(0.9); opacity: 0.7; }
-  70%, 100% { transform: scale(1.9); opacity: 0; }
-}
-.animate-ping-ring {
-  animation: ping-ring 2.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+/* Marker: highlight is always a fill behind on-highlight text */
+@layer components {
+  .mark-fill {
+    background: hsl(var(--highlight));
+    color: hsl(var(--on-highlight));
+  }
+  .overline {
+    @apply font-sans uppercase;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: hsl(var(--ink-muted));
+  }
 }
 
-@keyframes spin-reverse-slow {
-  to { transform: rotate(-360deg); }
+/* Home hero motion. All of it is switched off under prefers-reduced-motion. */
+@keyframes proof-sweep {
+  from { background-size: 0% 100%; }
+  to { background-size: 100% 100%; }
 }
-.animate-spin-reverse-slow {
-  animation: spin-reverse-slow 32s linear infinite;
+.proof-sweep {
+  background-image: linear-gradient(hsl(var(--highlight)), hsl(var(--highlight)));
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 0% 100%;
+  color: hsl(var(--on-highlight));
+  animation: proof-sweep 0.9s cubic-bezier(0.65, 0, 0.35, 1) 0.7s forwards;
 }
 
-/* Slow drifting blobs for the animated background */
-@keyframes drift-a {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(40px, -30px) scale(1.08); }
-  66% { transform: translate(-25px, 25px) scale(0.95); }
+@keyframes proof-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-@keyframes drift-b {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-45px, 35px) scale(1.12); }
+.proof-rise {
+  opacity: 0;
+  animation: proof-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
-@keyframes drift-c {
-  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
-  50% { transform: translate(30px, 40px) scale(1.05) rotate(20deg); }
+
+@keyframes proof-stamp {
+  0% { opacity: 0; transform: scale(1.6) rotate(-4deg); }
+  60% { opacity: 1; transform: scale(0.96) rotate(0deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
 }
-.animate-drift-a { animation: drift-a 18s ease-in-out infinite; }
-.animate-drift-b { animation: drift-b 24s ease-in-out infinite; }
-.animate-drift-c { animation: drift-c 21s ease-in-out infinite; }
+.proof-stamp {
+  animation: proof-stamp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes proof-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.proof-caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  vertical-align: text-bottom;
+  background: hsl(var(--ink));
+  animation: proof-blink 1s steps(1) infinite;
+}
+
+@keyframes proof-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(14px, -22px, 0); }
+}
+.proof-drift {
+  animation: proof-drift 14s ease-in-out infinite;
+}
+
+@keyframes proof-tick {
+  from { transform: scale(0.4); }
+  to { transform: scale(1); }
+}
+.proof-tick {
+  animation: proof-tick 0.18s ease-out both;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .wf-breathe, .animate-spin-slow, .animate-spin-reverse-slow, .animate-float-y,
-  .animate-shimmer-star, .animate-ping-ring,
-  .animate-drift-a, .animate-drift-b, .animate-drift-c {
-    animation: none !important;
-  }
+  .proof-sweep { animation: none; background-size: 100% 100%; }
+  .proof-rise { animation: none; opacity: 1; }
+  .proof-stamp, .proof-tick, .proof-drift, .proof-caret { animation: none; }
 }

@@ -8,10 +8,7 @@ const Label = forwardRef<HTMLLabelElement, LabelProps>(
     return (
       <label
         ref={ref}
-        className={cn(
-          "text-sm font-medium text-foreground mb-1.5 block",
-          className
-        )}
+        className={cn("mb-1.5 block text-sm font-medium text-foreground", className)}
         {...props}
       >
         {children}

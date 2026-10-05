@@ -1,5 +1,5 @@
 import Badge from "@/atoms/Badge";
-import { Award, Flame, TrendingUp, Code2, Link } from "lucide-react"; // Removed 'Calendar' as it wasn't used
+import { Link } from "react-router-dom";
 import apiClient from "@/lib/apiClient";
 import { useEffect, useState } from "react";
 import { User } from "@/types/User";
@@ -54,135 +54,91 @@ const Profile = () => {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-lg animate-pulse">Loading profile...</p>
+      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center">
+        <p className="text-muted-foreground">Loading profile…</p>
       </div>
     );
   }
 
   const solvedPercentage =
-    totalProblem > 0 ? (user.problemSolvedTotal / totalProblem) * 100 : 0;
+    totalProblem > 0 ? ((user.problemSolvedTotal ?? 0) / totalProblem) * 100 : 0;
+
+  const counts = [
+    { label: "Easy", value: user.problemSolvedEasy, tone: "text-success" },
+    { label: "Medium", value: user.problemSolvedMedium, tone: "text-warning" },
+    { label: "Hard", value: user.problemSolvedHard, tone: "text-danger" },
+  ];
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-card border border-border rounded-xl p-8 mb-6 shadow-sm">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-            <div className="w-24 h-24 rounded-full bg-gradient-primary flex items-center justify-center text-3xl font-bold text-white shadow-glow flex-shrink-0">
-              {user.name ? user.name.charAt(0).toUpperCase() : "A"}
-            </div>
-
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-1">{user.name}</h1>
-              <p className="text-muted-foreground mb-3">@{user.username}</p>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Award className="w-4 h-4" />
-                  <span>{user.email}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-accent md:ml-auto">
-              <Flame className="w-5 h-5 text-accent-foreground" />
-              <div>
-                <div className="text-2xl font-bold text-accent-foreground">
-                  {user.dailyStreak}
-                </div>
-                <div className="text-xs text-accent-foreground/80">
-                  Day Streak
-                </div>
-              </div>
-            </div>
-          </div>
+    <main className="mx-auto max-w-[1600px] px-6 pb-16 pt-12">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <h1 className="font-serif text-[32px] font-medium leading-[38px] tracking-[-0.01em]">{user.name}</h1>
+          <p className="mt-1 font-mono text-[13px] text-muted-foreground">
+            @{user.username} · {user.email}
+          </p>
         </div>
-
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Problems Solved
-            </h2>
-
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-3xl font-bold">
-                  {user.problemSolvedTotal}
-                </span>
-                <span className="text-muted-foreground">
-                  / {totalProblem} Total
-                </span>
-              </div>
-              <div className="w-full h-3 bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-primary"
-                  style={{ width: `${solvedPercentage}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-success/10 border border-success/20">
-                <div className="text-2xl font-bold text-success mb-1">
-                  {user.problemSolvedEasy}
-                </div>
-                <div className="text-sm text-muted-foreground">Easy</div>
-              </div>
-              <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
-                <div className="text-2xl font-bold text-warning mb-1">
-                  {user.problemSolvedMedium}
-                </div>
-                <div className="text-sm text-muted-foreground">Medium</div>
-              </div>
-              <div className="p-4 rounded-lg bg-error/10 border border-error/20">
-                <div className="text-2xl font-bold text-error mb-1">
-                  {user.problemSolvedHard}
-                </div>
-                <div className="text-sm text-muted-foreground">Hard</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Code2 className="w-5 h-5 text-primary" />
-              Recently Solved
-            </h2>
-
-            <div className="space-y-3">
-              {recentProblems.length > 0 ? (
-                recentProblems.map((problem) => {
-                  const difficultyVariant = problem.difficulty.toLowerCase() as
-                    | "easy"
-                    | "medium"
-                    | "hard";
-                  return (
-                      <div
-                        key={problem.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="text-sm font-mono text-muted-foreground">
-                            #{problem.id}
-                          </div>
-                          <span className="font-medium truncate"><a href={"/coding/"+problem.id}>{problem.title}</a></span>
-                        </div>
-                        <Badge variant={difficultyVariant} className="flex-shrink-0">
-                          {problem.difficulty}
-                        </Badge>
-                      </div>
-                  );
-                })
-              ) : (
-                <p className="text-muted-foreground text-sm text-center py-4">
-                  No recent submissions found.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        {user.dailyStreak ? (
+          <span className="mark-fill px-2 py-0.5 font-mono text-xs font-medium">{user.dailyStreak}-day streak</span>
+        ) : null}
       </div>
-    </div>
+
+      <section className="mb-10">
+        <h2 className="overline mb-2 border-b border-foreground pb-2">Problems solved</h2>
+        <p className="mb-2 mt-4">
+          <span className="font-mono text-3xl font-medium">{user.problemSolvedTotal ?? 0}</span>
+          <span className="font-mono text-[13px] text-muted-foreground"> of {totalProblem}</span>
+        </p>
+        <div
+          className="mb-6 h-1.5 w-full bg-secondary"
+          role="progressbar"
+          aria-valuenow={Math.round(solvedPercentage)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Share of problems solved"
+        >
+          <div className="h-full bg-foreground" style={{ width: `${solvedPercentage}%` }} />
+        </div>
+
+        <dl className="grid grid-cols-3 gap-4">
+          {counts.map((c) => (
+            <div key={c.label} className="border-t border-border pt-2">
+              <dt className={`text-[13px] font-medium ${c.tone}`}>{c.label}</dt>
+              <dd className="font-mono text-2xl font-medium">{c.value ?? 0}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section>
+        <h2 className="overline mb-0 border-b border-foreground pb-2">Recently solved</h2>
+        {recentProblems.length > 0 ? (
+          <table className="w-full border-collapse">
+            <tbody>
+              {recentProblems.map((problem) => (
+                <tr key={problem.id} className="border-b border-border hover:bg-highlight-wash">
+                  <td className="w-px whitespace-nowrap px-3 py-3 font-mono text-[13px] text-muted-foreground">
+                    {String(problem.id).padStart(3, "0")}
+                  </td>
+                  <td className="px-3 py-3">
+                    <Link to={"/coding/" + problem.id} className="font-medium underline-offset-[3px] hover:underline">
+                      {problem.title}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    <Badge variant={problem.difficulty.toLowerCase() as "easy" | "medium" | "hard"}>
+                      {problem.difficulty}
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="py-8 text-center text-muted-foreground">No recent submissions found.</p>
+        )}
+      </section>
+    </main>
   );
 };
 
