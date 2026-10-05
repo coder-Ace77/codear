@@ -1,23 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, Moon, Sun } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { User } from "@/types/User";
 import apiClient from "@/lib/apiClient";
 import toast from "react-hot-toast";
-
-// ── Editorial palette (shared with the landing page) ──
-const C = {
-  bg: "#2a2620",
-  deep: "#221e19",
-  gold: "#b39a6d",
-  goldBright: "#c6ad7c",
-  cream: "#c8b48d",
-  ink: "#26221c",
-  muted: "#7d6f4e",
-};
-
-const mono = "font-['Space_Mono']";
+import { useTheme } from "@/hooks/useTheme";
 
 const isAdmin = (user: User | null) =>
   !!user && (user.role === "ADMIN" || user.username === "Admin");
@@ -35,6 +23,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const { toggle } = useTheme();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -53,10 +42,10 @@ const Navbar = () => {
 
   const navLinks = useMemo(() => {
     const links = [
-      { path: "/", label: "HOME" },
-      { path: "/explore", label: "PROBLEMS" },
+      { path: "/", label: "Home" },
+      { path: "/explore", label: "Problems" },
     ];
-    if (isAdmin(user)) links.push({ path: "/admin", label: "ADMIN" });
+    if (isAdmin(user)) links.push({ path: "/admin", label: "Admin" });
     return links;
   }, [user]);
 
@@ -68,167 +57,144 @@ const Navbar = () => {
     delete apiClient.defaults.headers.common["Authorization"];
     setUser(null);
     setMobileMenuOpen(false);
-    toast.success("Logged out successfully");
+    toast.success("Logged out");
     navigate("/");
   };
 
-  const navLinkClass = (path: string) =>
+  const linkClass = (path: string) =>
     cn(
-      `${mono} text-[11px] tracking-[0.25em] transition-opacity pb-1 border-b`,
-      isActive(path) ? "opacity-100" : "opacity-60 hover:opacity-100"
+      "py-1 text-sm font-medium transition-colors",
+      isActive(path)
+        ? "text-foreground shadow-[0_2px_0_hsl(var(--ink))]"
+        : "text-muted-foreground hover:text-foreground"
     );
 
+  const iconButton =
+    "flex h-8 w-8 items-center justify-center rounded-sm border border-input text-foreground transition-colors hover:bg-highlight-wash";
+
+  const themeToggle = (
+    <button onClick={toggle} aria-label="Toggle light and dark theme" className={iconButton}>
+      <Moon className="h-4 w-4 dark-hidden" aria-hidden="true" />
+      <Sun className="h-4 w-4 light-hidden" aria-hidden="true" />
+    </button>
+  );
+
+  const streak =
+    user?.dailyStreak && user.dailyStreak > 0 ? (
+      <span className="mark-fill px-2 py-0.5 font-mono text-xs font-medium">
+        {user.dailyStreak}-day streak
+      </span>
+    ) : null;
+
   return (
-    <nav
-      className="sticky top-0 z-50 border-b backdrop-blur-md"
-      style={{ backgroundColor: `${C.bg}f2`, borderColor: "rgba(200,180,141,0.15)" }}
-    >
-      <div className="mx-auto max-w-[1600px] px-6 md:px-10 h-20 flex items-center justify-between">
-        {/* wordmark */}
-        <Link
-          to="/"
-          className={`${mono} font-bold text-lg md:text-xl tracking-[0.2em]`}
-          style={{ color: C.cream }}
-        >
-          CODE ARENA
+    <nav className="sticky top-0 z-50 border-b border-border bg-background">
+      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-6 px-6">
+        <Link to="/" className="font-serif text-[26px] font-medium leading-none tracking-tight text-foreground">
+          Code Arena
         </Link>
 
-        {/* center nav links */}
-        <div className="hidden md:flex items-center gap-10">
+        <div className="hidden flex-1 items-center gap-6 md:flex">
           {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
-              className={navLinkClass(link.path)}
-              style={{ color: C.cream, borderColor: isActive(link.path) ? C.gold : "transparent" }}
+              aria-current={isActive(link.path) ? "page" : undefined}
+              className={linkClass(link.path)}
             >
               {link.label}
             </Link>
           ))}
         </div>
 
-        {/* right auth */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="ml-auto hidden items-center gap-3 md:flex">
+          {streak}
+          {themeToggle}
           {user ? (
             <>
               <Link
                 to="/profile"
-                className="flex items-center gap-3 rounded-full pl-1.5 pr-5 py-1.5 border transition-colors hover:bg-white/5"
-                style={{ borderColor: C.muted }}
+                aria-label="Account"
+                title={user.name || user.username}
+                className="grid h-8 w-8 place-items-center rounded-full border border-input text-xs font-semibold text-foreground hover:bg-highlight-wash"
               >
-                <span
-                  className={`${mono} text-xs font-bold w-8 h-8 rounded-full flex items-center justify-center`}
-                  style={{ backgroundColor: C.cream, color: C.ink }}
-                >
-                  {initials(user.name || user.username)}
-                </span>
-                <span className={`${mono} text-[11px] tracking-[0.15em]`} style={{ color: C.cream }}>
-                  {user.name || user.username}
-                </span>
+                {initials(user.name || user.username)}
               </Link>
               <button
                 onClick={handleLogout}
-                aria-label="Logout"
-                className="w-10 h-10 rounded-full border flex items-center justify-center transition-colors hover:bg-white/5"
-                style={{ borderColor: C.muted }}
+                className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               >
-                <LogOut className="w-4 h-4" style={{ color: C.cream }} />
+                Log out
               </button>
             </>
           ) : (
             <>
               <Link
                 to="/login"
-                className={`${mono} text-[11px] tracking-[0.25em] transition-opacity hover:opacity-60`}
-                style={{ color: C.cream }}
+                className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               >
-                SIGN IN
+                Sign in
               </Link>
               <Link
                 to="/register"
-                className={`${mono} text-[11px] tracking-[0.2em] rounded-full px-6 py-3 transition-transform hover:scale-[1.03]`}
-                style={{ backgroundColor: C.cream, color: C.ink }}
+                className="inline-flex h-8 items-center rounded-sm border border-primary bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:border-highlight hover:bg-highlight hover:text-highlight-foreground"
               >
-                SIGN UP
+                Sign up
               </Link>
             </>
           )}
         </div>
 
-        {/* mobile toggle */}
         <button
-          className="md:hidden"
+          className="ml-auto md:hidden"
           onClick={() => setMobileMenuOpen((v) => !v)}
           aria-label="Menu"
-          style={{ color: C.cream }}
+          aria-expanded={mobileMenuOpen}
         >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
-      {/* mobile menu */}
       {mobileMenuOpen && (
-        <div
-          className="md:hidden border-t px-6 py-6 flex flex-col gap-5"
-          style={{ backgroundColor: C.deep, borderColor: "rgba(200,180,141,0.15)" }}
-        >
+        <div className="flex flex-col gap-4 border-t border-border bg-background px-6 py-5 md:hidden">
           {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
               onClick={() => setMobileMenuOpen(false)}
-              className={`${mono} text-xs tracking-[0.25em]`}
-              style={{ color: C.cream, opacity: isActive(link.path) ? 1 : 0.6 }}
+              aria-current={isActive(link.path) ? "page" : undefined}
+              className={cn("text-sm font-medium", isActive(link.path) ? "text-foreground" : "text-muted-foreground")}
             >
               {link.label}
             </Link>
           ))}
 
-          <div className="pt-4 border-t" style={{ borderColor: "rgba(200,180,141,0.15)" }}>
+          <div className="flex flex-col gap-4 border-t border-border pt-4">
+            <div className="flex items-center gap-3">
+              {themeToggle}
+              {streak}
+            </div>
             {user ? (
-              <div className="flex flex-col gap-4">
-                <Link
-                  to="/profile"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3"
-                >
-                  <span
-                    className={`${mono} text-xs font-bold w-8 h-8 rounded-full flex items-center justify-center`}
-                    style={{ backgroundColor: C.cream, color: C.ink }}
-                  >
-                    {initials(user.name || user.username)}
-                  </span>
-                  <span className={`${mono} text-xs tracking-[0.15em]`} style={{ color: C.cream }}>
-                    {user.name || user.username}
-                  </span>
+              <>
+                <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium">
+                  {user.name || user.username}
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  className={`${mono} text-xs tracking-[0.25em] flex items-center gap-2`}
-                  style={{ color: C.cream }}
-                >
-                  <LogOut className="w-4 h-4" /> LOGOUT
+                <button onClick={handleLogout} className="text-left text-sm font-medium text-muted-foreground">
+                  Log out
                 </button>
-              </div>
+              </>
             ) : (
-              <div className="flex flex-col gap-4">
-                <Link
-                  to="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`${mono} text-xs tracking-[0.25em]`}
-                  style={{ color: C.cream }}
-                >
-                  SIGN IN
+              <>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium">
+                  Sign in
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`${mono} text-xs tracking-[0.2em] rounded-full px-6 py-3 text-center`}
-                  style={{ backgroundColor: C.cream, color: C.ink }}
+                  className="inline-flex h-9 items-center justify-center rounded-sm border border-primary bg-primary text-sm font-semibold text-primary-foreground"
                 >
-                  SIGN UP
+                  Sign up
                 </Link>
-              </div>
+              </>
             )}
           </div>
         </div>

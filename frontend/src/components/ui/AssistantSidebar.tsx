@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneLight, oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useResolvedTheme } from '@/hooks/useResolvedTheme';
 import { aiService } from '@/service/aiService';
-import { MessageSquare, ChevronLeft, ChevronRight, Send, Loader2, Copy, Check, Bot, User } from 'lucide-react';
+import { ChevronLeft, Send, Copy, Check, Bot } from 'lucide-react';
 
 interface AssistantSidebarProps {
   problemStatement: string;
@@ -17,6 +18,7 @@ const AssistantSidebar = ({ problemStatement, code, problemId }: AssistantSideba
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const theme = useResolvedTheme();
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,7 +57,7 @@ const AssistantSidebar = ({ problemStatement, code, problemId }: AssistantSideba
       const response = await aiService.chatWithAssistant(problemStatement, code, userMsg, problemId);
       setChatHistory(prev => [...prev, { role: 'assistant', content: response.reply || response.message }]);
     } catch (err) {
-      setChatHistory(prev => [...prev, { role: 'assistant', content: "⚠️ Failed to connect to AI. Please check your API or rate limit." }]);
+      setChatHistory(prev => [...prev, { role: 'assistant', content: "Could not reach the assistant. Check your connection or try again later." }]);
     } finally {
       setIsLoading(false);
     }
@@ -65,30 +67,28 @@ const AssistantSidebar = ({ problemStatement, code, problemId }: AssistantSideba
     <>
       {/* Sidebar Container */}
       <div
-        className={`fixed left-0 top-16 h-[calc(100vh-4rem)] z-50 flex transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed left-0 top-14 h-[calc(100vh-3.5rem)] z-50 flex transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
       >
-        <div className="flex flex-col w-[85vw] sm:w-[450px] h-full bg-[#0d1117] border-r border-slate-700 shadow-2xl">
+        <div className="flex flex-col w-[85vw] sm:w-[450px] h-full bg-card border-r border-border shadow-pop">
 
-          <div className="p-4 border-b border-slate-800 bg-[#161b22] flex items-center gap-2">
-            <Bot className="text-blue-400" size={20} />
-            <span className="font-semibold text-slate-200 tracking-tight">AI Coding Buddy</span>
+          <div className="flex h-12 items-center gap-2 border-b border-border bg-card px-4">
+            <span className="font-serif text-xl font-medium">Assistant</span>
           </div>
 
-          <div className="flex-grow overflow-y-auto p-4 space-y-6 custom-scrollbar bg-[#0d1117]">
+          <div className="flex-grow overflow-y-auto space-y-6 bg-background p-4">
             {chatHistory.length === 0 && (
-              <div className="flex flex-col items-center justify-center text-slate-500 mt-20 text-sm gap-4">
-                <Bot size={48} className="text-slate-700" />
-                <p>Ask me about the problem statement or your current code.</p>
+              <div className="flex flex-col items-center justify-center mt-20 text-center text-sm text-muted-foreground gap-4">
+                <p>Ask about the problem statement or your current code.</p>
               </div>
             )}
 
             {chatHistory.map((chat, i) => (
               <div key={i} className={`flex gap-3 ${chat.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                <div className={`w-8 h-8 rounded-sm flex items-center justify-center shrink-0 ${chat.role === 'user' ? 'bg-indigo-600' : 'bg-slate-700'}`}>
-                  {chat.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${chat.role === 'user' ? 'bg-primary text-primary-foreground' : 'border border-input text-foreground'}`}>
+                  <span className="font-mono text-[11px] font-medium">{chat.role === 'user' ? 'You' : 'AI'}</span>
                 </div>
-                <div className={`max-w-[85%] rounded-sm px-4 py-3 text-sm leading-relaxed shadow-sm ${chat.role === 'user' ? 'bg-indigo-700 text-white' : 'bg-[#161b22] text-slate-200 border border-slate-700'}`}>
+                <div className={`max-w-[85%] rounded-md px-4 py-3 text-sm leading-relaxed ${chat.role === 'user' ? 'bg-highlight-wash text-foreground border border-border' : 'bg-card text-foreground border border-border'}`}>
                   <ReactMarkdown
                     components={{
                       code({ inline, className, children, ...props }: any) {
@@ -104,30 +104,30 @@ const AssistantSidebar = ({ problemStatement, code, problemId }: AssistantSideba
                         };
 
                         return !inline && match ? (
-                          <div className="relative group my-4 rounded-md border border-slate-700 overflow-hidden bg-[#0d1117]">
-                            <div className="flex items-center justify-between px-3 py-2 bg-[#161b22] border-b border-slate-700 text-xs text-slate-400 font-mono">
+                          <div className="relative group my-4 overflow-hidden rounded-md border border-border bg-secondary">
+                            <div className="flex h-8 items-center justify-between border-b border-border bg-card px-3 font-mono text-xs text-muted-foreground">
                               <span>{match[1]}</span>
                               <button
                                 onClick={handleCopy}
-                                className="flex items-center gap-1.5 hover:text-white transition-colors"
+                                className="flex items-center gap-1.5 hover:text-foreground transition-colors"
                                 title="Copy code"
                               >
-                                {isCopied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                                <span>{isCopied ? 'Copied!' : 'Copy'}</span>
+                                {isCopied ? <Check size={14} /> : <Copy size={14} />}
+                                <span>{isCopied ? 'Copied' : 'Copy'}</span>
                               </button>
                             </div>
                             <SyntaxHighlighter
-                              style={atomDark}
+                              style={theme === 'dark' ? oneDark : oneLight}
                               language={match[1]}
                               PreTag="div"
-                              className="!bg-[#0d1117] !p-4 !m-0 !text-[13px] overflow-x-auto"
+                              className="!bg-transparent !p-4 !m-0 !text-[13px] overflow-x-auto"
                               {...props}
                             >
                               {codeString}
                             </SyntaxHighlighter>
                           </div>
                         ) : (
-                          <code className="bg-[#1f2428] px-1.5 py-0.5 rounded text-pink-300 font-mono text-xs border border-slate-700" {...props}>
+                          <code className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-xs text-foreground" {...props}>
                             {children}
                           </code>
                         );
@@ -141,19 +141,19 @@ const AssistantSidebar = ({ problemStatement, code, problemId }: AssistantSideba
             ))}
             {isLoading && (
               <div className="flex gap-3 animate-pulse">
-                <div className="w-8 h-8 rounded-sm bg-slate-700 shrink-0" />
-                <div className="h-10 w-2/3 bg-[#161b22] rounded-sm border border-slate-700" />
+                <div className="h-8 w-8 shrink-0 rounded-full bg-secondary" />
+                <div className="h-10 w-2/3 rounded-md border border-border bg-secondary" />
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
-          <div className="p-4 bg-[#161b22] border-t border-slate-800">
+          <div className="border-t border-border bg-card p-4">
             <div className="relative flex items-center">
               <textarea
                 rows={1}
-                className="w-full bg-[#0d1117] text-slate-200 text-sm p-3 pr-12 rounded-sm outline-none border border-slate-700 focus:border-blue-500 transition-colors resize-none placeholder-slate-600"
-                placeholder="Ask a question..."
+                className="w-full resize-none rounded-sm border border-input bg-background p-3 pr-12 text-sm text-foreground placeholder:text-muted-foreground"
+                placeholder="Ask a question"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => {
@@ -166,7 +166,7 @@ const AssistantSidebar = ({ problemStatement, code, problemId }: AssistantSideba
               <button
                 onClick={handleSendMessage}
                 disabled={isLoading || !message.trim()}
-                className="absolute right-2 p-2 text-blue-500 hover:text-blue-400 disabled:text-slate-600 transition-colors"
+                className="absolute right-2 p-2 text-foreground transition-colors hover:bg-highlight-wash disabled:text-muted-foreground disabled:hover:bg-transparent"
               >
                 <Send size={18} />
               </button>
@@ -177,14 +177,16 @@ const AssistantSidebar = ({ problemStatement, code, problemId }: AssistantSideba
         {/* Toggle Button moved outside the clipping area if needed, or attached to the sliding div */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`absolute -right-12 top-20 h-12 w-12 flex items-center justify-center rounded-r-xl transition-all shadow-lg 
+          aria-label={isOpen ? 'Close assistant' : 'Open assistant'}
+          className={`absolute -right-[104px] bottom-6 flex h-9 w-[104px] items-center justify-center gap-2 rounded-r-md border border-l-0 text-[13px] font-semibold transition-colors
             ${isOpen
-              ? 'bg-[#161b22] text-slate-400 border border-l-0 border-slate-700'
-              : 'bg-primary text-primary-foreground shadow-glow animate-pulse hover:animate-none'
+              ? 'border-border bg-card text-muted-foreground hover:text-foreground'
+              : 'border-highlight bg-highlight text-highlight-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground'
             }`}
           style={{ pointerEvents: 'auto' }}
         >
-          {isOpen ? <ChevronLeft size={24} /> : <Bot size={24} />}
+          {isOpen ? <ChevronLeft size={16} /> : <Bot size={16} />}
+          {isOpen ? 'Close' : 'Ask AI'}
         </button>
       </div>
 

@@ -5,7 +5,6 @@ import { fetchGrandTotal ,fetchProblems } from "@/service/problemService";
 import ExplorePageHeader from "@/molecules/ExplorePageHeader";
 import ExplorePageMenuSection from "@/molecules/ExplorePageMenuSectiob";
 import ExplorePageProblemSection from "@/molecules/ExplorePageProblemSection";
-import FloatingShapes from "@/molecules/FloatingShapes";
 
 const Explore = () => {
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
@@ -58,40 +57,43 @@ const Explore = () => {
   }, [searchQuery, selectedDifficulty, sortBy, selectedTag]);
 
   return (
-    <div className="relative min-h-screen py-10 md:py-14 px-6 md:px-10 overflow-hidden">
-      <FloatingShapes />
-      <div className="relative z-10 max-w-[1600px] mx-auto">
-        <ExplorePageHeader grandTotalProblems={grandTotalProblems} />
+    <main className="mx-auto max-w-[1600px] px-6 pb-16 pt-12">
+      <ExplorePageHeader grandTotalProblems={grandTotalProblems} />
 
-        <ExplorePageMenuSection
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          selectedDifficulty={selectedDifficulty}
-          setSelectedDifficulty={setSelectedDifficulty}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          availableTags={availableTags}
-          selectedTag={selectedTag}
-          setSelectedTag={setSelectedTag}
-        />
-        <div className="mb-4 font-['Space_Mono'] text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
-          Showing {problems.length} / {totalProblems} problems
-        </div>
+      <ExplorePageMenuSection
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        selectedDifficulty={selectedDifficulty}
+        setSelectedDifficulty={setSelectedDifficulty}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        availableTags={availableTags}
+        selectedTag={selectedTag}
+        setSelectedTag={setSelectedTag}
+      />
 
-        <ExplorePageProblemSection
-          loading={loading}
-          problemsummary={problems}
-          error={error}
-        />
-        {!loading && !error && totalPages > 1 && (
+      <ExplorePageProblemSection
+        loading={loading}
+        problemsummary={problems}
+        error={error}
+      />
+
+      {!loading && !error && (
+        <p className="mt-3 font-mono text-[13px] text-muted-foreground">
+          Showing {problems.length} of {totalProblems} problems
+        </p>
+      )}
+
+      {!loading && !error && totalPages > 1 && (
+        <div className="mt-8">
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
           />
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </main>
   );
 };
 

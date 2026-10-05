@@ -1,422 +1,300 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Github, Twitter, Linkedin } from "lucide-react";
-import { Waveform, Barcode } from "@/molecules/LandingDecor";
-import { Reveal, SplitWords } from "@/molecules/Reveal";
-import { useInView } from "@/hooks/useInView";
+import Verdict from "@/atoms/Verdict";
 
-// ── Editorial landing palette (scoped to this page so the rest of the app
-//    keeps its current theme while we transform things phase by phase) ──
-const C = {
-  bg: "#2a2620",
-  deep: "#221e19",
-  gold: "#b39a6d",
-  goldBright: "#c6ad7c",
-  cream: "#c8b48d",
-  ink: "#26221c",
-  muted: "#7d6f4e",
-  // warm secondary palette
-  orange: "#d3743a",
-  yellow: "#e3b24d",
-  olive: "#8b8e4f",
-  rust: "#ca5f42",
-  clay: "#bd8a5a",
+/* -------------------------------------------------------------------------- */
+/*  The live judge: types a solution, runs 12 tests, stamps a verdict, repeats  */
+/* -------------------------------------------------------------------------- */
+const TESTS = 12;
+
+const problems = [
+  {
+    file: "merge.py",
+    code: `def merge(intervals):
+    # sort by start so overlaps are neighbours
+    intervals.sort(key=lambda x: x[0])
+    merged = []
+    for start, end in intervals:
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return merged`,
+    ms: 38,
+  },
+  {
+    file: "coins.py",
+    code: `def fewest_coins(coins, amount):
+    best = [0] + [amount + 1] * amount
+    for a in range(1, amount + 1):
+        for c in coins:
+            if c <= a:
+                best[a] = min(best[a], best[a - c] + 1)
+    return best[amount] if best[amount] <= amount else -1`,
+    ms: 52,
+  },
+  {
+    file: "islands.py",
+    code: `def count_islands(grid):
+    seen, count = set(), 0
+    def walk(r, c):
+        if not (0 <= r < len(grid) and 0 <= c < len(grid[0])):
+            return
+        if (r, c) in seen or grid[r][c] == 0:
+            return
+        seen.add((r, c))
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            walk(r + dr, c + dc)
+    for r in range(len(grid)):
+        for c in range(len(grid[0])):
+            if grid[r][c] and (r, c) not in seen:
+                walk(r, c)
+                count += 1
+    return count`,
+    ms: 61,
+  },
+];
+
+const KEYWORDS = /^(def|return|for|in|if|else|and|or|not|lambda|import)$/;
+
+// Highlights one line with the Proof syntax tokens. Works on partly typed lines too.
+const highlight = (line: string) => {
+  const hash = line.indexOf("#");
+  const code = hash === -1 ? line : line.slice(0, hash);
+  const comment = hash === -1 ? "" : line.slice(hash);
+  const parts = code.split(/(\b\w+\b)/g).map((tok, i) => {
+    if (KEYWORDS.test(tok)) return <span key={i} className="font-medium text-[hsl(var(--syn-keyword))]">{tok}</span>;
+    if (/^\d+$/.test(tok)) return <span key={i} className="text-info">{tok}</span>;
+    return <span key={i}>{tok}</span>;
+  });
+  return (
+    <>
+      {parts}
+      {comment && <span className="italic text-muted-foreground">{comment}</span>}
+    </>
+  );
 };
 
-const serif = "font-['Cormorant_Garamond']";
-const mono = "font-['Space_Mono']";
+type Phase = "typing" | "testing" | "verdict";
 
-/* -------------------------------------------------------------------------- */
-/*  CodeA — brand badge with a multi-stage "draw + settle" entrance and        */
-/*  ambient motion (rotating inner ring, floating, pulsing halo).             */
-/* -------------------------------------------------------------------------- */
-const R = 94;
-const CIRC = 2 * Math.PI * R;
-const INNER = R - 12;
-const INNER_CIRC = 2 * Math.PI * INNER;
+const usePrefersReducedMotion = () => {
+  const [reduced, setReduced] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(mq.matches);
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return reduced;
+};
 
-const CodeABadge = () => {
-  const { ref, inView } = useInView<HTMLDivElement>({ threshold: 0.45 });
+const LiveJudge = ({ reduced }: { reduced: boolean }) => {
+  const [index, setIndex] = useState(0);
+  const [typed, setTyped] = useState(reduced ? problems[0].code.length : 0);
+  const [passed, setPassed] = useState(reduced ? TESTS : 0);
+  const [phase, setPhase] = useState<Phase>(reduced ? "verdict" : "typing");
+  const timer = useRef<number>();
+
+  const problem = problems[index];
+
+  useEffect(() => {
+    if (reduced) {
+      setTyped(problem.code.length);
+      setPassed(TESTS);
+      setPhase("verdict");
+      return;
+    }
+
+    const clear = () => window.clearTimeout(timer.current);
+    const after = (ms: number, fn: () => void) => {
+      timer.current = window.setTimeout(fn, ms);
+    };
+
+    if (phase === "typing") {
+      if (typed < problem.code.length) {
+        const ch = problem.code[typed];
+        // a touch of human rhythm: pause after newlines and punctuation
+        after(ch === "\n" ? 140 : /[(:,]/.test(ch) ? 55 : 22 + Math.random() * 22, () => setTyped((t) => t + 1));
+      } else {
+        after(450, () => setPhase("testing"));
+      }
+    } else if (phase === "testing") {
+      if (passed < TESTS) {
+        after(130, () => setPassed((p) => p + 1));
+      } else {
+        after(250, () => setPhase("verdict"));
+      }
+    } else {
+      after(2600, () => {
+        setIndex((i) => (i + 1) % problems.length);
+        setTyped(0);
+        setPassed(0);
+        setPhase("typing");
+      });
+    }
+    return clear;
+  }, [phase, typed, passed, problem.code, reduced]);
+
+  const visible = problem.code.slice(0, typed);
+  const lines = visible.split("\n");
 
   return (
-    <div ref={ref} className="relative flex items-center justify-center py-6 md:py-10">
-      <div
-        className={`relative w-[78%] max-w-[360px] aspect-square flex items-center justify-center ${
-          inView ? "animate-float-y" : ""
-        }`}
-      >
-        {/* pulsing halo, appears once the ring has landed */}
-        <span
-          className={`absolute inset-[8%] rounded-full ${inView ? "animate-ping-ring" : ""}`}
-          style={{
-            border: `1px solid ${C.muted}`,
-            opacity: inView ? undefined : 0,
-            animationDelay: "1.4s",
-          }}
-        />
-
-        <svg
-          viewBox="0 0 200 200"
-          className="absolute inset-0 w-full h-full"
-          style={{
-            transform: inView ? "scale(1) rotate(0deg)" : "scale(0.35) rotate(-150deg)",
-            opacity: inView ? 1 : 0,
-            transition: "transform 1.1s cubic-bezier(0.22,1,0.36,1), opacity 0.9s ease",
-          }}
-        >
-          {/* outer ring — draws in */}
-          <circle
-            cx="100"
-            cy="100"
-            r={R}
-            fill="none"
-            stroke={C.ink}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            style={{
-              strokeDasharray: CIRC,
-              strokeDashoffset: inView ? 0 : CIRC,
-              transition: "stroke-dashoffset 1.4s cubic-bezier(0.65,0,0.35,1) 0.15s",
-            }}
-          />
-          {/* inner dashed ring — draws, then spins forever */}
-          <g
-            className={inView ? "animate-spin-slow" : ""}
-            style={{ transformOrigin: "100px 100px" }}
-          >
-            <circle
-              cx="100"
-              cy="100"
-              r={INNER}
-              fill="none"
-              stroke={C.olive}
-              strokeWidth="0.75"
-              strokeDasharray="2 6"
-              style={{
-                strokeDashoffset: inView ? 0 : INNER_CIRC,
-                opacity: inView ? 0.85 : 0,
-                transition: "stroke-dashoffset 1.5s cubic-bezier(0.65,0,0.35,1) 0.4s, opacity 0.6s ease 0.4s",
-              }}
-            />
-          </g>
-          {/* orbiting dot */}
-          <g
-            className={inView ? "animate-spin-slow" : ""}
-            style={{ transformOrigin: "100px 100px", opacity: inView ? 1 : 0, transition: "opacity 0.6s ease 1.2s" }}
-          >
-            <circle cx="100" cy={100 - R} r="3.5" fill={C.rust} />
-          </g>
-        </svg>
-
-        {/* wordmark — pops into place after the ring lands */}
-        <span
-          className={`${serif} relative font-semibold leading-none text-[4.5rem] md:text-[6rem]`}
-          style={{
-            color: C.ink,
-            opacity: inView ? 1 : 0,
-            transform: inView ? "scale(1) translateY(0)" : "scale(0.5) translateY(12px)",
-            transition:
-              "opacity 0.7s ease 0.85s, transform 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.85s",
-          }}
-        >
-          Code<span style={{ color: C.orange }}>A</span>
-        </span>
+    <figure
+      aria-label="A solution being typed, tested and accepted"
+      className="w-full overflow-hidden rounded-md border border-border bg-secondary"
+    >
+      <div className="flex h-10 items-center justify-between border-b border-border bg-card px-3">
+        <span className="font-mono text-[13px] font-medium">{problem.file}</span>
+        <div className="h-6">
+          {phase === "verdict" ? (
+            <span key={`v-${index}`} className="proof-stamp inline-block">
+              <Verdict status="PASSED" />
+            </span>
+          ) : phase === "testing" ? (
+            <Verdict status="RUNNING" />
+          ) : (
+            <span className="font-mono text-xs text-muted-foreground">Editing</span>
+          )}
+        </div>
       </div>
-    </div>
+
+      <pre className="m-0 h-[354px] overflow-hidden py-3 font-mono text-sm leading-[22px]" aria-hidden="true">
+        {lines.map((line, i) => {
+          const isLast = i === lines.length - 1;
+          return (
+            <div
+              key={i}
+              className={`grid grid-cols-[48px_1fr] whitespace-pre ${isLast && phase === "typing" ? "bg-highlight-wash" : ""}`}
+            >
+              <b className="select-none pr-3 text-right font-normal text-muted-foreground">{i + 1}</b>
+              <span>
+                {highlight(line)}
+                {isLast && phase === "typing" && <span className="proof-caret" />}
+              </span>
+            </div>
+          );
+        })}
+      </pre>
+
+      <figcaption className="flex items-center justify-between gap-4 border-t border-border bg-card px-3 py-2">
+        <div className="flex gap-1" aria-hidden="true">
+          {Array.from({ length: TESTS }, (_, i) => (
+            <span
+              key={`${index}-${i}`}
+              className={`block h-3 w-3 border border-current ${
+                i < passed ? "proof-tick bg-success text-success" : "text-rule-strong"
+              }`}
+            />
+          ))}
+        </div>
+        <span className="font-mono text-xs text-muted-foreground">
+          {phase === "verdict" ? (
+            <>
+              <span className="text-foreground">{TESTS}/{TESTS}</span> tests · <span className="text-foreground">{problem.ms} ms</span>
+            </>
+          ) : phase === "testing" ? (
+            <>
+              <span className="text-foreground">{passed}/{TESTS}</span> tests
+            </>
+          ) : (
+            "not run yet"
+          )}
+        </span>
+      </figcaption>
+    </figure>
   );
 };
 
 /* -------------------------------------------------------------------------- */
-/*  Hero — word-unmasking headline + mouse parallax                            */
+/*  Ghost tokens drifting behind the page, nudged by the pointer              */
 /* -------------------------------------------------------------------------- */
-const Hero = () => {
+const ghosts = [
+  { t: "O(n log n)", x: 6, y: 14, d: 0 },
+  { t: "dp[i][j]", x: 22, y: 78, d: 2 },
+  { t: "while lo < hi:", x: 40, y: 8, d: 4 },
+  { t: "heapq.heappop", x: 58, y: 86, d: 1 },
+  { t: "→ BFS", x: 74, y: 12, d: 3 },
+  { t: "mod 10**9 + 7", x: 86, y: 70, d: 5 },
+  { t: "[[1, 3], [2, 6]]", x: 12, y: 52, d: 6 },
+  { t: "return -1", x: 92, y: 36, d: 2.5 },
+  { t: "n ≤ 10⁵", x: 32, y: 92, d: 4.5 },
+  { t: "visited = set()", x: 66, y: 48, d: 1.5 },
+];
+
+const GhostField = ({ reduced }: { reduced: boolean }) => {
   const [m, setM] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (reduced) return;
     const onMove = (e: MouseEvent) =>
       setM({ x: e.clientX / window.innerWidth - 0.5, y: e.clientY / window.innerHeight - 0.5 });
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
-  }, []);
+  }, [reduced]);
 
   return (
-    <section
-      className="relative min-h-[calc(100vh-5rem)] overflow-hidden"
-      style={{ backgroundColor: C.bg }}
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ transform: `translate(${m.x * -18}px, ${m.y * -12}px)`, transition: "transform 500ms cubic-bezier(0.22,1,0.36,1)" }}
     >
-      {/* right-side waveform ridge (breathes + parallax) */}
-      <div
-        className="absolute inset-y-0 right-0 w-[55%] md:w-[42%] opacity-90"
-        style={{
-          transform: `translate(${m.x * -26}px, ${m.y * -18}px)`,
-          transition: "transform 400ms cubic-bezier(0.22,1,0.36,1)",
-        }}
-      >
-        <Waveform bars={160} seed={11} rise={2.4} color={C.cream} breathe className="h-full" />
-      </div>
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(90deg, ${C.bg} 30%, rgba(42,38,32,0.4) 60%, rgba(42,38,32,0) 100%)`,
-        }}
-      />
-
-      <div className="relative z-10 mx-auto max-w-[1600px] px-6 md:px-10 min-h-[calc(100vh-5rem)] flex items-center">
-        <h1
-          className={`${serif} uppercase leading-[0.95] max-w-[14ch] text-[13vw] md:text-[7.5vw] lg:text-[7rem]`}
-          style={{
-            color: C.cream,
-            transform: `translate(${m.x * 10}px, ${m.y * 8}px)`,
-            transition: "transform 500ms cubic-bezier(0.22,1,0.36,1)",
-          }}
-        >
-          <SplitWords text="Practice problem solving one at a time" stagger={95} startDelay={200} />
-        </h1>
-      </div>
-
-      {/* scroll cue */}
-      <Reveal
-        variant="fade"
-        delay={1600}
-        duration={900}
-        className="absolute bottom-6 right-6 md:right-10 z-10 flex flex-col items-center gap-2"
-      >
-        <span className={`${mono} text-[9px] tracking-[0.3em]`} style={{ color: C.muted }}>
-          SCROLL
-        </span>
+      {ghosts.map((g) => (
         <span
-          className="w-px h-10 animate-float-y"
-          style={{ background: `linear-gradient(${C.muted}, transparent)` }}
-        />
-      </Reveal>
-
-      <div className="absolute bottom-6 left-6 md:left-10 z-10">
-        <Reveal variant="up" delay={1400}>
-          <Barcode color={C.muted} />
-        </Reveal>
-      </div>
-    </section>
+          key={g.t}
+          className="proof-drift absolute whitespace-nowrap font-mono text-sm text-muted-foreground opacity-25"
+          style={{ left: `${g.x}%`, top: `${g.y}%`, animationDelay: `-${g.d * 2}s` }}
+        >
+          {g.t}
+        </span>
+      ))}
+    </div>
   );
 };
 
 /* -------------------------------------------------------------------------- */
-/*  Split — the arena / the engine                                            */
-/* -------------------------------------------------------------------------- */
-const pins = [
-  { label: "PROBLEM LIBRARY", note: "CURATED", color: C.orange },
-  { label: "LIVE CODE JUDGE", note: "REAL-TIME", color: C.yellow },
-  { label: "EDITORIALS", note: "DEEP DIVES", color: C.olive },
-  { label: "SUBMISSION HISTORY", note: "TRACK GROWTH", color: C.rust },
-];
+const Home = () => {
+  const reduced = usePrefersReducedMotion();
 
-const Split = () => (
-  <section className="relative grid md:grid-cols-2" style={{ backgroundColor: C.bg }}>
-    {/* left dark column */}
-    <div className="px-6 md:px-10 py-20 md:py-28 flex flex-col justify-center">
-      <Reveal variant="up">
-        <p className={`${mono} text-[11px] tracking-[0.35em] mb-8`} style={{ color: C.orange }}>
-          THE&nbsp;ARENA
-        </p>
-      </Reveal>
-      <h2 className={`${serif} text-3xl md:text-5xl leading-tight max-w-[18ch]`} style={{ color: C.cream }}>
-        <SplitWords
-          text="Built for focus. Every problem, editorial, and submission in one calm workspace."
-          stagger={55}
-        />
-      </h2>
+  return (
+    <main className="relative flex min-h-[calc(100vh-3.5rem)] items-center overflow-hidden">
+      <GhostField reduced={reduced} />
 
-      <ul className="mt-12 space-y-5">
-        {pins.map((p, i) => (
-          <Reveal as="li" key={p.label} variant="left" delay={200 + i * 120} className="block">
-            <div className="flex items-center gap-4">
-              <span className="relative inline-flex w-3 h-3 items-center justify-center">
-                <span
-                  className="absolute inset-0 rounded-full animate-ping-ring"
-                  style={{ border: `1px solid ${p.color}`, animationDelay: `${i * 700}ms` }}
-                />
-                <span
-                  className="relative inline-block w-3 h-3 rounded-full"
-                  style={{ backgroundColor: p.color, boxShadow: `0 0 10px ${p.color}66` }}
-                />
-              </span>
-              <span className={`${mono} text-xs tracking-[0.2em] flex-1`} style={{ color: C.cream }}>
-                {p.label}
-              </span>
-              <span
-                className={`${mono} text-[10px] tracking-[0.2em]`}
-                style={{ color: p.color }}
-              >
-                {p.note}
-              </span>
-            </div>
-          </Reveal>
-        ))}
-      </ul>
-    </div>
+      <div className="relative z-10 mx-auto grid w-full max-w-[1600px] items-center gap-12 px-6 py-12 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:gap-16">
+        <div>
+          <h1 className="font-serif font-medium leading-[0.98] tracking-[-0.03em] text-[clamp(3.5rem,9vw,9rem)]">
+            <span className="proof-rise block" style={{ animationDelay: "0.05s" }}>
+              Solve it.
+            </span>
+            <span className="proof-rise block" style={{ animationDelay: "0.3s" }}>
+              Then{" "}
+              <span className="proof-sweep box-decoration-clone px-[0.12em]">prove it.</span>
+            </span>
+          </h1>
 
-    {/* right cream panel */}
-    <div className="relative px-6 md:px-10 py-20 md:py-28 overflow-hidden" style={{ backgroundColor: C.cream }}>
-      <Reveal variant="up">
-        <p className={`${mono} text-[11px] tracking-[0.35em]`} style={{ color: C.rust }}>
-          THE&nbsp;ENGINE
-        </p>
-      </Reveal>
-      <CodeABadge />
-      <Reveal variant="up" delay={1400}>
-        <p className={`${mono} text-center text-xs tracking-[0.3em]`} style={{ color: C.ink }}>
-          REAL-TIME&nbsp;·&nbsp;FAULT-TOLERANT
-        </p>
-      </Reveal>
-    </div>
-  </section>
-);
-
-/* -------------------------------------------------------------------------- */
-/*  Statement                                                                  */
-/* -------------------------------------------------------------------------- */
-const Statement = () => (
-  <section className="relative overflow-hidden py-28 md:py-40" style={{ backgroundColor: C.bg }}>
-    <div className="absolute bottom-0 left-0 w-[45%] h-[40%] opacity-70">
-      <Waveform bars={90} seed={23} rise={1.4} color={C.orange} flip breathe className="h-full" />
-    </div>
-    <div className="absolute bottom-0 right-0 w-[30%] h-[26%] opacity-50">
-      <Waveform bars={60} seed={44} rise={1.8} color={C.olive} breathe className="h-full" />
-    </div>
-
-    <div className="relative z-10 mx-auto max-w-[1600px] px-6 md:px-10">
-      <h2
-        className={`${serif} uppercase text-center leading-[1.02] text-[9vw] md:text-[5.5vw] lg:text-[5rem] max-w-[16ch] mx-auto`}
-        style={{ color: C.cream }}
-      >
-        <SplitWords text="Where algorithms meet craft" stagger={110} />
-      </h2>
-
-      <div className="mt-16 flex justify-center md:justify-end">
-        <Reveal variant="scale" duration={1000} className="max-w-md p-8 md:p-10" style={{ backgroundColor: C.cream }}>
-          <p className={`${mono} text-xs md:text-[13px] leading-relaxed tracking-wide`} style={{ color: C.ink }}>
-            CODE ARENA IS A REAL-TIME JUDGE BUILT FOR SCALE — POWERED BY A
-            DECOUPLED SUBMISSION AND EXECUTION PIPELINE ENGINEERED FOR FAULT
-            TOLERANCE.
-          </p>
-          <p className="text-center mt-8 animate-shimmer-star" style={{ color: C.yellow }}>
-            ✦ ✦ ✦
-          </p>
-        </Reveal>
-      </div>
-    </div>
-  </section>
-);
-
-/* -------------------------------------------------------------------------- */
-/*  Footer                                                                     */
-/* -------------------------------------------------------------------------- */
-const socials = [
-  { Icon: Github, color: C.olive },
-  { Icon: Twitter, color: C.orange },
-  { Icon: Linkedin, color: C.yellow },
-];
-
-const Footer = () => (
-  <footer className="relative overflow-hidden pt-20" style={{ backgroundColor: C.bg }}>
-    {/* top nav row */}
-    <Reveal
-      variant="up"
-      className="mx-auto max-w-[1600px] px-6 md:px-10 flex items-center justify-between mb-16"
-    >
-      <Link to="/explore" className={`${mono} text-[11px] tracking-[0.25em] hidden md:inline`} style={{ color: C.cream }}>
-        PROBLEMS
-      </Link>
-      <span className={`${mono} font-bold text-xl tracking-[0.2em]`} style={{ color: C.cream }}>
-        CODE ARENA
-      </span>
-      <Link
-        to="/explore"
-        className={`${mono} text-[11px] tracking-[0.2em] rounded-full px-6 py-3 transition-transform hover:scale-[1.03]`}
-        style={{ backgroundColor: C.cream, color: C.ink }}
-      >
-        START SOLVING
-      </Link>
-    </Reveal>
-
-    <div className="mx-auto max-w-[1600px] px-6 md:px-10 grid md:grid-cols-2 gap-12 pb-16">
-      {/* left */}
-      <Reveal variant="left">
-        <p className={`${mono} text-[11px] tracking-[0.3em] mb-4`} style={{ color: C.olive }}>
-          THE PLATFORM
-        </p>
-        <p className={`${serif} text-2xl leading-snug max-w-[22ch]`} style={{ color: C.cream }}>
-          Train like the work matters. Practice with purpose.
-        </p>
-        <div className="flex gap-3 mt-8">
-          {socials.map(({ Icon, color }, i) => (
-            <Reveal key={i} variant="scale" delay={200 + i * 120}>
-              <span
-                className="w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300 hover:scale-110"
-                style={{ borderColor: `${color}80` }}
-              >
-                <Icon className="w-4 h-4" style={{ color }} />
-              </span>
-            </Reveal>
-          ))}
+          <div className="proof-rise mt-10 flex flex-wrap gap-3" style={{ animationDelay: "1.2s" }}>
+            <Link
+              to="/explore"
+              className="inline-flex h-11 items-center rounded-sm border border-highlight bg-highlight px-6 text-[15px] font-semibold text-highlight-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
+            >
+              Start solving
+            </Link>
+            <Link
+              to="/register"
+              className="inline-flex h-11 items-center rounded-sm border border-input px-6 text-[15px] font-semibold transition-colors hover:border-foreground hover:bg-highlight-wash"
+            >
+              Create an account
+            </Link>
+          </div>
         </div>
-      </Reveal>
 
-      {/* right links */}
-      <Reveal variant="right" className="md:text-right">
-        <p className={`${mono} text-[11px] tracking-[0.3em] mb-4`} style={{ color: C.orange }}>
-          EXPLORE
-        </p>
-        <ul className="space-y-3">
-          {[
-            { to: "/explore", label: "Problems" },
-            { to: "/profile", label: "Profile" },
-            { to: "/login", label: "Sign In" },
-            { to: "/register", label: "Create Account" },
-          ].map((l, i) => (
-            <Reveal as="li" key={l.to} variant="up" delay={150 + i * 90}>
-              <Link
-                to={l.to}
-                className={`${mono} text-sm tracking-wide inline-flex items-center gap-1 transition-all duration-300 hover:opacity-60 hover:gap-2`}
-                style={{ color: C.cream }}
-              >
-                {l.label}
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            </Reveal>
-          ))}
-        </ul>
-      </Reveal>
-    </div>
-
-    {/* bottom bar over waveform */}
-    <div className="relative h-24" style={{ backgroundColor: C.cream }}>
-      <div className="absolute -top-16 left-0 right-0 h-16 overflow-hidden">
-        <Waveform bars={220} seed={5} rise={1} color={C.cream} stagger={1400} className="h-full" />
-      </div>
-      <div className="relative mx-auto max-w-[1600px] px-6 md:px-10 h-full flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Barcode color={C.ink} />
-          <span className={`${mono} text-[10px] md:text-[11px] tracking-[0.2em]`} style={{ color: C.ink }}>
-            © 2026 CODE ARENA. ALL RIGHTS RESERVED
-          </span>
+        <div className="proof-rise" style={{ animationDelay: "0.9s" }}>
+          <LiveJudge reduced={reduced} />
         </div>
-        <span className={`${mono} text-[10px] md:text-[11px] tracking-[0.2em]`} style={{ color: C.ink }}>
-          PRIVACY POLICY
-        </span>
       </div>
-    </div>
-  </footer>
-);
-
-/* -------------------------------------------------------------------------- */
-const Home = () => (
-  <div className="w-full" style={{ backgroundColor: C.bg }}>
-    <Hero />
-    <Split />
-    <Statement />
-    <Footer />
-  </div>
-);
+    </main>
+  );
+};
 
 export default Home;

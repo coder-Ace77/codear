@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { gruvboxDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +27,25 @@ const langMap: Record<string, string> = {
 export const normalizeLang = (l?: string) =>
   (l && langMap[l.toLowerCase().trim()]) || "text";
 
+// Proof's syntax colours, read from the theme tokens so light and dark both work.
+const proofPrism = {
+  'code[class*="language-"]': { color: "hsl(var(--ink))", background: "none" },
+  'pre[class*="language-"]': { color: "hsl(var(--ink))", background: "none" },
+  comment: { color: "hsl(var(--ink-muted))", fontStyle: "italic" },
+  prolog: { color: "hsl(var(--ink-muted))" },
+  punctuation: { color: "hsl(var(--ink))" },
+  keyword: { color: "hsl(var(--syn-keyword))", fontWeight: 500 },
+  "control-flow": { color: "hsl(var(--syn-keyword))", fontWeight: 500 },
+  builtin: { color: "hsl(var(--syn-keyword))" },
+  string: { color: "hsl(var(--success))" },
+  char: { color: "hsl(var(--success))" },
+  number: { color: "hsl(var(--info))" },
+  boolean: { color: "hsl(var(--info))" },
+  constant: { color: "hsl(var(--info))" },
+  function: { color: "hsl(var(--ink))" },
+  operator: { color: "hsl(var(--ink))" },
+} as const;
+
 /** Small copy-to-clipboard button with a copied confirmation state. */
 export const CopyButton = ({ text, className }: { text: string; className?: string }) => {
   const [copied, setCopied] = useState(false);
@@ -44,14 +62,11 @@ export const CopyButton = ({ text, className }: { text: string; className?: stri
     <button
       onClick={copy}
       className={cn(
-        "flex items-center gap-1.5 font-['Space_Mono'] text-[10px] tracking-[0.15em] uppercase rounded-md px-2.5 py-1.5 transition-colors",
-        copied
-          ? "text-brand-olive"
-          : "text-muted-foreground hover:text-brand-orange hover:bg-white/5",
+        "flex h-6 items-center gap-1.5 rounded-sm border border-input bg-card px-2 font-sans text-xs font-medium text-foreground transition-colors hover:bg-highlight-wash",
         className
       )}
     >
-      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? <Check className="h-3 w-3" aria-hidden="true" /> : <Copy className="h-3 w-3" aria-hidden="true" />}
       {copied ? "Copied" : "Copy"}
     </button>
   );
@@ -60,9 +75,9 @@ export const CopyButton = ({ text, className }: { text: string; className?: stri
 interface CodeBlockProps {
   code: string;
   language?: string;
-  /** show the traffic-light dots in the header */
+  /** kept for existing callers; Proof has no window dots */
   dots?: boolean;
-  /** render without an outer frame/header — just highlighted code + a floating copy button */
+  /** render without an outer frame or header: just highlighted code and a floating copy button */
   bare?: boolean;
   className?: string;
 }
@@ -70,27 +85,29 @@ interface CodeBlockProps {
 const highlighterStyle = {
   margin: 0,
   background: "transparent",
-  padding: "1rem 1.25rem",
-  fontSize: "0.8rem",
-  lineHeight: 1.6,
+  padding: "0.75rem 1rem",
+  fontSize: "13px",
+  lineHeight: "22px",
 } as const;
 
-/** Modern code block: header bar (language + copy) over gruvbox syntax highlighting. */
-const CodeBlock = ({ code, language, dots = true, bare = false, className }: CodeBlockProps) => {
+const codeTagProps = { style: { fontFamily: '"IBM Plex Mono", ui-monospace, Menlo, monospace' } };
+
+/** Code on paper-sunken, highlighted with the Proof syntax tokens. */
+const CodeBlock = ({ code, language, bare = false, className }: CodeBlockProps) => {
   const lang = normalizeLang(language);
 
   if (bare) {
     return (
-      <div className={cn("relative group", className)} style={{ backgroundColor: "#282828" }}>
-        <div className="absolute top-2 right-2 z-10 opacity-70 group-hover:opacity-100 transition-opacity">
+      <div className={cn("relative bg-secondary", className)}>
+        <div className="absolute right-2 top-2 z-10">
           <CopyButton text={code} />
         </div>
         <SyntaxHighlighter
           language={lang}
-          style={gruvboxDark}
+          style={proofPrism as any}
           wrapLongLines
-          customStyle={{ ...highlighterStyle, paddingRight: "4.5rem" }}
-          codeTagProps={{ style: { fontFamily: "'JetBrains Mono', monospace" } }}
+          customStyle={{ ...highlighterStyle, paddingRight: "5rem" }}
+          codeTagProps={codeTagProps}
         >
           {code}
         </SyntaxHighlighter>
@@ -99,31 +116,17 @@ const CodeBlock = ({ code, language, dots = true, bare = false, className }: Cod
   }
 
   return (
-    <div
-      className={cn("rounded-lg overflow-hidden border border-border", className)}
-      style={{ backgroundColor: "#282828" }}
-    >
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 bg-black/25">
-        <div className="flex items-center gap-2">
-          {dots && (
-            <div className="flex items-center gap-1.5 mr-1">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "hsl(var(--brand-rust))" }} />
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "hsl(var(--brand-yellow))" }} />
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "hsl(var(--brand-olive))" }} />
-            </div>
-          )}
-          <span className="font-['Space_Mono'] text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
-            {language || "code"}
-          </span>
-        </div>
+    <div className={cn("overflow-hidden rounded-md border border-border bg-secondary", className)}>
+      <div className="flex h-10 items-center justify-between border-b border-border bg-card px-3">
+        <span className="font-mono text-[13px] font-medium">{language || "code"}</span>
         <CopyButton text={code} />
       </div>
       <SyntaxHighlighter
         language={lang}
-        style={gruvboxDark}
+        style={proofPrism as any}
         wrapLongLines
         customStyle={highlighterStyle}
-        codeTagProps={{ style: { fontFamily: "'JetBrains Mono', monospace" } }}
+        codeTagProps={codeTagProps}
       >
         {code}
       </SyntaxHighlighter>

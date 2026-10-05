@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Monaco', 'monospace'],
+        serif: ['Newsreader', 'Georgia', '"Times New Roman"', 'serif'],
+        sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'Menlo', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -51,33 +52,42 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        paper: {
+          DEFAULT: "hsl(var(--paper))",
+          raised: "hsl(var(--paper-raised))",
+          sunken: "hsl(var(--paper-sunken))",
+        },
+        ink: {
+          DEFAULT: "hsl(var(--ink))",
+          muted: "hsl(var(--ink-muted))",
+        },
+        rule: {
+          DEFAULT: "hsl(var(--rule))",
+          strong: "hsl(var(--rule-strong))",
+        },
+        highlight: {
+          DEFAULT: "hsl(var(--highlight))",
+          foreground: "hsl(var(--on-highlight))",
+          wash: "hsl(var(--highlight-wash))",
+        },
+        info: "hsl(var(--info))",
+        "success-wash": "hsl(var(--success-wash))",
+        "danger-wash": "hsl(var(--danger-wash))",
+        danger: "hsl(var(--danger))",
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
         error: "hsl(var(--error))",
-        brand: {
-          orange: "hsl(var(--brand-orange))",
-          yellow: "hsl(var(--brand-yellow))",
-          olive: "hsl(var(--brand-olive))",
-          rust: "hsl(var(--brand-rust))",
-          clay: "hsl(var(--brand-clay))",
-        },
-      },
-      backgroundImage: {
-        'gradient-primary': 'var(--gradient-primary)',
-        'gradient-accent': 'var(--gradient-accent)',
-        'gradient-hero': 'var(--gradient-hero)',
       },
       boxShadow: {
-        'glow': 'var(--shadow-glow)',
-        'card': 'var(--shadow-card)',
-      },
-      transitionTimingFunction: {
-        'smooth': 'var(--transition-smooth)',
+        'pop': 'var(--shadow-pop)',
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        sm: "3px",
+        md: "6px",
+        lg: "6px",
+        xl: "6px",
+        "2xl": "6px",
+        "3xl": "6px",
       },
       keyframes: {
         "text-shimmer": {

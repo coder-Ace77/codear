@@ -8,21 +8,23 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", children, ...props }, ref) => {
-    const baseStyles = "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background";
+    const baseStyles =
+      "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border font-sans font-semibold transition-colors disabled:cursor-not-allowed disabled:border-border disabled:bg-paper-sunken disabled:text-ink-muted";
 
+    // Primary is ink on paper and turns to the marker on hover; "accent" is the marker itself (Submit).
     const variants = {
-      primary: "bg-gradient-primary text-primary-foreground hover:shadow-glow hover:scale-105",
-      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-      accent: "bg-gradient-accent text-accent-foreground hover:shadow-glow hover:scale-105",
-      ghost: "text-foreground hover:bg-secondary hover:text-foreground",
-      outline: "border-2 border-border text-foreground hover:bg-secondary hover:border-primary",
-      destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+      primary: "border-primary bg-primary text-primary-foreground hover:border-highlight hover:bg-highlight hover:text-highlight-foreground",
+      accent: "border-highlight bg-highlight text-highlight-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground",
+      secondary: "border-border bg-secondary text-secondary-foreground hover:bg-highlight-wash",
+      outline: "border-input bg-transparent text-foreground hover:border-foreground hover:bg-highlight-wash",
+      ghost: "border-transparent bg-transparent text-foreground hover:bg-highlight-wash",
+      destructive: "border-danger bg-danger text-destructive-foreground hover:opacity-90",
     };
 
     const sizes = {
-      sm: "px-3 py-1.5 text-sm",
-      md: "px-5 py-2.5 text-base",
-      lg: "px-7 py-3.5 text-lg",
+      sm: "h-7 px-3 text-[13px]",
+      md: "h-9 px-4 text-sm",
+      lg: "h-11 px-6 text-[15px]",
     };
 
     return (

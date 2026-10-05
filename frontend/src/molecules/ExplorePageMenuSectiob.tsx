@@ -1,8 +1,7 @@
 import SearchBar from "./SearchBar";
 import Select from "@/atoms/Select";
 
-const mono = "font-['Space_Mono']";
-const label = `${mono} text-[10px] tracking-[0.3em] uppercase text-muted-foreground mb-2 block`;
+const label = "overline mb-1 block";
 
 const ExplorePageMenuSection = ({
   searchQuery,
@@ -16,14 +15,14 @@ const ExplorePageMenuSection = ({
   selectedTag,
 }) => {
   return (
-    <div className="mb-8 space-y-6">
-      <div className="grid md:grid-cols-[1fr_auto_auto] gap-4 md:items-end">
+    <div className="mb-4 space-y-4">
+      <div className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
         <div>
           <span className={label}>Search</span>
           <SearchBar
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search problems by title..."
+            placeholder="Search problems by title"
           />
         </div>
 
@@ -33,8 +32,9 @@ const ExplorePageMenuSection = ({
             value={selectedDifficulty}
             onChange={(e) => setSelectedDifficulty(e.target.value)}
             className="md:w-44"
+            aria-label="Difficulty"
           >
-            <option value="all">All Difficulties</option>
+            <option value="all">All difficulties</option>
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
             <option value="hard">Hard</option>
@@ -42,69 +42,55 @@ const ExplorePageMenuSection = ({
         </div>
 
         <div>
-          <span className={label}>Sort By</span>
+          <span className={label}>Sort by</span>
           <Select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="md:w-44"
+            aria-label="Sort by"
           >
-            <option value="popularity">Most Popular</option>
-            <option value="acceptance">Acceptance Rate</option>
+            <option value="popularity">Most popular</option>
+            <option value="acceptance">Acceptance rate</option>
             <option value="latest">Latest</option>
           </Select>
         </div>
       </div>
 
-      <div>
-        <span className={label}>Filter by Tag</span>
-        <div className="flex flex-wrap gap-2">
-          <TagChip active={!selectedTag} color="hsl(var(--accent))" onClick={() => setSelectedTag("")}>
-            All
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by topic">
+        <TagChip active={!selectedTag} onClick={() => setSelectedTag("")}>
+          All topics
+        </TagChip>
+        {availableTags.slice(0, 12).map((tag) => (
+          <TagChip
+            key={tag}
+            active={selectedTag === tag}
+            onClick={() => setSelectedTag(tag === selectedTag ? "" : tag)}
+          >
+            {tag}
           </TagChip>
-          {availableTags.slice(0, 12).map((tag, i) => (
-            <TagChip
-              key={tag}
-              active={selectedTag === tag}
-              color={tagColors[i % tagColors.length]}
-              onClick={() => setSelectedTag(tag === selectedTag ? "" : tag)}
-            >
-              {tag}
-            </TagChip>
-          ))}
-        </div>
+        ))}
       </div>
     </div>
   );
 };
 
-const tagColors = [
-  "hsl(var(--brand-orange))",
-  "hsl(var(--brand-yellow))",
-  "hsl(var(--brand-olive))",
-  "hsl(var(--brand-rust))",
-  "hsl(var(--brand-clay))",
-  "hsl(var(--accent))",
-];
-
 const TagChip = ({
   active,
-  color,
   onClick,
   children,
 }: {
   active: boolean;
-  color: string;
   onClick: () => void;
   children: React.ReactNode;
 }) => (
   <button
     onClick={onClick}
-    className={`${mono} text-[10px] tracking-[0.15em] uppercase rounded-full px-4 py-1.5 border transition-all duration-200 hover:-translate-y-0.5`}
-    style={
+    aria-pressed={active}
+    className={`inline-flex h-6 items-center whitespace-nowrap rounded-full border px-2 text-xs transition-colors ${
       active
-        ? { backgroundColor: color, borderColor: color, color: "hsl(var(--accent-foreground))" }
-        : { borderColor: `${color}`, color, backgroundColor: "transparent" }
-    }
+        ? "border-foreground bg-foreground text-background"
+        : "border-border text-muted-foreground hover:bg-highlight-wash hover:text-foreground"
+    }`}
   >
     {children}
   </button>

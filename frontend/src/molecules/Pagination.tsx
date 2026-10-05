@@ -39,14 +39,14 @@ const Pagination = ({ currentPage, totalPages, onPageChange }: PaginationProps) 
   const pagesToRender = getVisiblePages();
 
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div className="flex items-center justify-center gap-2 font-mono">
       <Button
         variant="outline"
         size="sm"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
       >
-        <ChevronLeft className="w-4 h-4" />
+        <ChevronLeft className="h-4 w-4" aria-label="Previous page" />
       </Button>
 
       {pagesToRender.map((page, index) =>
@@ -61,7 +61,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }: PaginationProps) 
             {page}
           </Button>
         ) : (
-          <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
+          <span key={`ellipsis-${index}`} className="px-2 font-mono text-muted-foreground">
             ...
           </span>
         )
@@ -73,7 +73,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }: PaginationProps) 
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
       >
-        <ChevronRight className="w-4 h-4" />
+        <ChevronRight className="h-4 w-4" aria-label="Next page" />
       </Button>
     </div>
   );

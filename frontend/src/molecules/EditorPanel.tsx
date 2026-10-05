@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { Play, CheckCircle } from "lucide-react";
 import { Editor } from "@monaco-editor/react";
-import { getButtonClasses } from "@/constants/ButtonVariants";
 import { codingService } from "@/service/codingService";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useResolvedTheme } from "@/hooks/useResolvedTheme";
+import { defineProofThemes } from "@/lib/monacoTheme";
 
 
 const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }) => {
@@ -14,6 +14,7 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }
   const [testInput, setTestInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const theme = useResolvedTheme();
 
   const [isRunningTest, setIsRunningTest] = useState(false);
 
@@ -113,88 +114,100 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }
     }
   }
 
+  const fieldClass =
+    "h-7 rounded-sm border border-input bg-transparent px-2 font-mono text-[13px] text-foreground";
+
   return (
-    <div className="h-full flex flex-col bg-card border border-border rounded-xl overflow-hidden">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border-b border-border bg-secondary gap-4 sm:gap-0">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <select
-            value={language}
-            onChange={(e) => handleLanguageChange(e.target.value)}
-            className="flex-1 sm:flex-none sm:w-40 h-9 px-3 rounded-md border border-border bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="python">Python</option>
-            <option value="cpp">C++</option>
-          </select>
+    <div className="flex h-full flex-col gap-4 p-6">
+      <section className="flex min-h-[320px] flex-1 flex-col overflow-hidden rounded-md border border-border bg-secondary">
+        <div className="flex h-10 items-center justify-between gap-3 border-b border-border bg-card px-3">
+          <div className="flex items-center gap-2">
+            <select
+              value={language}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              aria-label="Language"
+              className={fieldClass}
+            >
+              <option value="python">Python 3</option>
+              <option value="cpp">C++</option>
+            </select>
 
-          <select
-            value={fontSize}
-            onChange={(e) => handleFontSizeChange(Number(e.target.value))}
-            className="w-20 h-9 px-3 rounded-md border border-border bg-transparent text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="12">12</option>
-            <option value="14">14</option>
-            <option value="16">16</option>
-            <option value="18">18</option>
-            <option value="20">20</option>
-          </select>
+            <select
+              value={fontSize}
+              onChange={(e) => handleFontSizeChange(Number(e.target.value))}
+              aria-label="Font size"
+              className={fieldClass}
+            >
+              <option value="12">12</option>
+              <option value="14">14</option>
+              <option value="16">16</option>
+              <option value="18">18</option>
+              <option value="20">20</option>
+            </select>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <button className={getButtonClasses("secondary")} onClick={handleTestCase} disabled={isRunningTest}>
-            <Play className="w-4 h-4 mr-1" />
-            Run
-          </button>
-
-          <button
-            className={getButtonClasses("accent")}
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-          >
-            <CheckCircle className="w-4 h-4 mr-1" />
-            {isSubmitting ? "Submitting..." : "Submit"}
-          </button>
+        <div className="relative min-h-0 flex-1">
+          <Editor
+            height="100%"
+            width="100%"
+            language={editorLanguage}
+            value={code}
+            onChange={(value) => setCode(value || "")}
+            beforeMount={defineProofThemes}
+            theme={theme === "dark" ? "proof-dark" : "proof-light"}
+            loading="Loading editor…"
+            options={{
+              automaticLayout: true,
+              selectOnLineNumbers: true,
+              fontSize: fontSize,
+              fontFamily: '"IBM Plex Mono", ui-monospace, Menlo, monospace',
+              lineHeight: 22,
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              padding: { top: 12, bottom: 12 },
+              renderLineHighlight: "line",
+            }}
+          />
         </div>
-      </div>
+      </section>
 
-      <div className="flex-1 relative min-h-[400px]">
-        <Editor
-          height="100%"
-          width="100%"
-          language={editorLanguage}
-          value={code}
-          onChange={(value) => setCode(value || "")}
-          theme="vs-dark"
-          loading="Loading editor..."
-          options={{
-            automaticLayout: true,
-            selectOnLineNumbers: true,
-            fontSize: fontSize,
-            fontFamily: "monospace",
-          }}
-        />
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4 p-4">
-        <div className="flex-1 h-32 border-t border-border bg-secondary p-4 overflow-y-hidden rounded-md">
+      <section className="grid gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="overline mb-1 block">Input</span>
           <textarea
             onChange={(e) => setTestInput(e.target.value)}
             value={testInput}
-            placeholder="INPUT"
-            className="w-full h-full resize-none bg-background text-foreground text-sm p-2 rounded-md outline-none"
+            className="h-28 w-full resize-none rounded-md border border-input bg-card p-2 font-mono text-[13px] leading-5 text-foreground"
           />
-        </div>
+        </label>
 
-        <div className="flex-1 h-32 border-t border-border bg-secondary p-4 overflow-y-hidden rounded-md">
+        <label className="block">
+          <span className="overline mb-1 block">Output</span>
           <textarea
             value={output}
-            placeholder="OUTPUT"
-            disabled
-            className="w-full h-full resize-none bg-background text-foreground text-sm p-2 rounded-md outline-none"
+            readOnly
+            className="h-28 w-full resize-none rounded-md border border-border bg-secondary p-2 font-mono text-[13px] leading-5 text-foreground"
           />
-        </div>
+        </label>
+      </section>
 
+      <div className="flex justify-end gap-3">
+        <button
+          className="inline-flex h-9 items-center rounded-sm border border-input px-4 text-sm font-semibold transition-colors hover:border-foreground hover:bg-highlight-wash disabled:cursor-not-allowed disabled:border-border disabled:text-muted-foreground"
+          onClick={handleTestCase}
+          disabled={isRunningTest}
+        >
+          Run tests
+        </button>
+        <button
+          className="inline-flex h-9 items-center rounded-sm border border-highlight bg-highlight px-4 text-sm font-semibold text-highlight-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-secondary disabled:text-muted-foreground"
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Submitting…" : "Submit"}
+        </button>
       </div>
-
     </div>
   );
 };

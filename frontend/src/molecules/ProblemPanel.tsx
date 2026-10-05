@@ -4,11 +4,10 @@ import EditorialTab from "./EditorialTab";
 import { Tab } from "@/types/Tabs";
 import ProblemDescription from "./ProblemDescription";
 import { SubmissionsContent } from "./SubmissionContent";
-import FloatingShapes from "./FloatingShapes";
 
 const EditorialContent = () => (
   <div className="p-6">
-    <h2 className="text-lg font-semibold mb-3">Editorial</h2>
+    <h2 className="mb-3 font-serif text-2xl font-medium">Editorial</h2>
     <p className="text-muted-foreground">The editorial for this problem is not yet available.</p>
   </div>
 );
@@ -36,28 +35,23 @@ const ProblemPanel: React.FC<ProblemPanelProps> = ({ problem, activeTab, setActi
 
   const TabButton: React.FC<{ tabId: Tab; label: string }> = ({ tabId, label }) => (
     <button
+      role="tab"
+      aria-selected={activeTab === tabId}
       onClick={() => setActiveTab(tabId)}
-      data-state={activeTab === tabId ? 'active' : 'inactive'}
-      className="px-4 py-2.5 font-['Space_Mono'] text-[11px] tracking-[0.15em] uppercase transition-colors
-                 text-muted-foreground hover:text-foreground
-                 data-[state=active]:text-brand-orange
-                 data-[state=active]:border-b-2
-                 data-[state=active]:border-brand-orange"
+      className="py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground aria-selected:text-foreground aria-selected:shadow-[inset_0_-2px_0_hsl(var(--ink))]"
     >
       {label}
     </button>
   );
 
   return (
-    <div className="relative w-full lg:w-2/5 flex flex-col h-[500px] lg:h-full shrink-0 overflow-hidden bg-card border border-border rounded-xl">
-      <FloatingShapes className="opacity-40" />
-
-      <div className="relative z-10 flex border-b border-border px-2">
-        <TabButton tabId="problem" label="Problem" />
-        <TabButton tabId="submissions" label="Submissions" />
+    <div className="flex h-[560px] w-full shrink-0 flex-col border-b border-border lg:h-full lg:min-h-0 lg:border-b-0 lg:border-r">
+      <div role="tablist" className="flex gap-6 border-b border-border px-6 pt-4">
+        <TabButton tabId="problem" label="Statement" />
         <TabButton tabId="editorial" label="Editorial" />
+        <TabButton tabId="submissions" label="Submissions" />
       </div>
-      <div className="relative z-10 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {renderTabContent()}
       </div>
     </div>
