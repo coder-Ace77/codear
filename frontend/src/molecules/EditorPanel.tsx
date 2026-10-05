@@ -62,6 +62,14 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }
     cpp: "cpp",
   }[language];
 
+  // Seconds until the next submission is allowed, after the server answers 429.
+  const [cooldown, setCooldown] = useState(0);
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = window.setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => window.clearTimeout(id);
+  }, [cooldown]);
+
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
@@ -73,12 +81,18 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }
       setSubmissionId(submissionId);
       setAcitveTab('submissions');
       setIsSubmitting(false);
-    } catch (err) {
-
+    } catch (err: any) {
       console.error(err);
-      toast.error("Error submitting code. Please try again");
+      if (err.response?.status === 429) {
+        const header = Number(err.response.headers?.["retry-after"]);
+        const fromText = Number(/in (\d+)s/.exec(err.response.data?.detail ?? "")?.[1]);
+        const wait = header || fromText || 10;
+        setCooldown(wait);
+        toast.error(`You can submit again in ${wait} seconds.`);
+      } else {
+        toast.error("Error submitting code. Please try again");
+      }
       setIsSubmitting(false);
-
     }
   };
 
@@ -203,9 +217,9 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }
         <button
           className="inline-flex h-9 items-center rounded-sm border border-highlight bg-highlight px-4 text-sm font-semibold text-highlight-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-secondary disabled:text-muted-foreground"
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || cooldown > 0}
         >
-          {isSubmitting ? "Submitting…" : "Submit"}
+          {isSubmitting ? "Submitting…" : cooldown > 0 ? `Wait ${cooldown}s` : "Submit"}
         </button>
       </div>
     </div>

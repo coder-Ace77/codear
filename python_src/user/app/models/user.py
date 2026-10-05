@@ -27,3 +27,16 @@ class ChatMessage(Base):
     role = Column(String)
     problem_id = Column(String, nullable=True) # Assuming string ID for problem, nullable for old messages
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
+class ApiKey(Base):
+    """A key a user creates to call the API without signing in. Only a SHA-256 of the key is stored.
+    The problem service maps this same table to authenticate requests, so keep both definitions in step."""
+    __tablename__ = "api_keys"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    prefix = Column(String, nullable=False)  # first characters of the key, so a person can tell keys apart
+    key_hash = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)

@@ -6,6 +6,7 @@ import Input from "@/atoms/Input";
 import Label from "@/atoms/Label";
 import Select from "@/atoms/Select";
 import Badge from "@/atoms/Badge";
+import AdminLive from "@/molecules/AdminLive";
 import { Plus, X, Trash2 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { Textarea } from "@/components/ui/textarea";
@@ -184,6 +185,12 @@ const Admin = () => {
               className="rounded-none border-0 bg-transparent px-0 pb-2 pt-0 text-sm font-medium text-muted-foreground shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-[inset_0_-2px_0_hsl(var(--ink))]"
             >
               Manage problems
+            </TabsTrigger>
+            <TabsTrigger
+              value="live"
+              className="rounded-none border-0 bg-transparent px-0 pb-2 pt-0 text-sm font-medium text-muted-foreground shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-[inset_0_-2px_0_hsl(var(--ink))]"
+            >
+              Live activity
             </TabsTrigger>
           </TabsList>
 
@@ -412,6 +419,9 @@ const Admin = () => {
                 </div>
               )}
             </div>
+          </TabsContent>
+          <TabsContent value="live">
+            {activeTab === "live" && <AdminLive />}
           </TabsContent>
         </Tabs>
       </div>

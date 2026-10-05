@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Admin from "./pages/Admin";
+import Developers from "./pages/Developers";
 import NotFound from "./pages/NotFound";
 import SubmissionResult from "./pages/SubmissionResult";
 import ToastProvider from "./components/providers/ToastProvider";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/developers" element={<Developers />} />
             <Route path="/submissions/:submissionId" element={<SubmissionResult />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 
 from app.database import SessionLocal, redis_client
 from app.main import app
-from app.models.user import ChatMessage, User
+from app.models.user import ApiKey, ChatMessage, User
 
 
 @pytest.fixture(scope="session")
@@ -42,6 +42,7 @@ def clean_state():
     """Postgres and Redis are shared across tests, so reset both between them."""
     session = SessionLocal()
     try:
+        session.query(ApiKey).delete()
         session.query(ChatMessage).delete()
         session.query(User).delete()
         session.commit()

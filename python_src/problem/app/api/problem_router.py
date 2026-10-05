@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query, Header, HTTPException
 from typing import List, Optional
 from app.database import get_db
 from app.core.auth import CurrentUser, get_current_user, require_admin
+from app.core.rate_limit import rate_limited_submitter
 from app.services.problem_service import ProblemService
 from sqlalchemy.orm import Session
 from app.services.submission_service import SubmissionService
@@ -66,7 +67,7 @@ async def run_test_case(test_data: TestDTO, user: CurrentUser = Depends(get_curr
 @router.post("/submit")
 async def submit(
     data: CodeRequest,
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(rate_limited_submitter),
     db=Depends(get_db)
 ):
     service = SubmissionService(db)
