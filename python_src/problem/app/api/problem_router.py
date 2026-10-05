@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, Query, Header, HTTPException
 from typing import List, Optional
 from app.database import get_db
-from app.core import security
+from app.core.auth import CurrentUser, get_current_user, require_admin
 from app.services.problem_service import ProblemService
 from sqlalchemy.orm import Session
 from app.services.submission_service import SubmissionService
-from app.schemas.problem_schema import  ProblemDTO, ProblemSendDTO, ProblemsMetaData, ProblemSummaryDTO, CodeRequest
+from app.schemas.problem_schema import  ProblemDTO, ProblemSendDTO, ProblemsMetaData, ProblemSummaryDTO, CodeRequest, SubmissionResponse
 import uuid
 from app.schemas.problem_schema import TestDTO
 from app.core.sqs import send_to_queue, TEST_QUEUE_URL
@@ -50,13 +50,14 @@ async def search(
     }
 
 @router.post("/test")
-async def run_test_case(test_data: TestDTO):
+async def run_test_case(test_data: TestDTO, user: CurrentUser = Depends(get_current_user)):
     submission_id = str(uuid.uuid4())
     test_data.submissionId = submission_id
     test_data.status = "IN_PROGRESS"
+    test_data.userId = user.id  # always the caller, whatever the body says
     send_to_queue(test_data.model_dump(), queue_url=TEST_QUEUE_URL)
     CacheService.set_object(submission_id, test_data.model_dump(), expire_seconds=600)
-    
+
     return {
         "message": "Test in queue",
         "submissionId": submission_id
@@ -64,20 +65,27 @@ async def run_test_case(test_data: TestDTO):
 
 @router.post("/submit")
 async def submit(
-    data: CodeRequest, 
-    authorization: str = Header(...), 
+    data: CodeRequest,
+    user: CurrentUser = Depends(get_current_user),
     db=Depends(get_db)
 ):
-    user_id = security.extract_user_id(authorization.split(" ")[1])
     service = SubmissionService(db)
-    res = await service.submit_code(data, int(user_id))
+    res = await service.submit_code(data, user.id)
     return {"message": "Code submitted successfully", "submissionId": res}
 
 
-@router.get("/submissions/{submissionId}")
-async def get_status(submissionId: str, db=Depends(get_db)):
+@router.get("/submissions/{submissionId}", response_model=SubmissionResponse)
+async def get_status(
+    submissionId: str,
+    user: CurrentUser = Depends(get_current_user),
+    db=Depends(get_db),
+):
     service = SubmissionService(db)
-    return await service.long_poll_submission(submissionId)
+    submission = await service.long_poll_submission(submissionId, user)
+    if not submission:
+        # Someone else's submission looks exactly like one that does not exist.
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return submission
 
 @router.get("/problem/{id}", response_model=ProblemSendDTO)
 def get_problem_by_id(id: int, db: Session = Depends(get_db)):
@@ -97,17 +105,11 @@ def get_problem_cnt_and_tags(db: Session = Depends(get_db)):
 
 @router.get("/recent", response_model=List[ProblemSummaryDTO])
 def get_recent_problems(
-    authorization: str = Header(...), 
+    user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    token = authorization.split(" ")[1]
-    user_id = security.extract_user_id(token)
-    
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
     service = ProblemService(db)
-    return service.get_problem_summary_recent(user_id)
+    return service.get_problem_summary_recent(user.id)
 
 @router.get("/problems", response_model=List[ProblemSummaryDTO])
 def get_all_problems(db: Session = Depends(get_db)):
@@ -115,13 +117,21 @@ def get_all_problems(db: Session = Depends(get_db)):
     return service.get_all_problems()
 
 @router.post("/addproblem", response_model=ProblemDTO)
-async def create_problem(problem: ProblemDTO, db: Session = Depends(get_db)):
+async def create_problem(
+    problem: ProblemDTO,
+    _admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
     service = ProblemService(db)
     saved_problem = service.add_problem(problem)
     return saved_problem
 
 @router.delete("/{id}")
-async def delete_problem(id: int, db: Session = Depends(get_db)):
+async def delete_problem(
+    id: int,
+    _admin: CurrentUser = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
     service = ProblemService(db)
     success = service.delete_problem(id)
     if not success:

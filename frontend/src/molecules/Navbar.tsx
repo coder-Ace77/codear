@@ -7,8 +7,8 @@ import apiClient from "@/lib/apiClient";
 import toast from "react-hot-toast";
 import { useTheme } from "@/hooks/useTheme";
 
-const isAdmin = (user: User | null) =>
-  !!user && (user.role === "ADMIN" || user.username === "Admin");
+// Only the role decides. The backend re-checks it on every admin request; this just hides the link.
+const isAdmin = (user: User | null) => !!user && user.role === "ADMIN";
 
 const initials = (name: string) =>
   name

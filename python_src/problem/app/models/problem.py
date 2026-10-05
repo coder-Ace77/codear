@@ -11,6 +11,14 @@ class SubmissionStatus(str, enum.Enum):
     FAILED = "FAILED"
     PASSED = "PASSED"
 
+class User(Base):
+    """The user service owns this table. The problem service only reads it, to confirm a token's
+    user still exists and to read their current role, so only those columns are mapped."""
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    username = Column(String)
+    role = Column(String)
+
 class Problem(Base):
     __tablename__ = "problems"
     __table_args__ = (

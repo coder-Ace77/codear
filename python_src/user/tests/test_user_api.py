@@ -105,14 +105,14 @@ def test_get_user_rejects_invalid_token(client):
     assert response.status_code == 401
 
 
-def test_get_user_404s_for_deleted_user(client):
+def test_get_user_rejects_token_for_deleted_user(client):
     token = security.create_access_token({"sub": "999999"})
 
     response = client.get(
         "/api/v1/user/user", headers={"Authorization": f"Bearer {token}"}
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 401
 
 
 def test_chat_history_requires_authorization(client):

@@ -4,9 +4,9 @@ from datetime import datetime
 
 class EditorialCreateDTO(BaseModel):
     problemId: int
-    title: str
-    content: str
-    
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1, max_length=20000)
+
 class EditorialDTO(BaseModel):
     id: int
     problemId: int = Field(..., alias="problem_id")

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app.services.submission_service import SubmissionService
-from app.core import security
+from app.core.auth import CurrentUser, get_current_user
 from app.schemas.problem_schema import SubmissionResponse
 from app.services.cache_service import CacheService
 from app.schemas.problem_schema import TestDTO
@@ -13,30 +13,16 @@ router = APIRouter(prefix="/api/v1/problem/submissions")
 
 @router.get("/subuser/{problemId}", response_model=List[SubmissionResponse])
 async def get_user_submissions(
-    problemId: int, 
-    authorization: str = Header(...), 
+    problemId: int,
+    user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # 1. Handle Authorization Header
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    
-    token = authorization.split(" ")[1]
-    
-    # 2. Extract user_id using the Security module
-    user_id = security.extract_user_id(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
-    # 3. Fetch data using Service
-    service = SubmissionService(db)
-    submissions = service.get_submissions_by_user_and_problem(user_id, problemId)
-    
-    return submissions
+    # Always the caller's own submissions: the user id comes from the verified token.
+    return SubmissionService(db).get_submissions_by_user_and_problem(user.id, problemId)
 
 
 @router.get("/test/{submissionId}")
-async def test_polling(submissionId: str):
+async def test_polling(submissionId: str, user: CurrentUser = Depends(get_current_user)):
     """
     Equivalent to TestCaseRun.longPollingService in Java.
     Polls Redis for up to 10 seconds to see if the status has changed from IN_PROGRESS.
@@ -48,7 +34,10 @@ async def test_polling(submissionId: str):
     # Initial fetch
     test_result = CacheService.get_object(submissionId)
     
-    if not test_result:
+    def visible_to_caller(result) -> bool:
+        return bool(result) and (result.get("userId") == user.id or user.is_admin)
+
+    if not visible_to_caller(test_result):
         raise HTTPException(
             status_code=404, 
             detail="Test session not found. It may have expired or never existed."
@@ -62,7 +51,9 @@ async def test_polling(submissionId: str):
         
         # Re-fetch from Redis
         test_result = CacheService.get_object(submissionId)
-        if not test_result:
+        if not visible_to_caller(test_result):
             break # Safety break if object expires during polling
 
+    if not visible_to_caller(test_result):
+        raise HTTPException(status_code=404, detail="Test session not found. It may have expired or never existed.")
     return test_result

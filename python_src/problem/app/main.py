@@ -1,3 +1,4 @@
+import logging
 import os
 import uvicorn
 from fastapi import FastAPI, Request
@@ -17,19 +18,25 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# CORS_ORIGINS is a comma-separated list of allowed frontend origins. Auth is a Bearer header,
+# not a cookie, so credentials are never needed (and "*" with credentials is not allowed).
+_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 @app.exception_handler(Exception)
 async def runtime_exception_handler(request: Request, exc: Exception):
+    # Log the real error; never send exception text (SQL, hostnames, paths) to the client.
+    logging.getLogger(__name__).exception("Unhandled error on %s %s", request.method, request.url.path)
     return JSONResponse(
-        status_code=404,
-        content={"message": str(exc)},
+        status_code=500,
+        content={"message": "Internal server error"},
     )
 
 app.include_router(problem_router.router)

@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from app.api import user_router
 from app.database import engine, Base
@@ -8,12 +10,16 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="User Microservice")
 
+# CORS_ORIGINS is a comma-separated list of allowed frontend origins. Auth is a Bearer header,
+# not a cookie, so credentials are never needed (and "*" with credentials is not allowed).
+_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
-    allow_credentials=True,
-    allow_methods=["*"],  
-    allow_headers=["*"],  
+    allow_origins=_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(user_router.router)

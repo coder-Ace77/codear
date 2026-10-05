@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
+import type { User } from "@/types/User";
 import Button from "@/atoms/Button";
 import Input from "@/atoms/Input";
 import Label from "@/atoms/Label";
@@ -22,6 +24,16 @@ import {
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState("create");
+
+  // undefined = still checking, null = not signed in. The API enforces the role on every
+  // request; this only keeps non-admins from seeing the page.
+  const [me, setMe] = useState<User | null | undefined>(undefined);
+  useEffect(() => {
+    apiClient
+      .get("/user/user")
+      .then((r) => setMe(r.data as User))
+      .catch(() => setMe(null));
+  }, []);
 
   // Create Problem State
   const [formData, setFormData] = useState({
@@ -141,6 +153,13 @@ const Admin = () => {
     }
   };
 
+
+  if (me === undefined) {
+    return <p className="p-12 text-center text-muted-foreground">Checking access…</p>;
+  }
+  if (!me || me.role !== "ADMIN") {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <main className="mx-auto max-w-[1600px] px-6 pb-16 pt-12">
