@@ -221,3 +221,78 @@ def test_change_password_requires_authentication(client):
     )
 
     assert response.status_code == 401
+
+
+# --- API keys ---
+
+
+def test_create_api_key_returns_the_key_once(client, user_token):
+    created = client.post(f"{BASE}/api-keys", headers=bearer(user_token), json={"name": "ci"})
+
+    assert created.status_code == 200
+    body = created.json()
+    assert body["key"].startswith("cdr_") and len(body["key"]) > 30
+    assert body["prefix"] == body["key"][:8]
+
+    listed = client.get(f"{BASE}/api-keys", headers=bearer(user_token)).json()
+    assert [k["name"] for k in listed] == ["ci"]
+    assert "key" not in listed[0] and "keyHash" not in listed[0] and "key_hash" not in listed[0]
+
+
+def test_only_a_hash_of_the_key_is_stored(client, db, user_token):
+    from app.models.user import ApiKey
+    from app.services.api_key_service import hash_key
+
+    key = client.post(f"{BASE}/api-keys", headers=bearer(user_token), json={"name": "ci"}).json()["key"]
+
+    row = db.query(ApiKey).one()
+    assert row.key_hash == hash_key(key)
+    assert key not in (row.key_hash, row.prefix, row.name)
+
+
+def test_api_keys_require_a_session(client):
+    assert client.post(f"{BASE}/api-keys", json={"name": "x"}).status_code == 401
+    assert client.get(f"{BASE}/api-keys").status_code == 401
+
+
+def test_an_api_key_cannot_manage_api_keys(client, user_token):
+    key = client.post(f"{BASE}/api-keys", headers=bearer(user_token), json={"name": "ci"}).json()["key"]
+
+    # a key is not a session token: it cannot mint or list keys
+    assert client.post(f"{BASE}/api-keys", headers=bearer(key), json={"name": "evil"}).status_code == 401
+    assert client.get(f"{BASE}/api-keys", headers={"X-API-Key": key}).status_code == 401
+
+
+def test_users_can_have_five_active_keys(client, user_token):
+    for i in range(5):
+        assert client.post(f"{BASE}/api-keys", headers=bearer(user_token), json={"name": f"k{i}"}).status_code == 200
+
+    sixth = client.post(f"{BASE}/api-keys", headers=bearer(user_token), json={"name": "k6"})
+
+    assert sixth.status_code == 400
+
+
+def test_revoking_a_key_frees_a_slot_and_hides_it(client, user_token):
+    ids = [
+        client.post(f"{BASE}/api-keys", headers=bearer(user_token), json={"name": f"k{i}"}).json()["id"]
+        for i in range(5)
+    ]
+
+    assert client.delete(f"{BASE}/api-keys/{ids[0]}", headers=bearer(user_token)).status_code == 200
+
+    assert len(client.get(f"{BASE}/api-keys", headers=bearer(user_token)).json()) == 4
+    assert client.post(f"{BASE}/api-keys", headers=bearer(user_token), json={"name": "again"}).status_code == 200
+
+
+def test_you_cannot_revoke_someone_elses_key(client, new_user, user_token):
+    key_id = client.post(f"{BASE}/api-keys", headers=bearer(user_token), json={"name": "mine"}).json()["id"]
+    other = {**new_user, "username": "intruder", "email": "intruder_" + new_user["email"]}
+    register(client, other)
+    other_token = login(client, other["email"], other["password"]).json()["token"]
+
+    assert client.delete(f"{BASE}/api-keys/{key_id}", headers=bearer(other_token)).status_code == 404
+    assert len(client.get(f"{BASE}/api-keys", headers=bearer(user_token)).json()) == 1
+
+
+def test_api_key_name_is_required(client, user_token):
+    assert client.post(f"{BASE}/api-keys", headers=bearer(user_token), json={"name": ""}).status_code == 422

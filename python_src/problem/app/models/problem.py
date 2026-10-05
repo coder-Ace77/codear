@@ -19,6 +19,20 @@ class User(Base):
     username = Column(String)
     role = Column(String)
 
+class ApiKey(Base):
+    """Owned by the user service, which creates and revokes keys. Mapped here only to authenticate
+    requests, so keep this definition identical to the user service's: whichever service starts first
+    creates the table."""
+    __tablename__ = "api_keys"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    prefix = Column(String, nullable=False)
+    key_hash = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+
 class Problem(Base):
     __tablename__ = "problems"
     __table_args__ = (

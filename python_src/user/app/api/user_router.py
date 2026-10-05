@@ -7,6 +7,9 @@ from app.core.deps import get_current_user, require_admin
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user_schema import (
+    ApiKeyCreated,
+    ApiKeyCreateDTO,
+    ApiKeyResponse,
     ChangePasswordDTO,
     ChatRequest,
     LoginDTO,
@@ -15,6 +18,7 @@ from app.schemas.user_schema import (
     UserResponse,
 )
 from app.services.ai_service import AiService
+from app.services.api_key_service import ApiKeyService
 from app.services.user_service import UserService
 
 router = APIRouter(prefix="/api/v1/user")
@@ -46,6 +50,30 @@ def change_password(
 ):
     UserService(db).change_password(user, data)
     return {"message": "Password updated"}
+
+
+# --- API keys. Managing keys needs a signed-in session (a JWT), so a leaked key cannot mint more. ---
+
+
+@router.post("/api-keys", response_model=ApiKeyCreated)
+def create_api_key(
+    body: ApiKeyCreateDTO,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row, key = ApiKeyService(db).create(user.id, body.name)
+    return ApiKeyCreated(**ApiKeyResponse.from_row(row).model_dump(), key=key)
+
+
+@router.get("/api-keys", response_model=List[ApiKeyResponse])
+def list_api_keys(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return [ApiKeyResponse.from_row(r) for r in ApiKeyService(db).list(user.id)]
+
+
+@router.delete("/api-keys/{key_id}")
+def revoke_api_key(key_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    ApiKeyService(db).revoke(user.id, key_id)
+    return {"message": "API key revoked"}
 
 
 @router.post("/chat")

@@ -19,7 +19,8 @@ app.add_middleware(
     allow_origins=_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
+    expose_headers=["Retry-After"],
 )
 
 app.include_router(user_router.router)

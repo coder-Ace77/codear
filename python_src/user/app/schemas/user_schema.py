@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -75,6 +76,26 @@ class RoleChangeDTO(BaseModel):
         if v not in ROLES:
             raise ValueError(f"Role must be one of {', '.join(ROLES)}")
         return v
+
+
+class ApiKeyCreateDTO(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class ApiKeyResponse(BaseModel):
+    id: int
+    name: str
+    prefix: str
+    createdAt: datetime
+    lastUsedAt: Optional[datetime] = None
+
+    @classmethod
+    def from_row(cls, row) -> "ApiKeyResponse":
+        return cls(id=row.id, name=row.name, prefix=row.prefix, createdAt=row.created_at, lastUsedAt=row.last_used_at)
+
+
+class ApiKeyCreated(ApiKeyResponse):
+    key: str  # the only time the full key is ever returned
 
 
 class ChatRequest(BaseModel):
