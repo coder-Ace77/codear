@@ -56,15 +56,15 @@ class ProblemsMetaData(BaseModel):
 class CodeRequest(BaseModel):
     # This replaces the Code.java DTO
     problemId: int
-    code: str
-    language: str
+    code: str = Field(max_length=65536)
+    language: str = Field(max_length=16)
 
 class TestDTO(BaseModel):
     userId: Optional[int] = None
-    code: str
-    language: str
+    code: str = Field(max_length=65536)
+    language: str = Field(max_length=16)
     problemId: int
-    input: str
+    input: str = Field(max_length=65536)
     output: Optional[str] = None
     status: Optional[str] = "IN_PROGRESS"
     submissionId: Optional[str] = None

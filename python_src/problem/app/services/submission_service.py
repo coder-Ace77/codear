@@ -41,20 +41,25 @@ class SubmissionService:
         })
         return sub_id
 
-    async def long_poll_submission(self, sub_id: str):
+    async def long_poll_submission(self, sub_id: str, user):
+        """The submission, once judged (or after 10s). None when it does not exist or is not the
+        caller's; admins may read any submission."""
+        submission = self.db.query(Submission).filter(Submission.submission_id == sub_id).first()
+        if not submission or (submission.user_id != user.id and not user.is_admin):
+            return None
+
         max_wait = 10  # seconds
         waited = 0
-        
         while waited < max_wait:
             status = cache.get_cache(sub_id)
             if status != SubmissionStatus.IN_PROGRESS.value:
                 break
             await asyncio.sleep(1)
             waited += 1
-            
-        submission = self.db.query(Submission).filter(Submission.submission_id == sub_id).first()
+
+        self.db.refresh(submission)
         return submission
-    
+
     def get_submissions_by_user_and_problem(self, user_id: int, problem_id: int) -> list[Submission]:
         """Equivalent to getSubmissionByIdAndProblem in Java."""
         return (

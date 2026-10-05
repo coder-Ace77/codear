@@ -1,4 +1,4 @@
-from tests.helpers import bearer
+from tests.helpers import admin_bearer, bearer
 
 BASE = "/api/v1/problem"
 
@@ -74,14 +74,37 @@ def test_editorial_url_id_wins_over_body_id(client, created_problem, auth_header
 
 def test_admin_editorials_are_listed_first(client, created_problem):
     problem_id, _ = created_problem
-    for username in ("tester", "admin"):
+    for title, headers in (("tester", bearer()), ("admin", admin_bearer())):
         client.post(
             f"{BASE}/{problem_id}/editorial",
-            headers=bearer(username=username),
-            json={"problemId": problem_id, "title": username, "content": "c"},
+            headers=headers,
+            json={"problemId": problem_id, "title": title, "content": "c"},
         )
 
     listed = client.get(f"{BASE}/{problem_id}/editorial").json()
 
     assert [e["title"] for e in listed] == ["admin", "tester"]
     assert listed[0]["is_admin"] is True
+
+
+def test_a_user_named_admin_is_not_an_official_author(client, created_problem, db_user_named_admin):
+    problem_id, _ = created_problem
+
+    response = client.post(
+        f"{BASE}/{problem_id}/editorial",
+        headers=bearer(db_user_named_admin, "admin"),
+        json={"problemId": problem_id, "title": "t", "content": "c"},
+    )
+
+    assert response.json()["is_admin"] is False
+
+
+def test_editorial_requires_authentication(client, created_problem):
+    problem_id, _ = created_problem
+
+    response = client.post(
+        f"{BASE}/{problem_id}/editorial",
+        json={"problemId": problem_id, "title": "t", "content": "c"},
+    )
+
+    assert response.status_code == 401

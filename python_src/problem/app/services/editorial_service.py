@@ -8,9 +8,7 @@ class EditorialService:
     def __init__(self, db: Session):
         self.db = db
 
-    def add_editorial(self, dto: EditorialCreateDTO, user_id: int, username: str) -> Editorial:
-        is_admin = (username == "admin")
-        
+    def add_editorial(self, dto: EditorialCreateDTO, user_id: int, username: str, is_admin: bool = False) -> Editorial:
         editorial = Editorial(
             problem_id=dto.problemId,
             user_id=user_id,

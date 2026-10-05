@@ -20,8 +20,8 @@ from fastapi.testclient import TestClient
 from app.core.local_cache import LocalCache
 from app.database import SessionLocal, redis_client
 from app.main import app
-from app.models.problem import Editorial, Problem, Submission, TestCase
-from tests.helpers import bearer
+from app.models.problem import Editorial, Problem, Submission, TestCase, User
+from tests.helpers import ADMIN_ID, OTHER_USER_ID, USER_ID, admin_bearer, bearer
 
 
 @pytest.fixture(scope="session")
@@ -35,6 +35,11 @@ def auth_header():
     return bearer()
 
 
+@pytest.fixture
+def admin_header():
+    return admin_bearer()
+
+
 @pytest.fixture(autouse=True)
 def clean_state():
     """Postgres, Redis and the in-process LocalCache all outlive a single test."""
@@ -44,6 +49,14 @@ def clean_state():
         session.query(Submission).delete()
         session.query(TestCase).delete()
         session.query(Problem).delete()
+        session.query(User).delete()
+        session.add_all(
+            [
+                User(id=USER_ID, username="tester", role="USER"),
+                User(id=OTHER_USER_ID, username="someone_else", role="USER"),
+                User(id=ADMIN_ID, username="root_admin", role="ADMIN"),
+            ]
+        )
         session.commit()
     finally:
         session.close()
@@ -79,12 +92,14 @@ def problem_payload():
 
 
 @pytest.fixture
-def add_problem(client):
-    """Creates a problem through the API and returns its id."""
+def add_problem(client, admin_header):
+    """Creates a problem through the API (as an admin) and returns its id."""
 
     def _add(**overrides):
         response = client.post(
-            "/api/v1/problem/addproblem", json=_problem_payload(**overrides)
+            "/api/v1/problem/addproblem",
+            json=_problem_payload(**overrides),
+            headers=admin_header,
         )
         assert response.status_code == 200, response.text
         return response.json()["id"]
@@ -97,3 +112,15 @@ def created_problem(add_problem):
     """A problem in the DB; returns (id, payload)."""
     payload = _problem_payload()
     return add_problem(), payload
+
+
+@pytest.fixture
+def db_user_named_admin():
+    """A plain USER whose username is "admin": the name must not grant anything."""
+    session = SessionLocal()
+    try:
+        session.add(User(id=50, username="admin", role="USER"))
+        session.commit()
+    finally:
+        session.close()
+    return 50

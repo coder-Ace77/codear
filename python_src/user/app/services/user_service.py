@@ -1,100 +1,128 @@
-from sqlalchemy.orm import Session
-from app.models.user import User
-from app.schemas.user_schema import RegisterDTO, LoginDTO
-from app.core import security
+from datetime import datetime
+
 from fastapi import HTTPException
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.core import security
+from app.models.user import User
+from app.schemas.user_schema import ChangePasswordDTO, LoginDTO, RegisterDTO
+from app.services.login_throttle import LoginThrottle
+
+# Cached copies never hold the password hash.
+CACHED_COLUMNS_EXCLUDED = {"password"}
+
 
 class UserService:
     def __init__(self, db: Session):
         self.db = db
 
     def register_user(self, data: RegisterDTO):
-        # Check if email/username exists
-        # Check if email/username exists
-        if self.get_user_by_email(data.email):
+        # Email is lower-cased by the schema; usernames are compared case-insensitively so
+        # "Admin" and "admin" cannot both exist.
+        if self._by_email(data.email):
             raise HTTPException(status_code=400, detail="Email already in use")
-        
-        if self.db.query(User).filter(User.username == data.username).first():
+
+        if self.db.query(User).filter(func.lower(User.username) == data.username.lower()).first():
             raise HTTPException(status_code=400, detail="Username already taken")
 
-        hashed_password = security.get_password_hash(data.password)
-        
         new_user = User(
             username=data.username,
-            name=data.name,
+            name=data.name.strip(),
             email=data.email,
-            password=hashed_password,
-            role="USER",
+            password=security.get_password_hash(data.password),
+            role=security.ROLE_USER,  # registration can never create an admin
             daily_streak=0,
-            problem_solved_total=0
+            problem_solved_total=0,
         )
-        
+
         self.db.add(new_user)
         self.db.commit()
         self.db.refresh(new_user)
         return new_user
 
     def login_user(self, data: LoginDTO):
-        user = self.get_user_by_email(data.email)
-        if not user or not security.verify_password(data.password, user.password):
+        """Returns a token, None for bad credentials, and raises 429 when throttled."""
+        if LoginThrottle.is_blocked(data.email):
+            raise HTTPException(status_code=429, detail="Too many failed attempts. Try again in a few minutes.")
+
+        # Credentials are always checked against the database, never the cache.
+        user = self._by_email(data.email)
+        valid = security.verify_password_or_dummy(data.password, user.password if user else None)
+        if not user or not valid:
+            LoginThrottle.record_failure(data.email)
             return None
-        
-        # Generate JWT token using user ID as subject
-        return security.create_access_token(data={"sub": str(user.id), "username": user.username})
+
+        LoginThrottle.clear(data.email)
+        return security.create_access_token(
+            data={"sub": str(user.id), "username": user.username, "role": user.role}
+        )
+
+    def change_password(self, user: User, data: ChangePasswordDTO):
+        # `user` may be a cached copy without a hash, so reload the real row.
+        row = self.db.query(User).filter(User.id == user.id).first()
+        if not row or not security.verify_password(data.currentPassword, row.password):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        row.password = security.get_password_hash(data.newPassword)
+        self.db.commit()
+
+    def set_role(self, target_id: int, role: str, acting_admin: User) -> User:
+        target = self.db.query(User).filter(User.id == target_id).first()
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found")
+        if target.id == acting_admin.id and role != security.ROLE_ADMIN:
+            raise HTTPException(status_code=400, detail="You cannot remove your own admin role")
+        target.role = role
+        self.db.commit()
+        self.invalidate(target.id)
+        return target
+
+    def list_users(self):
+        return self.db.query(User).order_by(User.id).all()
+
+    def _by_email(self, email: str):
+        return self.db.query(User).filter(func.lower(User.email) == email.lower()).first()
 
     def get_user_by_email(self, email: str):
-        from app.services.cache_service import CacheService
-        
-        # Check cache for email -> id mapping
-        cache_key_email = f"user:email:{email}"
-        user_id = CacheService.get_object(cache_key_email)
-        
-        if user_id:
-            user = self.get_user_by_id(int(user_id))
-            if user:
-                return user
-            # If user not found (inconsitency), fall through to DB
-        
-        user = self.db.query(User).filter(User.email == email).first()
-        
-        if user:
-            # Cache the email -> id mapping
-            CacheService.set_object(cache_key_email, str(user.id))
-            # Also cache the user object itself by calling get_user_by_id logic or rely on next call
-            # Ideally we should populate the ID cache too if we have the object
-            # But get_user_by_id handles its own caching. 
-            # We can manually seed it here or let the next call do it.
-            # For efficiency in login, we might want to seed it.
-            # But simpler to just rely on get_user_by_id call later or independent cache.
-            pass
-            
-        return user
+        return self._by_email(email.strip().lower())
 
-    def get_user_by_id(self, user_id: int):
+    @staticmethod
+    def invalidate(user_id: int):
         from app.services.cache_service import CacheService
-        from datetime import datetime
-        
+
+        try:
+            CacheService.delete(f"user:{user_id}")
+        except Exception:
+            pass
+
+    def get_user_by_id(self, user_id: int, use_cache: bool = True):
+        from app.services.cache_service import CacheService
+
         cache_key = f"user:{user_id}"
-        cached_data = CacheService.get_object(cache_key)
-        
-        if cached_data:
-            # Reconstruct User object from dictionary
-            # Convert datetime strings back to datetime objects
-            if cached_data.get("last_chat_reset"):
-                cached_data["last_chat_reset"] = datetime.fromisoformat(cached_data["last_chat_reset"])
-            return User(**cached_data)
+
+        if use_cache:
+            try:
+                cached_data = CacheService.get_object(cache_key)
+            except Exception:
+                cached_data = None
+            if cached_data:
+                if cached_data.get("last_chat_reset"):
+                    cached_data["last_chat_reset"] = datetime.fromisoformat(cached_data["last_chat_reset"])
+                return User(**cached_data)
 
         user = self.db.query(User).filter(User.id == user_id).first()
-        
-        if user:
-            # Serialize User object to dictionary
+
+        if user and use_cache:
             user_dict = {
-                c.name: getattr(user, c.name) for c in user.__table__.columns
+                c.name: getattr(user, c.name)
+                for c in user.__table__.columns
+                if c.name not in CACHED_COLUMNS_EXCLUDED
             }
-            # Convert datetime objects to ISO strings
             if isinstance(user_dict.get("last_chat_reset"), datetime):
                 user_dict["last_chat_reset"] = user_dict["last_chat_reset"].isoformat()
-                
-            CacheService.set_object(cache_key, user_dict)
-            
+            try:
+                CacheService.set_object(cache_key, user_dict)
+            except Exception:
+                pass  # a cache outage must not break the request
+
         return user

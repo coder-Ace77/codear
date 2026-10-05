@@ -9,6 +9,9 @@ load_dotenv()
 
 # Must match the Secret Key in the User Service
 SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    # Without a secret every token would be verified against "None": refuse to start instead.
+    raise RuntimeError("JWT_SECRET is not set")
 ALGORITHM = "HS256"
 
 def get_password_hash(password: str) -> str:

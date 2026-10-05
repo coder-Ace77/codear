@@ -1,89 +1,93 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
+from app.core.deps import get_current_user, require_admin
 from app.database import get_db
-from app.schemas.user_schema import RegisterDTO, LoginDTO, ChatRequest
-from app.services.user_service import UserService
+from app.models.user import User
+from app.schemas.user_schema import (
+    ChangePasswordDTO,
+    ChatRequest,
+    LoginDTO,
+    RegisterDTO,
+    RoleChangeDTO,
+    UserResponse,
+)
 from app.services.ai_service import AiService
-from app.core import security
+from app.services.user_service import UserService
 
 router = APIRouter(prefix="/api/v1/user")
 
-@router.post("/register")
+
+@router.post("/register", response_model=UserResponse)
 def register(data: RegisterDTO, db: Session = Depends(get_db)):
-    service = UserService(db)
-    return service.register_user(data)
+    return UserResponse.from_user(UserService(db).register_user(data))
+
 
 @router.post("/login")
 def login(data: LoginDTO, db: Session = Depends(get_db)):
-    service = UserService(db)
-    token = service.login_user(data)
+    token = UserService(db).login_user(data)
     if not token:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return {"token": token}
 
+
+@router.get("/user", response_model=UserResponse)
+def get_user(user: User = Depends(get_current_user)):
+    return UserResponse.from_user(user)
+
+
+@router.post("/change-password")
+def change_password(
+    data: ChangePasswordDTO,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    UserService(db).change_password(user, data)
+    return {"message": "Password updated"}
+
+
 @router.post("/chat")
 async def chat(
-    request: ChatRequest, 
-    authorization: str = Header(None), 
-    db: Session = Depends(get_db)
+    request: ChatRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    
-    token = authorization.split(" ")[1]
-    user_id = security.extract_user_id(token)
-    
-    user_service = UserService(db)
-    user = user_service.get_user_by_id(user_id)
-    
-    ai_service = AiService(db)
-    reply = await ai_service.get_ai_response(
-        user, 
-        request.problemStatement, 
-        request.code, 
+    # The rate limiter updates the user row, so it needs a database-attached copy, not the cached one.
+    db_user = UserService(db).get_user_by_id(user.id, use_cache=False)
+    reply = await AiService(db).get_ai_response(
+        db_user,
+        request.problemStatement,
+        request.code,
         request.userMessage,
-        request.problemId
+        request.problemId,
     )
     return {"reply": reply}
+
 
 @router.get("/chat/history/{problemId}")
 async def get_chat_history(
     problemId: str,
-    authorization: str = Header(None),
-    db: Session = Depends(get_db)
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    
-    token = authorization.split(" ")[1]
-    user_id = security.extract_user_id(token)
-    
-    ai_service = AiService(db)
-    history = await ai_service.get_chat_history(user_id, problemId)
-    return history
+    return await AiService(db).get_chat_history(user.id, problemId)
 
-@router.get("/user")
-def get_user(
-    authorization: str = Header(None), 
-    db: Session = Depends(get_db)
+
+# --- Admin only ---
+
+
+@router.get("/admin/users", response_model=List[UserResponse])
+def list_users(_admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    return [UserResponse.from_user(u) for u in UserService(db).list_users()]
+
+
+@router.patch("/admin/users/{user_id}/role", response_model=UserResponse)
+def change_role(
+    user_id: int,
+    body: RoleChangeDTO,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
 ):
-    # Check for header
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
-    
-    # Extract token (remove "Bearer " prefix)
-    token = authorization.split(" ")[1]
-    
-    # Decode token to get user_id
-    user_id = security.extract_user_id(token)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    # Get user from database
-    service = UserService(db)
-    user = service.get_user_by_id(int(user_id))
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
-    return user
+    return UserResponse.from_user(UserService(db).set_role(user_id, body.role, admin))

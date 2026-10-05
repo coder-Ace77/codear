@@ -7,10 +7,10 @@ def test_health_check(client):
     assert response.status_code == 200
 
 
-def test_add_problem_persists_it(client, problem_payload):
+def test_add_problem_persists_it(client, problem_payload, admin_header):
     payload = problem_payload()
 
-    response = client.post(f"{BASE}/addproblem", json=payload)
+    response = client.post(f"{BASE}/addproblem", json=payload, headers=admin_header)
 
     assert response.status_code == 200
     body = response.json()
@@ -74,22 +74,22 @@ def test_problem_count_and_tags(client, add_problem):
     assert body["tags"] == ["array", "dp", "graph"]
 
 
-def test_delete_problem(client, created_problem):
+def test_delete_problem(client, created_problem, admin_header):
     problem_id, _ = created_problem
 
-    assert client.delete(f"{BASE}/{problem_id}").status_code == 200
+    assert client.delete(f"{BASE}/{problem_id}", headers=admin_header).status_code == 200
     assert client.get(f"{BASE}/problem/{problem_id}").status_code == 404
 
 
-def test_delete_problem_404s_when_missing(client):
-    assert client.delete(f"{BASE}/424242").status_code == 404
+def test_delete_problem_404s_when_missing(client, admin_header):
+    assert client.delete(f"{BASE}/424242", headers=admin_header).status_code == 404
 
 
-def test_delete_problem_refreshes_the_count(client, created_problem):
+def test_delete_problem_refreshes_the_count(client, created_problem, admin_header):
     problem_id, _ = created_problem
     assert client.get(f"{BASE}/problemCntAndTags").json()["count"] == 1
 
-    client.delete(f"{BASE}/{problem_id}")
+    client.delete(f"{BASE}/{problem_id}", headers=admin_header)
 
     assert client.get(f"{BASE}/problemCntAndTags").json()["count"] == 0
 
@@ -160,4 +160,4 @@ def test_recent_problems_rejects_invalid_token(client):
 
 
 def test_recent_problems_requires_the_header(client):
-    assert client.get(f"{BASE}/recent").status_code == 422
+    assert client.get(f"{BASE}/recent").status_code == 401
