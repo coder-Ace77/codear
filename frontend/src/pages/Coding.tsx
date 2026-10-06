@@ -18,6 +18,7 @@ const Coding = () => {
   const [problemId, setProblemId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('problem');
   const [submissionId, setSubmissionId] = useState<string | null>(null);
+  const [submissionsVersion, setSubmissionsVersion] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -48,6 +49,7 @@ const Coding = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           submissionId={submissionId}
+          submissionsVersion={submissionsVersion}
         />
 
         <div className="h-[640px] shrink-0 lg:h-full lg:min-h-0 lg:overflow-y-auto">
@@ -57,6 +59,7 @@ const Coding = () => {
             problemId={problemId}
             setAcitveTab={setActiveTab}
             setSubmissionId={setSubmissionId}
+            onSubmissionFinished={() => setSubmissionsVersion((v) => v + 1)}
           />
         </div>
       </div>

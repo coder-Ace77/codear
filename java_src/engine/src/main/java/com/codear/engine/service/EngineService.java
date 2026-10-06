@@ -22,6 +22,11 @@ public class EngineService {
 
     public CodeExecutionResult runCode(String code, String lang, List<String> inputs,
             ResourceConstraints resourceConstraints){
+        return runCode(code, lang, inputs, resourceConstraints, null);
+    }
+
+    public CodeExecutionResult runCode(String code, String lang, List<String> inputs,
+            ResourceConstraints resourceConstraints, TestProgressListener progress){
         if (inputs == null || inputs.isEmpty()){
             return CodeExecutionResult.builder()
                     .logs("No inputs provided")
@@ -40,7 +45,8 @@ public class EngineService {
             containerId = containerFactory.createContainer(config, tempDir, resourceConstraints.getMemoryLimitMb(),inputs.size());
 
             CodeExecutionResult executionResult = containerFactory.runContainerAndGetLogs(containerId,inputs.size(),
-                    resourceConstraints.getTimeLimitMs() != null ? resourceConstraints.getTimeLimitMs() : 1000L);
+                    resourceConstraints.getTimeLimitMs() != null ? resourceConstraints.getTimeLimitMs() : 1000L,
+                    progress);
 
             String[] outputArray = executionResult.getLogs().split(ContainerFactory.OUTPUT_SEPARATOR + "\\n?");
             List<String> cleanedOutputs = Arrays.stream(outputArray)

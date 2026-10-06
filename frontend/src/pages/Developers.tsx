@@ -38,6 +38,15 @@ const resultExample = `curl "${BASE}/problem/submissions/0b6f..." \\
 # {"submissionId": "0b6f...", "status": "PASSED", "passedTests": 12, "totalTests": 12,
 #  "timeTakenMs": 38, "memoryUsed": "17.2 MB", "language": "python", ...}`;
 
+const progressExample = `curl "${BASE}/problem/submissions/0b6f.../progress?since=0&wait=20" \\
+  -H "X-API-Key: $CODEAR_API_KEY"
+
+# {"version": 7, "stage": "RUNNING", "message": "Running test 7 of 26", "percent": 53,
+#  "total": 26, "started": 7, "completed": 6, "terminal": false, "changed": true,
+#  "status": "IN_PROGRESS", "submissionId": "0b6f..."}
+
+# when "terminal" is true the same response carries the verdict under "result"`;
+
 const pythonExample = `import os
 import time
 
@@ -250,7 +259,18 @@ const Developers = () => {
       </Prose>
       <CodeBlock code={resultExample} language="bash" />
 
-      <table className="mt-4 w-full max-w-xl border-collapse">
+      <h3 className="mb-2 mt-8 font-serif text-2xl font-medium">Watching progress (optional)</h3>
+      <Prose>
+        To follow a submission while it is judged, long-poll <Code>/progress</Code>. Start with{" "}
+        <Code>since=0</Code>, then repeat with <Code>since=</Code> the <Code>version</Code> of the last answer. Each
+        call returns the moment something newer exists, or after <Code>wait</Code> seconds (up to 25) with{" "}
+        <Code>changed: false</Code>. <Code>stage</Code> moves through <Code>QUEUED</Code>,{" "}
+        <Code>PREPARING</Code>, <Code>RUNNING</Code> (with the test number), <Code>JUDGING</Code> and{" "}
+        <Code>DONE</Code>. Stop when <Code>terminal</Code> is true: that response also holds the full verdict.
+      </Prose>
+      <CodeBlock code={progressExample} language="bash" />
+
+      <table className="mt-6 w-full max-w-xl border-collapse">
         <thead>
           <tr className="border-b border-foreground">
             <th className="overline px-3 py-2 text-left">status</th>

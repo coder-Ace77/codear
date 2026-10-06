@@ -17,15 +17,16 @@ interface ProblemPanelProps {
   activeTab: Tab;
   setActiveTab: React.Dispatch<React.SetStateAction<Tab>>;
   submissionId: string | null;
+  submissionsVersion?: number;
 }
-const ProblemPanel: React.FC<ProblemPanelProps> = ({ problem, activeTab, setActiveTab, submissionId }) => {
+const ProblemPanel: React.FC<ProblemPanelProps> = ({ problem, activeTab, setActiveTab, submissionId, submissionsVersion = 0 }) => {
 
   const renderTabContent = () => {
     switch (activeTab) {
       case "problem":
         return <ProblemDescription problem={problem} />;
       case "submissions":
-        return <SubmissionsContent problemId={problem.id} />;
+        return <SubmissionsContent problemId={problem.id} reloadKey={submissionsVersion} />;
       case "editorial":
         return <EditorialTab problemId={problem.id} />;
       default:

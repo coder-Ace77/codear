@@ -29,7 +29,7 @@ const Stat = ({ label, value }: { label: string; value: React.ReactNode }) => (
   </div>
 );
 
-export const SubmissionsContent = ({ problemId }: { problemId: number | string }) => {
+export const SubmissionsContent = ({ problemId, reloadKey = 0 }: { problemId: number | string; reloadKey?: number }) => {
   const [submissions, setSubmissions] = useState<Submission[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [refresh, setRefreshing] = useState(false);
@@ -57,7 +57,7 @@ export const SubmissionsContent = ({ problemId }: { problemId: number | string }
       }
     };
     fetchSubmissions();
-  }, [refresh, problemId]);
+  }, [refresh, problemId, reloadKey]);
 
   const handleRefresh = () => setRefreshing((r) => !r);
 

@@ -74,6 +74,15 @@ public class SubmissionService {
         }
     }
 
+    /**
+     * Last resort when judging itself failed (not the user's code): without this the submission would stay
+     * IN_PROGRESS forever, because the queue message is consumed either way.
+     */
+    public void markSystemError(String submissionId, String message) {
+        submissionRepository.updateSubmissionResult(submissionId, RunStatus.FAILED, message, "", 0, 0, 0L, "0MB");
+        cacheService.setValue(submissionId, RunStatus.FAILED.toString());
+    }
+
     public void updateTestResult(String submissionId, String result) {
         StopWatch stopWatch = new StopWatch("SubmissionService.updateTestResult");
         try {

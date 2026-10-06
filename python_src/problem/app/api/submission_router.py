@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
@@ -57,3 +57,21 @@ async def test_polling(submissionId: str, user: CurrentUser = Depends(get_curren
     if not visible_to_caller(test_result):
         raise HTTPException(status_code=404, detail="Test session not found. It may have expired or never existed.")
     return test_result
+
+
+@router.get("/{submissionId}/progress")
+async def submission_progress(
+    submissionId: str,
+    since: int = Query(0, ge=0, description="the version you already have; the call returns as soon as there is a newer one"),
+    wait: int = Query(20, ge=0, le=25, description="seconds to wait for something newer"),
+    user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Long-poll the live progress of one of your submissions.
+
+    Call with since=0, then repeat with since=<version from the last response> until `terminal` is true.
+    The final response also carries the full verdict under `result`."""
+    body = await SubmissionService(db).progress(submissionId, user, since, wait)
+    if body is None:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return body
