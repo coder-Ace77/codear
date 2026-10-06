@@ -6,6 +6,7 @@ import Input from "@/atoms/Input";
 import Label from "@/atoms/Label";
 import Select from "@/atoms/Select";
 import Badge from "@/atoms/Badge";
+import { CHECKER_OPTIONS, DEFAULT_CHECKER, DEFAULT_FLOAT_TOLERANCE } from "@/constants/checkerModes";
 import AdminLive from "@/molecules/AdminLive";
 import { Plus, X, Trash2 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
@@ -46,6 +47,8 @@ const Admin = () => {
     exampleOutput: "",
     timeLimitMs: 1000,
     memoryLimitMb: 256,
+    checker: DEFAULT_CHECKER,
+    checkerTolerance: DEFAULT_FLOAT_TOLERANCE,
   });
 
   const [tags, setTags] = useState<string[]>([]);
@@ -76,7 +79,10 @@ const Admin = () => {
       tags: tags,
       testCases: [sampleTestCase, ...otherTestCases],
       timeLimitMs: formData.timeLimitMs,
-      memoryLimitMb: formData.memoryLimitMb
+      memoryLimitMb: formData.memoryLimitMb,
+      checker: formData.checker,
+      // only the number-tolerance checker uses it
+      checkerTolerance: formData.checker === "FLOAT" ? formData.checkerTolerance : undefined,
     };
     try {
       const response = await apiClient.post("/problem/addproblem", payload);
@@ -92,6 +98,8 @@ const Admin = () => {
         exampleOutput: "",
         timeLimitMs: 1000,
         memoryLimitMb: 256,
+        checker: DEFAULT_CHECKER,
+        checkerTolerance: DEFAULT_FLOAT_TOLERANCE,
       });
       setTestCases([{ input: "", output: "" }]);
       setTags([]);
@@ -293,6 +301,41 @@ const Admin = () => {
                       required
                     />
                   </div>
+                </div>
+
+                {/* How answers are compared */}
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div>
+                    <Label htmlFor="checker">Answer checking</Label>
+                    <Select
+                      id="checker"
+                      value={formData.checker}
+                      onChange={(e) => setFormData({ ...formData, checker: e.target.value })}
+                    >
+                      {CHECKER_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                    <p className="mt-1 text-[13px] text-muted-foreground">
+                      {CHECKER_OPTIONS.find((o) => o.value === formData.checker)?.hint}
+                    </p>
+                  </div>
+                  {formData.checker === "FLOAT" && (
+                    <div>
+                      <Label htmlFor="checkerTolerance">Allowed difference</Label>
+                      <Input
+                        id="checkerTolerance"
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={formData.checkerTolerance}
+                        onChange={(e) => setFormData({ ...formData, checkerTolerance: parseFloat(e.target.value) || 0 })}
+                        required
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Test Cases */}

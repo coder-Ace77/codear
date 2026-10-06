@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ChevronDown } from "lucide-react";
 import Verdict from "@/atoms/Verdict";
 import { parseUtc } from "@/lib/time";
+import { showsTestCount, verdictKey } from "@/lib/verdict";
 import CodeBlock, { CopyButton } from "./CodeBlock";
 
 const LogBlock = ({ label, text }: { label: string; text: string }) => (
@@ -89,7 +90,7 @@ export const SubmissionsContent = ({ problemId, reloadKey = 0 }: { problemId: nu
             <div key={sub.id} className="overflow-hidden rounded-md border border-border bg-card">
               <div className="flex items-center justify-between gap-3 px-4 py-2">
                 <div className="flex min-w-0 items-center gap-3">
-                  <Verdict status={stalled ? ("STALLED" as any) : sub.status} />
+                  <Verdict status={stalled ? "STALLED" : verdictKey(sub)} />
                   <span className="truncate text-[13px] text-muted-foreground">{formattedDate}</span>
                 </div>
                 <span className="shrink-0 font-mono text-[13px] text-muted-foreground">{sub.language}</span>
@@ -101,18 +102,18 @@ export const SubmissionsContent = ({ problemId, reloadKey = 0 }: { problemId: nu
                     ? "No result was recorded: the judge did not finish this submission. Submit it again."
                     : "Being judged. The result appears here when it is ready."}
                 </p>
-              ) : (
+              ) : showsTestCount(verdictKey(sub)) ? (
                 <div className="grid grid-cols-3 gap-4 border-t border-border px-4 py-3">
                   <Stat label="Tests" value={hasTests ? `${sub.passedTests}/${sub.totalTests}` : null} />
                   <Stat label="Time" value={present(sub.timeTakenMs) && hasTests ? `${sub.timeTakenMs} ms` : null} />
                   <Stat label="Memory" value={sub.memoryUsed && hasTests ? sub.memoryUsed : null} />
                 </div>
-              )}
+              ) : null}
 
               {sub.errorLog ? (
                 <LogBlock label="Execution log" text={sub.errorLog} />
               ) : (
-                sub.status === "FAILED" && sub.result && <LogBlock label="Failure details" text={sub.result} />
+                sub.status === "FAILED" && sub.result && <LogBlock label="Why it failed" text={sub.result} />
               )}
 
               <details className="group border-t border-border">

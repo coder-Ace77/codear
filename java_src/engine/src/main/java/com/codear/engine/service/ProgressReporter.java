@@ -80,6 +80,7 @@ public class ProgressReporter implements TestProgressListener {
     }
 
     /** All tests ran; outputs are being compared. */
+    @Override
     public void judging() {
         stage = "JUDGING";
         if (total != null) {

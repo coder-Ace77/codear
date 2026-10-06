@@ -1,23 +1,17 @@
 package com.codear.engine.service;
 
-import java.time.LocalDateTime;
-
-import com.codear.engine.dto.CodeExecutionResult;
-
 import org.springframework.stereotype.Service;
 
-import com.codear.engine.dto.CheckerResponse;
-import com.codear.engine.dto.Code;
 import com.codear.engine.dto.TestDTO;
-import com.codear.engine.entity.Submission;
 import com.codear.engine.enums.RunStatus;
+import com.codear.engine.judge.JudgeReport;
 import com.codear.engine.repository.SubmissionRepository;
 
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StopWatch;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+/** Saves what judging decided. */
+@Slf4j
 @Service
 @AllArgsConstructor
 public class SubmissionService {
@@ -25,84 +19,48 @@ public class SubmissionService {
     private final SubmissionRepository submissionRepository;
     private final CacheService cacheService;
 
-    public Submission getSubmissionObject(Code code, CheckerResponse checkerResponse) {
-        StopWatch stopWatch = new StopWatch();
-        stopWatch.start("SubmissionService.getSubmissionObject");
-        try {
-            Submission submission = new Submission();
-            submission.setSubmissionId(code.getSubmissionId());
-            submission.setProblemId(code.getProblemId());
-            submission.setUserId(code.getUserId());
-            submission.setCode(code.getCode());
-            submission.setLanguage(code.getLanguage());
-            submission.setStatus(checkerResponse.getStatus() != null ? checkerResponse.getStatus() : RunStatus.FAILED);
-            submission.setResult(checkerResponse.getMsg());
-            submission.setTotalTests(checkerResponse.getTotalTests());
-            submission.setPassedTests(checkerResponse.getPassedTests());
-            submission.setSubmittedAt(code.getSubmittedAt() != null ? code.getSubmittedAt() : LocalDateTime.now());
-            submission.setTimeTakenMs(0L);
-            submission.setMemoryUsed("0MB");
-            return submission;
-        } finally {
-            stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
-        }
-    }
-
-    public void updateSubmissionResult(String submissionId, CheckerResponse checkerResponse,
-            CodeExecutionResult executionResult) {
-        StopWatch stopWatch = new StopWatch("SubmissionService.updateSubmissionResult");
-        try {
-            stopWatch.start("update-db-direct");
-            submissionRepository.updateSubmissionResult(
-                    submissionId,
-                    checkerResponse.getStatus() != null ? checkerResponse.getStatus() : RunStatus.FAILED,
-                    checkerResponse.getMsg(),
-                    executionResult.getLogs(),
-                    checkerResponse.getTotalTests(),
-                    checkerResponse.getPassedTests(),
-                    executionResult.getCpuTimeMs(),
-                    executionResult.getMemoryUsedPk());
-            stopWatch.stop();
-            stopWatch.start("update-cache");
-            cacheService.setValue(submissionId, checkerResponse.getStatus().toString());
-            stopWatch.stop();
-        } finally {
-            if (stopWatch.isRunning())
-                stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
-        }
+    /** True when the submission exists and has not been judged yet. */
+    public boolean isInProgress(String submissionId) {
+        return submissionRepository.findBySubmissionId(submissionId)
+                .map(submission -> submission.getStatus() == RunStatus.IN_PROGRESS)
+                .orElse(false);
     }
 
     /**
-     * Last resort when judging itself failed (not the user's code): without this the submission would stay
-     * IN_PROGRESS forever, because the queue message is consumed either way.
+     * Writes the verdict to the database and then flips the plain status flag the API also reads.
+     *
+     * @return false when the submission was already judged (a duplicate delivery), in which case nothing changed
      */
-    public void markSystemError(String submissionId, String message) {
-        submissionRepository.updateSubmissionResult(submissionId, RunStatus.FAILED, message, "", 0, 0, 0L, "0MB");
-        cacheService.setValue(submissionId, RunStatus.FAILED.toString());
-    }
-
-    public void updateTestResult(String submissionId, String result) {
-        StopWatch stopWatch = new StopWatch("SubmissionService.updateTestResult");
-        try {
-            stopWatch.start("fetch-cache");
-            TestDTO testDTO = cacheService.getObjectValue(submissionId, TestDTO.class);
-            stopWatch.stop();
-
-            stopWatch.start("update-dto");
-            testDTO.setStatus(RunStatus.COMPLETED.toString());
-            testDTO.setOutput(result);
-            stopWatch.stop();
-
-            stopWatch.start("save-cache");
-            cacheService.setObjectValue(submissionId, testDTO);
-            stopWatch.stop();
-        } finally {
-            if (stopWatch.isRunning())
-                stopWatch.stop();
-            System.out.println(stopWatch.prettyPrint());
+    public boolean recordVerdict(String submissionId, JudgeReport report) {
+        RunStatus status = report.verdict().runStatus();
+        int updated = submissionRepository.finishSubmission(
+                submissionId,
+                status,
+                report.verdict().name(),
+                report.failedTest(),
+                report.message(),
+                report.diagnostics(),
+                report.totalTests(),
+                report.passedTests(),
+                report.maxTimeMs(),
+                report.memoryLabel());
+        if (updated == 0) {
+            log.warn("Submission {} was already judged; keeping the first verdict", submissionId);
+            return false;
         }
+        cacheService.setValue(submissionId, status.toString());
+        return true;
     }
 
+    /** Stores the output of a person's own run where the API will find it. */
+    public void updateTestResult(String submissionId, String result) {
+        TestDTO testDTO = cacheService.getObjectValue(submissionId, TestDTO.class);
+        if (testDTO == null) {
+            log.warn("Test run {} expired before its result was ready", submissionId);
+            return;
+        }
+        testDTO.setStatus(RunStatus.COMPLETED.toString());
+        testDTO.setOutput(result);
+        cacheService.setObjectValue(submissionId, testDTO);
+    }
 }

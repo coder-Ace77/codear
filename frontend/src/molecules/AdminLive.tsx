@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Verdict from "@/atoms/Verdict";
+import { verdictKey } from "@/lib/verdict";
 import { adminService, AdminStats, RecentSubmission } from "@/service/adminService";
 
 const REFRESH_MS = 3000;
@@ -54,6 +55,8 @@ const AdminLive = () => {
   }, [live, load]);
 
   const s = stats?.submissions;
+  // the specific verdicts when the judge records them, else the coarse statuses
+  const outcomes = s ? (Object.keys(s.byVerdictLast24Hours ?? {}).length ? s.byVerdictLast24Hours! : s.byStatusLast24Hours) : {};
 
   return (
     <div>
@@ -130,15 +133,15 @@ const AdminLive = () => {
           <div className="mb-8 grid gap-8 md:grid-cols-2">
             <div>
               <h3 className="overline mb-2 border-b border-foreground pb-2">Outcomes, last 24 hours</h3>
-              {Object.keys(s.byStatusLast24Hours).length === 0 ? (
+              {Object.keys(outcomes).length === 0 ? (
                 <p className="py-4 text-muted-foreground">No submissions in the last 24 hours.</p>
               ) : (
                 <table className="w-full border-collapse">
                   <tbody>
-                    {Object.entries(s.byStatusLast24Hours).map(([status, n]) => (
+                    {Object.entries(outcomes).map(([status, n]) => (
                       <tr key={status} className="border-b border-border">
                         <td className="py-2">
-                          <Verdict status={status as any} />
+                          <Verdict status={status} />
                         </td>
                         <td className="py-2 text-right font-mono">{n}</td>
                       </tr>
@@ -194,7 +197,7 @@ const AdminLive = () => {
                     {r.problemTitle}
                   </td>
                   <td className="px-3 py-2 font-mono text-[13px]">{r.language}</td>
-                  <td className="px-3 py-2">{r.status && <Verdict status={r.status === "IN_PROGRESS" ? "RUNNING" : (r.status as any)} />}</td>
+                  <td className="px-3 py-2">{r.status && <Verdict status={verdictKey(r)} />}</td>
                   <td className="px-3 py-2 font-mono text-[13px]">
                     {r.passedTests !== null && r.totalTests !== null ? `${r.passedTests}/${r.totalTests}` : ""}
                   </td>

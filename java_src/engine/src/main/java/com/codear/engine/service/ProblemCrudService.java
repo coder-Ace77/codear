@@ -36,7 +36,7 @@ public class ProblemCrudService {
             }
 
             stopWatch.start("db-get");
-            List<TestCase> dbList = testCaseRepository.findByProblemId(problemId);
+            List<TestCase> dbList = testCaseRepository.findByProblemIdOrderByIdAsc(problemId);
             stopWatch.stop();
 
             stopWatch.start("redis-cache-set");

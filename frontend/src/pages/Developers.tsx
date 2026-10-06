@@ -268,26 +268,42 @@ const Developers = () => {
       </Prose>
       <CodeBlock code={progressExample} language="bash" />
 
-      <table className="mt-6 w-full max-w-xl border-collapse">
+      <Prose>
+        Every result has a <Code>status</Code> and, once judged, a <Code>verdict</Code> that says why, plus{" "}
+        <Code>failedTest</Code>, the number of the first test that failed.
+      </Prose>
+      <table className="mt-4 w-full max-w-2xl border-collapse">
         <thead>
           <tr className="border-b border-foreground">
+            <th className="overline px-3 py-2 text-left">verdict</th>
             <th className="overline px-3 py-2 text-left">status</th>
             <th className="overline px-3 py-2 text-left">Meaning</th>
           </tr>
         </thead>
         <tbody>
           {[
-            ["IN_PROGRESS", "Queued or being judged. Poll again."],
-            ["PASSED", "Every test passed."],
-            ["FAILED", "Judged, and at least one test failed or the code did not run."],
-          ].map(([s, m]) => (
-            <tr key={s} className="border-b border-border">
-              <td className="px-3 py-2 font-mono text-[13px]">{s}</td>
+            ["(none yet)", "IN_PROGRESS", "Queued or being judged. Poll again."],
+            ["ACCEPTED", "PASSED", "Every test passed."],
+            ["WRONG_ANSWER", "FAILED", "A test gave a different answer. Hidden tests are not revealed."],
+            ["COMPILE_ERROR", "FAILED", "The code did not compile, or is empty. The message has the compiler output."],
+            ["RUNTIME_ERROR", "FAILED", "The program crashed or exited with an error."],
+            ["TIME_LIMIT_EXCEEDED", "FAILED", "A test used more CPU time than the problem allows."],
+            ["MEMORY_LIMIT_EXCEEDED", "FAILED", "A test used more memory than the problem allows."],
+            ["OUTPUT_LIMIT_EXCEEDED", "FAILED", "The program printed far more than any correct answer."],
+            ["SYSTEM_ERROR", "FAILED", "The judge itself failed. Submit again."],
+          ].map(([v, st, m]) => (
+            <tr key={v} className="border-b border-border">
+              <td className="px-3 py-2 font-mono text-[13px]">{v}</td>
+              <td className="px-3 py-2 font-mono text-[13px] text-muted-foreground">{st}</td>
               <td className="px-3 py-2">{m}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      <Prose>
+        The judge stops at the first test that fails. Programs run with no network, no extra processes, and no way to
+        read the tests.
+      </Prose>
 
       <h3 className="mb-2 mt-8 font-serif text-2xl font-medium">A complete example</h3>
       <CodeBlock code={pythonExample} language="python" />

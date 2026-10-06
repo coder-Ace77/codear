@@ -1,5 +1,7 @@
 package com.codear.engine.service;
 
+import com.codear.engine.constants.SandboxProtocol;
+
 /**
  * Reads the container's output as it streams and reports which test is running.
  *
@@ -10,7 +12,7 @@ package com.codear.engine.service;
  */
 public class TestProgressParser {
 
-    private static final String START_PREFIX = "[TEST-START-";
+    private static final String START_PREFIX = SandboxProtocol.TEST_START_PREFIX;
     /** A marker line is short; anything longer without a newline is program output and is dropped. */
     private static final int MAX_PENDING_CHARS = 256;
 
@@ -41,7 +43,7 @@ public class TestProgressParser {
     }
 
     private void handle(String line) {
-        if (line.equals(ContainerFactory.OUTPUT_SEPARATOR)) {
+        if (line.equals(SandboxProtocol.TEST_SEPARATOR)) {
             finished++;
             listener.testFinished(finished);
         } else if (line.startsWith(START_PREFIX) && line.endsWith("]")) {
