@@ -62,6 +62,8 @@ public final class JudgeDefaults {
 
     // --- the queue ---
     public static final String LISTENER_MAX_CONCURRENT_MESSAGES = "2";
+    /** The library refuses to start if a poll may fetch more messages than can run at once (its default is 10). */
+    public static final String LISTENER_MAX_MESSAGES_PER_POLL = "2";
     /** Longer than the longest judging run, so a message is never handed to a second worker mid-run. */
     public static final String LISTENER_VISIBILITY_SECONDS = "300";
 

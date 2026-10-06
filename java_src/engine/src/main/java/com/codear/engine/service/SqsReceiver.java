@@ -36,6 +36,7 @@ public class SqsReceiver {
 
     @SqsListener(value = "codear-queue",
             maxConcurrentMessages = JudgeDefaults.LISTENER_MAX_CONCURRENT_MESSAGES,
+            maxMessagesPerPoll = JudgeDefaults.LISTENER_MAX_MESSAGES_PER_POLL,
             messageVisibilitySeconds = JudgeDefaults.LISTENER_VISIBILITY_SECONDS)
     public void listen(String message) {
         Code code = null;
@@ -72,6 +73,7 @@ public class SqsReceiver {
 
     @SqsListener(value = "codear-test",
             maxConcurrentMessages = JudgeDefaults.LISTENER_MAX_CONCURRENT_MESSAGES,
+            maxMessagesPerPoll = JudgeDefaults.LISTENER_MAX_MESSAGES_PER_POLL,
             messageVisibilitySeconds = JudgeDefaults.LISTENER_VISIBILITY_SECONDS)
     public void listenTest(String message) {
         try {
