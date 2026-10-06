@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { ChevronDown } from "lucide-react";
 import Verdict from "@/atoms/Verdict";
+import { parseUtc } from "@/lib/time";
 import CodeBlock, { CopyButton } from "./CodeBlock";
 
 const LogBlock = ({ label, text }: { label: string; text: string }) => (
@@ -25,9 +26,14 @@ const LogBlock = ({ label, text }: { label: string; text: string }) => (
 const Stat = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div>
     <span className="overline block">{label}</span>
-    <p className="font-mono text-[13px] font-medium">{value}</p>
+    <p className="font-mono text-[13px] font-medium">{value ?? <span className="text-muted-foreground">—</span>}</p>
   </div>
 );
+
+/** A submission still "running" after this long was never finished by the judge. */
+const STALE_AFTER_MS = 5 * 60 * 1000;
+
+const present = (n: number | null | undefined): n is number => typeof n === "number" && !Number.isNaN(n);
 
 export const SubmissionsContent = ({ problemId, reloadKey = 0 }: { problemId: number | string; reloadKey?: number }) => {
   const [submissions, setSubmissions] = useState<Submission[] | null>(null);
@@ -73,23 +79,35 @@ export const SubmissionsContent = ({ problemId, reloadKey = 0 }: { problemId: nu
     return (
       <div className="space-y-4">
         {submissions.map((sub) => {
-          const formattedDate = format(new Date(sub.submittedAt), "MMM d, yyyy 'at' h:mm a");
+          const submittedAt = parseUtc(sub.submittedAt);
+          const formattedDate = format(submittedAt, "MMM d, yyyy 'at' h:mm a");
+          const inProgress = sub.status === "PENDING" || sub.status === "RUNNING" || (sub.status as string) === "IN_PROGRESS";
+          const stalled = inProgress && Date.now() - submittedAt.getTime() > STALE_AFTER_MS;
+          const hasTests = present(sub.totalTests) && sub.totalTests > 0 && present(sub.passedTests);
 
           return (
             <div key={sub.id} className="overflow-hidden rounded-md border border-border bg-card">
               <div className="flex items-center justify-between gap-3 px-4 py-2">
                 <div className="flex min-w-0 items-center gap-3">
-                  <Verdict status={sub.status} />
+                  <Verdict status={stalled ? ("STALLED" as any) : sub.status} />
                   <span className="truncate text-[13px] text-muted-foreground">{formattedDate}</span>
                 </div>
                 <span className="shrink-0 font-mono text-[13px] text-muted-foreground">{sub.language}</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 border-t border-border px-4 py-3">
-                <Stat label="Tests" value={`${sub.passedTests}/${sub.totalTests}`} />
-                <Stat label="Time" value={`${sub.timeTakenMs} ms`} />
-                <Stat label="Memory" value={sub.memoryUsed} />
-              </div>
+              {inProgress ? (
+                <p className="border-t border-border px-4 py-3 text-[13px] text-muted-foreground">
+                  {stalled
+                    ? "No result was recorded: the judge did not finish this submission. Submit it again."
+                    : "Being judged. The result appears here when it is ready."}
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-4 border-t border-border px-4 py-3">
+                  <Stat label="Tests" value={hasTests ? `${sub.passedTests}/${sub.totalTests}` : null} />
+                  <Stat label="Time" value={present(sub.timeTakenMs) && hasTests ? `${sub.timeTakenMs} ms` : null} />
+                  <Stat label="Memory" value={sub.memoryUsed && hasTests ? sub.memoryUsed : null} />
+                </div>
+              )}
 
               {sub.errorLog ? (
                 <LogBlock label="Execution log" text={sub.errorLog} />

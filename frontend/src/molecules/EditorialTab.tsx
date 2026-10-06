@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { editorialService, Editorial } from '@/service/editorialService';
 import CodeBlock from './CodeBlock';
+import { parseUtc } from '@/lib/time';
 
-// Timestamps come back without a timezone and are UTC; an empty or unparsable value shows no date.
 const formatDate = (value?: string) => {
     if (!value) return "";
-    const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`);
+    const d = parseUtc(value);
     return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 };
 

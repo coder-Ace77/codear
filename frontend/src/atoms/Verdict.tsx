@@ -6,6 +6,7 @@ const states: Record<string, { label: string; tone: string; glyph: "check" | "cr
   COMPLETED: { label: "Completed", tone: "bg-success-wash text-success", glyph: "check" },
   FAILED: { label: "Failed", tone: "bg-danger-wash text-danger", glyph: "cross" },
   ERROR: { label: "Runtime error", tone: "bg-danger-wash text-danger", glyph: "cross" },
+  STALLED: { label: "No result", tone: "bg-highlight-wash text-warning", glyph: "clock" },
   IN_PROGRESS: { label: "Running", tone: "bg-secondary text-info", glyph: "ring" },
   RUNNING: { label: "Running", tone: "bg-secondary text-info", glyph: "ring" },
   PENDING: { label: "Queued", tone: "bg-secondary text-info", glyph: "clock" },

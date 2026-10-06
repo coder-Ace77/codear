@@ -79,7 +79,7 @@ public class SqsReceiver {
             progress.done();
             stopWatch.stop();
         } catch (Exception e) {
-            log.error("Error processing SQS submission: {}", e.getMessage());
+            log.error("Error processing SQS submission: {}", e.getMessage(), e);
             log.error("Raw message: {}", message);
             failSubmission(code, progress);
         } finally {
