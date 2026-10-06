@@ -7,6 +7,10 @@ export interface Submission {
   code: string;
   language: string;
   status: SubmissionStatus;
+  /** Why it got that status; null for submissions judged before verdicts existed. */
+  verdict?: string | null;
+  /** 1-based number of the first failing test, if any. */
+  failedTest?: number | null;
   result: string;
   totalTests: number;
   passedTests: number;

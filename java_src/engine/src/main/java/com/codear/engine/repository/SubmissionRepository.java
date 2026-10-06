@@ -15,13 +15,20 @@ import java.util.Optional;
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     Optional<Submission> findBySubmissionId(String submissionId);
 
-    // A declared @Modifying query gets no transaction from Spring Data by default, and without one Hibernate
-    // refuses to run it ("Executing an update/delete query"), so every verdict would fail to save.
+    /**
+     * Records the verdict, but only for a submission that is still IN_PROGRESS: the queue can deliver a message
+     * twice, and the second judging must not overwrite the first.
+     *
+     * A declared @Modifying query gets no transaction from Spring Data by default, and without one Hibernate
+     * refuses to run it ("Executing an update/delete query"), so every verdict would fail to save.
+     */
     @Transactional
     @Modifying
     @Query("""
                 UPDATE Submission s
                 SET s.status = :status,
+                    s.verdict = :verdict,
+                    s.failedTest = :failedTest,
                     s.result = :result,
                     s.errorLog = :errorLog,
                     s.totalTests = :totalTests,
@@ -29,10 +36,13 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
                     s.timeTakenMs = :timeTakenMs,
                     s.memoryUsed = :memoryUsed
                 WHERE s.submissionId = :submissionId
+                  AND s.status = com.codear.engine.enums.RunStatus.IN_PROGRESS
             """)
-    int updateSubmissionResult(
+    int finishSubmission(
             @Param("submissionId") String submissionId,
             @Param("status") RunStatus status,
+            @Param("verdict") String verdict,
+            @Param("failedTest") Integer failedTest,
             @Param("result") String result,
             @Param("errorLog") String errorLog,
             @Param("totalTests") Integer totalTests,

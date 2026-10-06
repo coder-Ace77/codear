@@ -2,92 +2,101 @@ package com.codear.engine.service;
 
 import java.util.List;
 
-import com.codear.engine.dto.CodeExecutionResult;
-
-import io.awspring.cloud.sqs.annotation.SqsListener;
 import org.springframework.stereotype.Service;
 
-import com.codear.engine.dto.CheckerResponse;
+import com.codear.engine.checker.ComparatorFactory;
+import com.codear.engine.checker.OutputComparator;
+import com.codear.engine.constants.JudgeDefaults;
 import com.codear.engine.dto.Code;
 import com.codear.engine.dto.ResourceConstraints;
 import com.codear.engine.dto.TestDTO;
-import com.codear.engine.entity.TestCase;
+import com.codear.engine.judge.CustomRunResult;
+import com.codear.engine.judge.ExpectedTest;
+import com.codear.engine.judge.FailureMessages;
+import com.codear.engine.judge.JudgeReport;
+import com.codear.engine.judge.JudgeRequest;
+import com.codear.engine.judge.JudgeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import lombok.AllArgsConstructor;
+import io.awspring.cloud.sqs.annotation.SqsListener;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.util.StopWatch;
-
+/** Takes work off the queue and hands it to the judge. The deciding is done elsewhere; this only wires things up. */
 @Slf4j
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class SqsReceiver {
 
     private final ObjectMapper mapper;
-    private final EngineService engineService;
     private final ProblemCrudService problemCrudService;
-    private final CheckerService checkerService;
     private final SubmissionService submissionService;
     private final ProgressReporterFactory progressFactory;
+    private final JudgeService judgeService;
 
-    @SqsListener("codear-queue")
+    @SqsListener(value = "codear-queue",
+            maxConcurrentMessages = JudgeDefaults.LISTENER_MAX_CONCURRENT_MESSAGES,
+            messageVisibilitySeconds = JudgeDefaults.LISTENER_VISIBILITY_SECONDS)
     public void listen(String message) {
-        StopWatch stopWatch = new StopWatch("SqsReceiver.listen");
-        ProgressReporter progress = null;
         Code code = null;
+        ProgressReporter progress = null;
         try {
-            stopWatch.start("log-start");
-            log.info("Received submission message via SQS");
-            stopWatch.stop();
-
-            stopWatch.start("parse-message");
             code = mapper.readValue(message, Code.class);
-            progress = progressFactory.create(code.getSubmissionId());
+            String submissionId = code.getSubmissionId();
+            if (!submissionService.isInProgress(submissionId)) {
+                log.info("Skipping {}: already judged or unknown", submissionId);
+                return;
+            }
+
+            long startedAt = System.currentTimeMillis();
+            progress = progressFactory.create(submissionId);
             progress.preparing();
-            stopWatch.stop();
 
-            stopWatch.start("fetch-test-cases");
-            List<TestCase> testCases = problemCrudService.getAllTestCases(code.getProblemId());
-            progress.totalKnown(testCases.size());
-            stopWatch.stop();
+            List<ExpectedTest> tests = loadTests(code.getProblemId());
+            progress.totalKnown(tests.size());
+            ResourceConstraints constraints = problemCrudService.getPromblemConstraints(code.getProblemId());
 
-            stopWatch.start("prepare-inputs");
-            List<String> inputs = testCases.stream().map(TestCase::getInput).toList();
-            stopWatch.stop();
-
-            stopWatch.start("fetch-constraints");
-            ResourceConstraints resourceConstraints = problemCrudService.getPromblemConstraints(code.getProblemId());
-            stopWatch.stop();
-
-            stopWatch.start("execute-code");
-            CodeExecutionResult result = engineService.runCode(
-                    code.getCode(),
-                    code.getLanguage(),
-                    inputs,
-                    resourceConstraints,
+            JudgeReport report = judgeService.judge(
+                    new JudgeRequest(code.getCode(), code.getLanguage(), tests, constraints, comparatorFor(constraints)),
                     progress);
-            stopWatch.stop();
 
-            stopWatch.start("check-results");
-            progress.judging();
-            CheckerResponse checkerResponse = checkerService.check(result.getOutputs(), testCases);
-            stopWatch.stop();
-
-            stopWatch.start("update-submission");
-            submissionService.updateSubmissionResult(code.getSubmissionId(), checkerResponse, result);
+            submissionService.recordVerdict(submissionId, report);
             progress.done();
-            stopWatch.stop();
+            log.info("Judged {} as {} in {} ms", submissionId, report.verdict(), System.currentTimeMillis() - startedAt);
         } catch (Exception e) {
             log.error("Error processing SQS submission: {}", e.getMessage(), e);
             log.error("Raw message: {}", message);
             failSubmission(code, progress);
-        } finally {
-            if (stopWatch.isRunning()) {
-                stopWatch.stop();
-            }
-            log.info(stopWatch.prettyPrint());
         }
+    }
+
+    @SqsListener(value = "codear-test",
+            maxConcurrentMessages = JudgeDefaults.LISTENER_MAX_CONCURRENT_MESSAGES,
+            messageVisibilitySeconds = JudgeDefaults.LISTENER_VISIBILITY_SECONDS)
+    public void listenTest(String message) {
+        try {
+            TestDTO request = mapper.readValue(message, TestDTO.class);
+            ResourceConstraints constraints = problemCrudService.getPromblemConstraints(request.getProblemId());
+            CustomRunResult result = judgeService.runCustom(
+                    request.getCode(), request.getLanguage(), request.getInput(), constraints);
+            submissionService.updateTestResult(request.getSubmissionId(), result.text());
+        } catch (Exception e) {
+            log.error("Error processing SQS test request: {}", e.getMessage(), e);
+            log.error("Raw message: {}", message);
+        }
+    }
+
+    private static OutputComparator comparatorFor(ResourceConstraints constraints) {
+        return constraints == null
+                ? ComparatorFactory.defaultComparator()
+                : ComparatorFactory.forProblem(constraints.getChecker(), constraints.getCheckerTolerance());
+    }
+
+    private List<ExpectedTest> loadTests(Long problemId) {
+        List<com.codear.engine.entity.TestCase> stored = problemCrudService.getAllTestCases(problemId);
+        return java.util.stream.IntStream.range(0, stored.size())
+                .mapToObj(i -> ExpectedTest.from(i, stored.get(i)))
+                .toList();
     }
 
     /** Judging itself failed, so tell the person waiting instead of leaving the progress bar hanging. */
@@ -96,63 +105,13 @@ public class SqsReceiver {
             return;
         }
         try {
-            submissionService.markSystemError(code.getSubmissionId(),
-                    "The judge hit an internal error while checking this submission. Please submit again.");
+            submissionService.recordVerdict(code.getSubmissionId(),
+                    JudgeReport.systemError(0, FailureMessages.judgeFailure()));
         } catch (Exception e) {
             log.error("Could not record the failure of submission {}: {}", code.getSubmissionId(), e.getMessage());
         }
         if (progress != null) {
             progress.error();
-        }
-    }
-
-    @SqsListener("codear-test")
-    public void listenTest(String message) {
-        StopWatch stopWatch = new StopWatch("SqsReceiver.listenTest");
-        try {
-            stopWatch.start("log-start");
-            log.info("Received test-run message via SQS");
-            stopWatch.stop();
-
-            stopWatch.start("parse-message");
-            TestDTO code = mapper.readValue(message, TestDTO.class);
-            stopWatch.stop();
-
-            stopWatch.start("fetch-constraints");
-            ResourceConstraints resourceConstraints = problemCrudService.getPromblemConstraints(code.getProblemId());
-            stopWatch.stop();
-
-            stopWatch.start("execute-code");
-            CodeExecutionResult result = engineService.runCode(
-                    code.getCode(),
-                    code.getLanguage(),
-                    List.of(code.getInput()),
-                    resourceConstraints);
-            stopWatch.stop();
-
-            stopWatch.start("update-result");
-            String fullOutput = result.getOutputs().isEmpty() ? result.getLogs() : result.getOutputs().get(0);
-
-            String finalOutput = fullOutput;
-            String startMarker = "[TEST-OUTPUT-START]";
-            String endMarker = "[TEST-OUTPUT-END]";
-
-            int startIndex = fullOutput.indexOf(startMarker);
-            int endIndex = fullOutput.indexOf(endMarker);
-
-            if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-                finalOutput = fullOutput.substring(startIndex + startMarker.length(), endIndex).trim();
-            }
-            submissionService.updateTestResult(code.getSubmissionId(), finalOutput);
-            stopWatch.stop();
-        } catch (Exception e) {
-            log.error("Error processing SQS test request: {}", e.getMessage());
-            log.error("Raw message: {}", message);
-        } finally {
-            if (stopWatch.isRunning()) {
-                stopWatch.stop();
-            }
-            log.info(stopWatch.prettyPrint());
         }
     }
 }

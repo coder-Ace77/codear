@@ -45,7 +45,9 @@ class ProblemService:
             difficulty=problem_dto.difficulty,
             tags=problem_dto.tags,
             time_limit_ms=problem_dto.timeLimitMs, # Use DTO name
-            memory_limit_mb=problem_dto.memoryLimitMb  # Use DTO name
+            memory_limit_mb=problem_dto.memoryLimitMb,  # Use DTO name
+            checker=problem_dto.checker,
+            checker_tolerance=problem_dto.checkerTolerance
         )
 
         # 2. Handle nested TestCases

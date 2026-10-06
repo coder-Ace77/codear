@@ -12,4 +12,8 @@ public interface TestProgressListener {
 
     default void testFinished(int number) {
     }
+
+    /** All tests ran; the outputs are being compared. */
+    default void judging() {
+    }
 }

@@ -7,10 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware  # Import this
 
 from app.api import problem_router, editorial_router, admin_router
 from app.api.submission_router import router as sub_router
+from app.core.schema_upgrade import ensure_columns
 from app.database import engine, Base
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+ensure_columns(engine)
 
 app = FastAPI(
     title="Problem Microservice",

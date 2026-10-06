@@ -34,4 +34,9 @@ public class Problem {
 
     private Integer memoryLimitMb;
     private Long timeLimitMs;
+
+    /** A CheckerMode name; empty means the default (TOKENS). */
+    private String checker;
+    /** For the FLOAT checker: how far apart two numbers may be. */
+    private Double checkerTolerance;
 }

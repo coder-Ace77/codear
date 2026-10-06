@@ -259,3 +259,25 @@ def test_a_redis_failure_while_queueing_does_not_block_the_submission(client, cr
         )
 
     assert response.status_code == 200
+
+
+# --- verdicts ---
+
+
+def test_the_verdict_and_failing_test_reach_the_client(client):
+    make_submission(status=SubmissionStatus.FAILED, result="Wrong answer on test 3 of 26 (hidden test).",
+                    total_tests=26, passed_tests=2, verdict="WRONG_ANSWER", failed_test=3)
+    set_progress("s1", 9, "DONE", total=26, started=3, completed=2)
+
+    result = get(client, "s1").json()["result"]
+
+    assert result["verdict"] == "WRONG_ANSWER" and result["failedTest"] == 3
+    assert result["result"].startswith("Wrong answer on test 3")
+
+
+def test_submissions_judged_before_verdicts_existed_have_none(client):
+    make_submission(status=SubmissionStatus.PASSED, total_tests=5, passed_tests=5)
+
+    result = get(client, "s1").json()["result"]
+
+    assert result["verdict"] is None and result["failedTest"] is None

@@ -23,6 +23,7 @@ export interface AdminStats {
     oldestInProgressSeconds: number | null;
     stuck: boolean;
     byStatusLast24Hours: Record<string, number>;
+    byVerdictLast24Hours?: Record<string, number>;
     avgJudgeMsLastHour: number | null;
   };
   topSubmittersLastHour: { userId: number; username: string; submissions: number }[];
@@ -37,6 +38,8 @@ export interface RecentSubmission {
   problemTitle: string | null;
   language: string;
   status: "IN_PROGRESS" | "PASSED" | "FAILED" | "COMPLETED" | null;
+  verdict?: string | null;
+  failedTest?: number | null;
   passedTests: number | null;
   totalTests: number | null;
   timeTakenMs: number | null;

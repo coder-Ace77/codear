@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, BigInteger, Boolean, Enum as SQLEnum, Index
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, BigInteger, Boolean, Float, Enum as SQLEnum, Index
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -50,6 +50,9 @@ class Problem(Base):
     tags = Column(ARRAY(String)) # columnDefinition = "text[]"
     time_limit_ms = Column(BigInteger)
     memory_limit_mb = Column(Integer)
+    # how answers are compared (a core.checker_modes name); NULL means the default
+    checker = Column(String(40), nullable=True)
+    checker_tolerance = Column(Float, nullable=True)
 
     test_cases = relationship("TestCase", back_populates="problem", cascade="all, delete-orphan")
 class TestCase(Base):
@@ -71,6 +74,9 @@ class Submission(Base):
     code = Column(Text)
     language = Column(String)
     status = Column(SQLEnum(SubmissionStatus), default=SubmissionStatus.IN_PROGRESS)
+    # why it got that status (an engine Verdict name) and the first failing test; NULL for old submissions
+    verdict = Column(String(40), nullable=True)
+    failed_test = Column(Integer, nullable=True)
     result = Column(Text)
     total_tests = Column(Integer)
     passed_tests = Column(Integer)

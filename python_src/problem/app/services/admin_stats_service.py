@@ -76,6 +76,13 @@ class AdminStatsService:
             .all()
         )
 
+        by_verdict = (
+            self.db.query(Submission.verdict, func.count(Submission.id))
+            .filter(Submission.submitted_at >= now - datetime.timedelta(days=1), Submission.verdict.isnot(None))
+            .group_by(Submission.verdict)
+            .all()
+        )
+
         avg_ms = (
             self.db.query(func.avg(Submission.time_taken_ms))
             .filter(Submission.submitted_at >= now - datetime.timedelta(hours=1), Submission.time_taken_ms.isnot(None))
@@ -110,6 +117,7 @@ class AdminStatsService:
                 "oldestInProgressSeconds": oldest,
                 "stuck": oldest is not None and oldest > STALE_AFTER_SECONDS,
                 "byStatusLast24Hours": {s.value: int(n) for s, n in by_status if s},
+                "byVerdictLast24Hours": {v: int(n) for v, n in by_verdict},
                 "avgJudgeMsLastHour": int(avg_ms) if avg_ms is not None else None,
             },
             "topSubmittersLastHour": [
@@ -138,6 +146,8 @@ class AdminStatsService:
                 "problemTitle": title,
                 "language": s.language,
                 "status": s.status.value if s.status else None,
+                "verdict": s.verdict,
+                "failedTest": s.failed_test,
                 "passedTests": s.passed_tests,
                 "totalTests": s.total_tests,
                 "timeTakenMs": s.time_taken_ms,

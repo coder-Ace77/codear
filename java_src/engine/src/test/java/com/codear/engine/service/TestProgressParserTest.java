@@ -2,6 +2,8 @@ package com.codear.engine.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.codear.engine.constants.SandboxProtocol;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class TestProgressParserTest {
 
-    private static final String SEP = ContainerFactory.OUTPUT_SEPARATOR;
+    private static final String SEP = SandboxProtocol.TEST_SEPARATOR;
 
     /** Records every event as text, in order. */
     private static class Recorder implements TestProgressListener {

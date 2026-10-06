@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import Verdict from "@/atoms/Verdict";
+import { showsTestCount, styleFor, verdictKey } from "@/lib/verdict";
 import type { SubmissionProgress as Progress, ProgressStage } from "@/types/submissionProgress";
 import type { WatchPhase } from "@/hooks/useSubmissionProgress";
 
@@ -37,7 +38,7 @@ const SubmissionProgress = ({ progress, phase, connectionLost, slow, error, onDi
     if (finished) {
       return result?.status === "PASSED"
         ? `Accepted. ${result.passedTests} of ${result.totalTests} tests passed`
-        : `Not accepted. ${result?.passedTests ?? 0} of ${result?.totalTests ?? 0} tests passed`;
+        : `${styleFor(result ? verdictKey(result) : "FAILED").label}.`;
     }
     return STEPS.find((s) => s.stage === progress.stage)?.label ?? "Judging";
   }, [finished, failedToJudge, result, progress.stage]);
@@ -122,19 +123,23 @@ const SubmissionProgress = ({ progress, phase, connectionLost, slow, error, onDi
           ) : result ? (
             <>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <Verdict status={result.status} />
-                <span className="font-mono text-[13px]">
-                  <strong className="font-medium">
-                    {result.passedTests}/{result.totalTests}
-                  </strong>{" "}
-                  tests
-                </span>
-                {result.timeTakenMs !== null && result.timeTakenMs !== undefined && (
+                <Verdict status={verdictKey(result)} />
+                {showsTestCount(verdictKey(result)) && (
+                  <span className="font-mono text-[13px]">
+                    <strong className="font-medium">
+                      {result.passedTests}/{result.totalTests}
+                    </strong>{" "}
+                    tests
+                  </span>
+                )}
+                {result.timeTakenMs !== null && result.timeTakenMs !== undefined && showsTestCount(verdictKey(result)) && (
                   <span className="font-mono text-[13px]">{result.timeTakenMs} ms</span>
                 )}
-                {result.memoryUsed && <span className="font-mono text-[13px]">{result.memoryUsed}</span>}
+                {result.memoryUsed && showsTestCount(verdictKey(result)) && (
+                  <span className="font-mono text-[13px]">{result.memoryUsed}</span>
+                )}
               </div>
-              {result.status !== "PASSED" && result.result && (
+              {verdictKey(result) !== "ACCEPTED" && result.status !== "PASSED" && result.result && (
                 <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-secondary p-3 font-mono text-[12px] leading-5">
                   {result.result}
                 </pre>

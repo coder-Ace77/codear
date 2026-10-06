@@ -36,6 +36,13 @@ public class Submission {
     @Enumerated(EnumType.STRING)
     private RunStatus status;
 
+    /** Why it got that status (a Verdict name). A plain string, so adding verdicts never needs a schema change. */
+    @Column(length = 40)
+    private String verdict;
+
+    /** 1-based number of the first failing test, if any. */
+    private Integer failedTest;
+
     @Column(columnDefinition = "TEXT")
     private String result;
 

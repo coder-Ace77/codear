@@ -6,5 +6,6 @@ import java.util.List;
 
 public interface TestCaseRepository extends JpaRepository<TestCase, Long> {
 
-    List<TestCase> findByProblemId(Long problemId);
+    /** In a fixed order, so "the first failing test" means the same thing every time. */
+    List<TestCase> findByProblemIdOrderByIdAsc(Long problemId);
 }
