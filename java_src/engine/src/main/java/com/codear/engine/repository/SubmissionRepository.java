@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.codear.engine.entity.Submission;
 import com.codear.engine.enums.RunStatus;
@@ -14,6 +15,9 @@ import java.util.Optional;
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     Optional<Submission> findBySubmissionId(String submissionId);
 
+    // A declared @Modifying query gets no transaction from Spring Data by default, and without one Hibernate
+    // refuses to run it ("Executing an update/delete query"), so every verdict would fail to save.
+    @Transactional
     @Modifying
     @Query("""
                 UPDATE Submission s

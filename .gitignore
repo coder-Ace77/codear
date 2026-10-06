@@ -85,3 +85,5 @@ load-test/setup/users.csv
 load-test/results/
 load-test/.env
 load-test/node_modules/
+
+feedback/

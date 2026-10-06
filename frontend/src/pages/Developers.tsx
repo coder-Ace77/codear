@@ -6,10 +6,8 @@ import CodeBlock, { CopyButton } from "@/molecules/CodeBlock";
 import Input from "@/atoms/Input";
 import Label from "@/atoms/Label";
 import Button from "@/atoms/Button";
+import { parseUtc as utc } from "@/lib/time";
 import { apiKeyService, ApiKey, CreatedApiKey } from "@/service/apiKeyService";
-
-// The API sends UTC timestamps without a timezone suffix.
-const utc = (value: string) => new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`);
 
 const BASE = (import.meta.env.VITE_API_BASE as string) || "https://your-api-host/api/v1";
 
