@@ -251,3 +251,35 @@ def test_hidden_test_cases_are_not_exposed(client, created_problem):
     cases = client.get(f"{BASE}/problem/{problem_id}").json()["testCases"]
 
     assert all(c["isSample"] for c in cases)
+
+
+# --- long polling must not hold a database connection while it waits ---
+
+
+def test_long_poll_releases_its_database_connection_while_waiting(created_problem):
+    import asyncio
+
+    from app.core.auth import CurrentUser
+    from app.services.submission_service import SubmissionService
+
+    problem_id, _ = created_problem
+    make_submission(USER_ID, problem_id, "slow-one")
+    session = SessionLocal()
+    in_transaction_while_waiting = []
+    answers = iter(["IN_PROGRESS", "IN_PROGRESS", "PASSED"])
+
+    async def fake_sleep(_seconds):
+        in_transaction_while_waiting.append(session.in_transaction())
+
+    try:
+        with patch("app.services.submission_service.cache.get_cache", side_effect=lambda _k: next(answers)), patch(
+            "app.services.submission_service.asyncio.sleep", fake_sleep
+        ):
+            result = asyncio.run(
+                SubmissionService(session).long_poll_submission("slow-one", CurrentUser(USER_ID, "tester", "USER"))
+            )
+    finally:
+        session.close()
+
+    assert result.submission_id == "slow-one"
+    assert in_transaction_while_waiting == [False, False]

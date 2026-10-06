@@ -5,9 +5,11 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useResolvedTheme } from "@/hooks/useResolvedTheme";
 import { defineProofThemes } from "@/lib/monacoTheme";
+import { useSubmissionProgress } from "@/hooks/useSubmissionProgress";
+import SubmissionProgress from "@/molecules/SubmissionProgress";
 
 
-const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }) => {
+const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, onSubmissionFinished }) => {
   const [language, setLanguage] = useState(() => localStorage.getItem("preferred-language") || "python");
   const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem("preferred-font-size")) || 14);
   const [output, setOutput] = useState("");
@@ -15,6 +17,7 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const theme = useResolvedTheme();
+  const watch = useSubmissionProgress();
 
   const [isRunningTest, setIsRunningTest] = useState(false);
 
@@ -79,8 +82,9 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }
         language
       );
       setSubmissionId(submissionId);
-      setAcitveTab('submissions');
       setIsSubmitting(false);
+      // follow it to the verdict here, under the editor; the Submissions tab reloads when it is done
+      watch.start(submissionId, () => onSubmissionFinished?.());
     } catch (err: any) {
       console.error(err);
       if (err.response?.status === 429) {
@@ -206,6 +210,18 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }
         </label>
       </section>
 
+      {watch.progress && (
+        <SubmissionProgress
+          progress={watch.progress}
+          phase={watch.phase}
+          connectionLost={watch.connectionLost}
+          slow={watch.slow}
+          error={watch.error}
+          onDismiss={watch.reset}
+          onViewSubmissions={() => setAcitveTab("submissions")}
+        />
+      )}
+
       <div className="flex justify-end gap-3">
         <button
           className="inline-flex h-9 items-center rounded-sm border border-input px-4 text-sm font-semibold transition-colors hover:border-foreground hover:bg-highlight-wash disabled:cursor-not-allowed disabled:border-border disabled:text-muted-foreground"
@@ -217,9 +233,9 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId }
         <button
           className="inline-flex h-9 items-center rounded-sm border border-highlight bg-highlight px-4 text-sm font-semibold text-highlight-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-secondary disabled:text-muted-foreground"
           onClick={handleSubmit}
-          disabled={isSubmitting || cooldown > 0}
+          disabled={isSubmitting || watch.phase === "watching" || cooldown > 0}
         >
-          {isSubmitting ? "Submitting…" : cooldown > 0 ? `Wait ${cooldown}s` : "Submit"}
+          {isSubmitting ? "Submitting…" : watch.phase === "watching" ? "Judging…" : cooldown > 0 ? `Wait ${cooldown}s` : "Submit"}
         </button>
       </div>
     </div>

@@ -1,8 +1,12 @@
 import asyncio
+import time
 import uuid
 from datetime import datetime
+from starlette.concurrency import run_in_threadpool
+
 from app.models.problem import Submission, SubmissionStatus
-from app.core import cache, sqs
+from app.schemas.problem_schema import SubmissionResponse
+from app.core import cache, progress, sqs
 
 from app.schemas.problem_schema import ProblemDTO, TestCaseDTO
 from app.models.problem import Problem,TestCase
@@ -18,6 +22,7 @@ class SubmissionService:
         
         # 1. Update Redis
         cache.set_cache(sub_id, SubmissionStatus.IN_PROGRESS.value)
+        progress.write_queued(sub_id)
         
         # 2. Save to DB
         new_sub = Submission(
@@ -48,6 +53,11 @@ class SubmissionService:
         if not submission or (submission.user_id != user.id and not user.is_admin):
             return None
 
+        # The database only allows a handful of connections in total, and the session would otherwise
+        # keep one checked out for the whole wait. Ending the transaction hands it back; the wait
+        # below only talks to Redis, and the final query opens a fresh connection.
+        self.db.rollback()
+
         max_wait = 10  # seconds
         waited = 0
         while waited < max_wait:
@@ -57,8 +67,73 @@ class SubmissionService:
             await asyncio.sleep(1)
             waited += 1
 
-        self.db.refresh(submission)
-        return submission
+        return self.db.query(Submission).filter(Submission.submission_id == sub_id).first()
+
+    # --- live progress (long poll with a version cursor) ---
+
+    POLL_INTERVAL_SECONDS = 0.25
+
+    def _owned_submission_info(self, sub_id: str, user):
+        """(language, status) of the caller's submission, or None. Ends the transaction so no database
+        connection is held while the caller waits."""
+        row = self.db.query(Submission).filter(Submission.submission_id == sub_id).first()
+        info = None
+        if row and (row.user_id == user.id or user.is_admin):
+            info = {"language": row.language, "status": row.status}
+        self.db.rollback()
+        return info
+
+    def _load_submission(self, sub_id: str):
+        row = self.db.query(Submission).filter(Submission.submission_id == sub_id).first()
+        result = SubmissionResponse.model_validate(row).model_dump(mode="json") if row else None
+        status = row.status.value if row and row.status else None
+        self.db.rollback()
+        return status, result
+
+    async def progress(self, sub_id: str, user, since: int, wait: int):
+        """Waits (up to `wait` seconds) for progress newer than version `since`, then returns the latest
+        state. None when the submission does not exist or is not the caller's.
+
+        Redis and database calls run in worker threads so a slow call never stalls the event loop that is
+        serving other waiting clients."""
+        info = await run_in_threadpool(self._owned_submission_info, sub_id, user)
+        if info is None:
+            return None
+        language = info["language"]
+        deadline = time.monotonic() + wait
+
+        async def finished(raw):
+            """The final answer: the database is the source of truth for the verdict."""
+            status, result = await run_in_threadpool(self._load_submission, sub_id)
+            record = dict(raw) if raw else {"v": since + 1}
+            if record.get("stage") not in progress.TERMINAL_STAGES:
+                record["stage"] = "DONE"  # e.g. the engine predates progress and only set the plain status flag
+            body = progress.describe(record, language)
+            body.update(changed=True, status=status, result=result, submissionId=sub_id)
+            return body
+
+        if info["status"] != SubmissionStatus.IN_PROGRESS:
+            return await finished(await asyncio.to_thread(progress.read, sub_id))
+
+        while True:
+            raw = await asyncio.to_thread(progress.read, sub_id)
+            if raw is None:
+                # no progress record (expired, or the engine predates progress): use the plain status flag
+                legacy = await asyncio.to_thread(cache.get_cache, sub_id)
+                if legacy and legacy != SubmissionStatus.IN_PROGRESS.value:
+                    return await finished(None)
+            elif raw.get("stage") in progress.TERMINAL_STAGES:
+                return await finished(raw)
+            elif int(raw.get("v") or 0) > since:
+                body = progress.describe(raw, language)
+                body.update(changed=True, status=SubmissionStatus.IN_PROGRESS.value, submissionId=sub_id)
+                return body
+
+            if time.monotonic() >= deadline:
+                body = progress.describe(raw or {"v": since, "stage": "QUEUED"}, language)
+                body.update(changed=False, status=SubmissionStatus.IN_PROGRESS.value, submissionId=sub_id)
+                return body
+            await asyncio.sleep(self.POLL_INTERVAL_SECONDS)
 
     def get_submissions_by_user_and_problem(self, user_id: int, problem_id: int) -> list[Submission]:
         """Equivalent to getSubmissionByIdAndProblem in Java."""

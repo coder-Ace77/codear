@@ -152,14 +152,31 @@ public class ContainerFactory implements AutoCloseable {
 
     public CodeExecutionResult runContainerAndGetLogs(String containerId, int numTestCases, long timeLimitPerTestMs)
             throws InterruptedException {
+        return runContainerAndGetLogs(containerId, numTestCases, timeLimitPerTestMs, null);
+    }
+
+    public CodeExecutionResult runContainerAndGetLogs(String containerId, int numTestCases, long timeLimitPerTestMs,
+            TestProgressListener progress) throws InterruptedException {
         dockerClient.startContainerCmd(containerId).exec();
+        if (progress != null) {
+            progress.containerStarted();
+        }
 
         final StringBuilder logs = new StringBuilder();
+        final TestProgressParser parser = progress != null ? new TestProgressParser(progress) : null;
         ResultCallback.Adapter<Frame> callback = new ResultCallback.Adapter<Frame>() {
             @Override
             public void onNext(Frame frame) {
                 if (frame != null) {
-                    logs.append(new String(Objects.requireNonNull(frame.getPayload())));
+                    String chunk = new String(Objects.requireNonNull(frame.getPayload()));
+                    logs.append(chunk);
+                    if (parser != null) {
+                        try {
+                            parser.feed(chunk);
+                        } catch (RuntimeException e) {
+                            // progress is cosmetic: never let it disturb the run
+                        }
+                    }
                 }
             }
         };

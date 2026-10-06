@@ -29,21 +29,27 @@ public class SqsReceiver {
     private final ProblemCrudService problemCrudService;
     private final CheckerService checkerService;
     private final SubmissionService submissionService;
+    private final ProgressReporterFactory progressFactory;
 
     @SqsListener("codear-queue")
     public void listen(String message) {
         StopWatch stopWatch = new StopWatch("SqsReceiver.listen");
+        ProgressReporter progress = null;
+        Code code = null;
         try {
             stopWatch.start("log-start");
             log.info("Received submission message via SQS");
             stopWatch.stop();
 
             stopWatch.start("parse-message");
-            Code code = mapper.readValue(message, Code.class);
+            code = mapper.readValue(message, Code.class);
+            progress = progressFactory.create(code.getSubmissionId());
+            progress.preparing();
             stopWatch.stop();
 
             stopWatch.start("fetch-test-cases");
             List<TestCase> testCases = problemCrudService.getAllTestCases(code.getProblemId());
+            progress.totalKnown(testCases.size());
             stopWatch.stop();
 
             stopWatch.start("prepare-inputs");
@@ -59,24 +65,44 @@ public class SqsReceiver {
                     code.getCode(),
                     code.getLanguage(),
                     inputs,
-                    resourceConstraints);
+                    resourceConstraints,
+                    progress);
             stopWatch.stop();
 
             stopWatch.start("check-results");
+            progress.judging();
             CheckerResponse checkerResponse = checkerService.check(result.getOutputs(), testCases);
             stopWatch.stop();
 
             stopWatch.start("update-submission");
             submissionService.updateSubmissionResult(code.getSubmissionId(), checkerResponse, result);
+            progress.done();
             stopWatch.stop();
         } catch (Exception e) {
             log.error("Error processing SQS submission: {}", e.getMessage());
             log.error("Raw message: {}", message);
+            failSubmission(code, progress);
         } finally {
             if (stopWatch.isRunning()) {
                 stopWatch.stop();
             }
             log.info(stopWatch.prettyPrint());
+        }
+    }
+
+    /** Judging itself failed, so tell the person waiting instead of leaving the progress bar hanging. */
+    private void failSubmission(Code code, ProgressReporter progress) {
+        if (code == null || code.getSubmissionId() == null) {
+            return;
+        }
+        try {
+            submissionService.markSystemError(code.getSubmissionId(),
+                    "The judge hit an internal error while checking this submission. Please submit again.");
+        } catch (Exception e) {
+            log.error("Could not record the failure of submission {}: {}", code.getSubmissionId(), e.getMessage());
+        }
+        if (progress != null) {
+            progress.error();
         }
     }
 
