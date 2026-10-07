@@ -3,6 +3,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.core.auth import CurrentUser, get_current_user, require_admin
 from app.core.rate_limit import rate_limited_submitter
+from app.schemas.search_schema import SearchQuery, parse_search_query
 from app.services.problem_service import ProblemService
 from sqlalchemy.orm import Session
 from app.services.submission_service import SubmissionService
@@ -31,24 +32,18 @@ def profile_time(func):
         return result
     return wrapper
 
-@profile_time
 @router.get("/search")
-async def search(
-    search: Optional[str] = None,
-    difficulty: Optional[str] = None,
-    tags: Optional[List[str]] = Query(None),
-    page: int = 0,
-    size: int = 10,
-    db=Depends(get_db)
-):
-    service = ProblemService(db)
-    content = service.search_problems(search, difficulty, tags, page, size)
-    total = service.count_filtered_problems(search, difficulty, tags)
-    return {
-        "content": content,
-        "totalCount": total,
-        "totalPages": (total + size - 1) // size
-    }
+def search(query: SearchQuery = Depends(parse_search_query), db=Depends(get_db)):
+    """Problems matching the words (in the title, statement or tags), the difficulty and the tags, in the order asked
+    for. See schemas/search_schema.py for every parameter."""
+    return ProblemService(db).search_problems(query)
+
+
+@router.get("/tags")
+def tags(db=Depends(get_db)):
+    """Every tag with the number of problems that carry it, most used first."""
+    return ProblemService(db).tag_counts()
+
 
 @router.post("/test")
 async def run_test_case(test_data: TestDTO, user: CurrentUser = Depends(get_current_user)):

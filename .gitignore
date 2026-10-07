@@ -87,3 +87,7 @@ load-test/.env
 load-test/node_modules/
 
 feedback/
+
+# generated test files (rebuild with problems/<name>/gen_tests.py)
+problems/*/tests/
+problems/

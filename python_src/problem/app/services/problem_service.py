@@ -4,6 +4,9 @@ from app.models.problem import Problem, Submission, TestCase, Editorial
 from app.schemas.problem_schema import ProblemDTO, ProblemSendDTO, ProblemSummaryDTO
 from app.services.cache_service import CacheService
 from app.core.local_cache import LocalCache
+from app.core.search_options import SEARCH_CACHE_SECONDS
+from app.schemas.search_schema import SearchQuery
+from app.services.problem_search import ProblemSearch
 from typing import List, Optional
 import json
 import time
@@ -187,69 +190,41 @@ class ProblemService:
         return tags
 
     @profile_time
-    def search_problems(self, search: Optional[str], difficulty: Optional[str], tags: Optional[List[str]], page: int, size: int):
-        tags_str = ",".join(sorted(tags)) if tags else "None"
-        cache_key = f"{self.PROBLEM_SEARCH_KEY}:{search or 'None'}:{difficulty or 'None'}:{tags_str}:{page}:{size}"
-        
-        # L1
-        local_result = LocalCache.get(cache_key)
-        if local_result:
-            return local_result
+    def search_problems(self, query: SearchQuery) -> dict:
+        """One page of problems plus the total that match. Plain browsing (no search words) is cached briefly;
+        free-text searches are not, because every different phrase would add a cache entry for almost no reuse."""
+        cache_key = self._search_cache_key(query) if not query.text else None
+        if cache_key:
+            cached = LocalCache.get(cache_key) or CacheService.get_object(cache_key)
+            if cached:
+                LocalCache.set(cache_key, cached, ttl=SEARCH_CACHE_SECONDS)
+                return cached
 
-        # L2
-        cached_result = CacheService.get_object(cache_key)
-        if cached_result:
-            LocalCache.set(cache_key, cached_result, ttl=None)
-            return cached_result
+        page = ProblemSearch(self.db).search(query)
+        result = {
+            "content": page.problems,
+            "totalCount": page.total,
+            "totalPages": (page.total + query.size - 1) // query.size,
+        }
+        if cache_key:
+            CacheService.set_object(cache_key, result, expire_seconds=SEARCH_CACHE_SECONDS)
+            LocalCache.set(cache_key, result, ttl=SEARCH_CACHE_SECONDS)
+        return result
 
-        offset = page * size
-        tag_str = ",".join(tags) if tags else None
-        
-        query = text("""
-            SELECT id, title, tags, difficulty FROM problems p
-            WHERE (:search IS NULL OR :search = '' OR to_tsvector('english', p.title || ' ' || p.description) @@ plainto_tsquery(:search))
-            AND (:difficulty IS NULL OR :difficulty = '' OR LOWER(p.difficulty) = LOWER(:difficulty))
-            AND (:tags IS NULL OR :tags = '' OR p.tags::text[] && string_to_array(:tags, ','))
-            ORDER BY p.id LIMIT :limit OFFSET :offset
-        """)
-        
-        result = self.db.execute(query, {
-            "search": search, "difficulty": difficulty, 
-            "tags": tag_str, "limit": size, "offset": offset
-        }).fetchall()
-        
-        data = [{"id": r.id, "title": r.title, "tags": r.tags or [], "difficulty": r.difficulty} for r in result]
-        CacheService.set_object(cache_key, data, expire_seconds=300)
-        LocalCache.set(cache_key, data, ttl=None)
-        return data
+    def tag_counts(self) -> list:
+        key = f"{self.PROBLEM_SEARCH_KEY}:tags"
+        cached = LocalCache.get(key) or CacheService.get_object(key)
+        if cached:
+            LocalCache.set(key, cached, ttl=SEARCH_CACHE_SECONDS)
+            return cached
+        counts = ProblemSearch(self.db).tag_counts()
+        CacheService.set_object(key, counts, expire_seconds=SEARCH_CACHE_SECONDS)
+        LocalCache.set(key, counts, ttl=SEARCH_CACHE_SECONDS)
+        return counts
 
-    @profile_time
-    def count_filtered_problems(self, search: Optional[str], difficulty: Optional[str], tags: Optional[List[str]]):
-        tags_str = ",".join(sorted(tags)) if tags else "None"
-        cache_key = f"{self.PROBLEM_SEARCH_KEY}_count:{search or 'None'}:{difficulty or 'None'}:{tags_str}"
-        
-        # L1
-        local_count = LocalCache.get(cache_key)
-        if local_count is not None:
-             return int(local_count)
-
-        # L2
-        cached_count = CacheService.get_value(cache_key)
-        if cached_count is not None:
-            LocalCache.set(cache_key, int(cached_count), ttl=None)
-            return int(cached_count)
-
-        tag_str = ",".join(tags) if tags else None
-        query = text("""
-            SELECT COUNT(*) FROM problems p
-            WHERE (:search IS NULL OR :search = '' OR to_tsvector('english', p.title || ' ' || p.description) @@ plainto_tsquery(:search))
-            AND (:difficulty IS NULL OR :difficulty = '' OR LOWER(p.difficulty) = LOWER(:difficulty))
-            AND (:tags IS NULL OR :tags = '' OR p.tags::text[] && string_to_array(:tags, ','))
-        """)
-        count = self.db.execute(query, {"search": search, "difficulty": difficulty, "tags": tag_str}).scalar()
-        CacheService.set_object(cache_key, count, expire_seconds=300)
-        LocalCache.set(cache_key, count, ttl=None)
-        return count
+    def _search_cache_key(self, query: SearchQuery) -> str:
+        return (f"{self.PROBLEM_SEARCH_KEY}:v2:{query.difficulty or '-'}:{','.join(sorted(query.tags)) or '-'}:"
+                f"{query.tag_mode}:{query.sort}:{query.page}:{query.size}")
 
     def get_problem_summary_recent(self, user_id: int):
         results = (

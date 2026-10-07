@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import toast from "react-hot-toast";
 import TagsSelector from "@/components/ui/Problemtags";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchProblems, deleteProblem } from "@/service/problemService";
+import { searchProblems, deleteProblem } from "@/service/problemService";
+import { DEFAULT_QUERY } from "@/lib/problemQueryUrl";
 import {
   Table,
   TableBody,
@@ -128,21 +129,10 @@ const Admin = () => {
 
   const loadProblems = () => {
     setLoading(true);
-    fetchProblems({
-      page: 1,
-      search: "",
-      difficulty: "all",
-      sortBy: "newest",
-      tag: "",
-      onSuccess: (data) => {
-        setProblems(data.problems);
-        setLoading(false);
-      },
-      onError: (err) => {
-        toast.error("Failed to load problems");
-        setLoading(false);
-      }
-    });
+    searchProblems({ ...DEFAULT_QUERY, sort: "newest", size: 50 })
+      .then((found) => setProblems(found.problems))
+      .catch(() => toast.error("Failed to load problems"))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {

@@ -1,8 +1,38 @@
-import { ApiResponse } from "@/types/apiResponse";
 import { ITEMS_PER_PAGE } from "@/constants/AppConstants";
+import { DEFAULT_DIFFICULTY, DEFAULT_TAG_MODE } from "@/constants/problemFilters";
 import apiClient from "@/lib/apiClient";
+import type { ProblemQuery, SearchResult, TagCount } from "@/types/problemSearch";
 import type { TagsAndCount } from "@/types/TagsAndCount";
-import { ProblemSummary } from "@/constants/mockData";
+
+/**
+ * Query-string parameters for the API. Axios writes an array as `tags[]=a`, but the API reads `tags=a&tags=b`,
+ * so the list is spelled out here.
+ */
+export const searchParams = (query: ProblemQuery): URLSearchParams => {
+  const params = new URLSearchParams();
+  if (query.search.trim()) params.set("search", query.search.trim());
+  if (query.difficulty !== DEFAULT_DIFFICULTY) params.set("difficulty", query.difficulty);
+  query.tags.forEach((tag) => params.append("tags", tag));
+  if (query.tags.length > 1 && query.tagMode !== DEFAULT_TAG_MODE) params.set("tagMode", query.tagMode);
+  params.set("sortBy", query.sort);
+  params.set("page", String(Math.max(query.page, 1) - 1)); // the API counts pages from 0
+  params.set("size", String(query.size ?? ITEMS_PER_PAGE));
+  return params;
+};
+
+export const searchProblems = async (query: ProblemQuery, signal?: AbortSignal): Promise<SearchResult> => {
+  const { data } = await apiClient.get("/problem/search", { params: searchParams(query), signal });
+  return {
+    problems: data.content ?? [],
+    totalCount: data.totalCount ?? 0,
+    totalPages: data.totalPages ?? 0,
+  };
+};
+
+export const fetchTagCounts = async (): Promise<TagCount[]> => {
+  const { data } = await apiClient.get<TagCount[]>("/problem/tags");
+  return data;
+};
 
 export const fetchGrandTotal = async (setGrandTotalProblems, setAvailableTags) => {
   try {
@@ -15,54 +45,6 @@ export const fetchGrandTotal = async (setGrandTotalProblems, setAvailableTags) =
     setGrandTotalProblems(0);
   }
 };
-
-export const fetchProblems = async ({
-  page,
-  search,
-  difficulty,
-  sortBy,
-  tag,
-  onSuccess,
-  onError,
-}: {
-  page: number;
-  search: string;
-  difficulty: string;
-  sortBy: string;
-  tag: string;
-  onSuccess: (data: any) => void;
-  onError: (err: any) => void;
-}) => {
-  try {
-    console.log("fetch Problem called..");
-    const params: any = {
-      page: page - 1,
-      size: ITEMS_PER_PAGE,
-      sortBy,
-    };
-
-    if (search) params.search = search;
-    if (difficulty !== "all") params.difficulty = difficulty;
-    if (tag) params.tags = [tag];
-
-    console.log("params", params);
-
-    const { data } = await apiClient(`problem/search`, { params });
-
-    console.log("data ", data);
-
-    onSuccess({
-      problems: data.content || [],
-      totalCount: data.totalCount || 0,
-      totalPages: data.totalPages || 1,
-    });
-  } catch (err: any) {
-    console.error("❌ fetchProblems failed:", err);
-    onError(err);
-  }
-};
-
-
 
 export const deleteProblem = async (id: number) => {
   try {

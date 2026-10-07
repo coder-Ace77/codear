@@ -1,96 +1,64 @@
-import { useState, useEffect } from "react";
-import Pagination from "@/molecules/Pagination";
-import { ProblemSummary } from "@/constants/mockData";
-import { fetchGrandTotal ,fetchProblems } from "@/service/problemService";
+import { useEffect } from "react";
 import ExplorePageHeader from "@/molecules/ExplorePageHeader";
-import ExplorePageMenuSection from "@/molecules/ExplorePageMenuSectiob";
 import ExplorePageProblemSection from "@/molecules/ExplorePageProblemSection";
+import Pagination from "@/molecules/Pagination";
+import ProblemFilters from "@/molecules/ProblemFilters";
+import { ITEMS_PER_PAGE } from "@/constants/AppConstants";
+import { useProblemQuery } from "@/hooks/useProblemQuery";
+import { useProblemSearch, useTagCounts } from "@/hooks/useProblemSearch";
 
 const Explore = () => {
-  const [problems, setProblems] = useState<ProblemSummary[]>([]);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [grandTotalProblems, setGrandTotalProblems] = useState(0);
+  const filters = useProblemQuery();
+  const tags = useTagCounts();
+  const { problems, totalCount, totalPages, loading, error } = useProblemSearch(filters.query);
 
-
-  const [totalProblems, setTotalProblems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-
- 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
-  const [sortBy, setSortBy] = useState("popularity");
-  const [selectedTag, setSelectedTag] = useState("");
-
+  // an address can name a page that no longer exists (a link from before the list shrank): go to the last real one
+  const { page } = filters.query;
+  const { setPage } = filters;
   useEffect(() => {
-    setLoading(true);
+    if (!loading && !error && problems.length === 0 && totalCount > 0 && page > 1) setPage(Math.max(totalPages, 1));
+  }, [loading, error, problems.length, totalCount, totalPages, page, setPage]);
 
-    fetchProblems({
-        page: currentPage,
-        search: searchQuery,
-        difficulty: selectedDifficulty,
-        sortBy,
-        tag: selectedTag,
-        onSuccess: (data) => {
-          setProblems(data.problems);
-          setTotalPages(data.totalPages);
-          setTotalProblems(data.totalCount);
-          setLoading(false);
-        },
-        onError: (err) => {
-          setError(err.message || "Failed to fetch problems");
-          setLoading(false);
-        },
-      });
-  }, [currentPage, searchQuery, selectedDifficulty, sortBy, selectedTag]);
-
-  useEffect(() => {
-    const result = fetchGrandTotal(setGrandTotalProblems , setAvailableTags);
-  } , [])
-
-  
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedDifficulty, sortBy, selectedTag]);
+  const first = (filters.query.page - 1) * ITEMS_PER_PAGE + 1;
+  const last = first + problems.length - 1;
 
   return (
     <main className="mx-auto max-w-[1600px] px-6 pb-16 pt-12">
-      <ExplorePageHeader grandTotalProblems={grandTotalProblems} />
+      <ExplorePageHeader grandTotalProblems={totalCount} filtered={filters.filtered} />
 
-      <ExplorePageMenuSection
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        selectedDifficulty={selectedDifficulty}
-        setSelectedDifficulty={setSelectedDifficulty}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        availableTags={availableTags}
-        selectedTag={selectedTag}
-        setSelectedTag={setSelectedTag}
+      <ProblemFilters
+        query={filters.query}
+        searchText={filters.searchText}
+        tags={tags}
+        onSearchText={filters.setSearchText}
+        onClearSearch={filters.clearSearch}
+        onDifficulty={filters.setDifficulty}
+        onToggleTag={filters.toggleTag}
+        onRemoveTag={filters.removeTag}
+        onTagMode={filters.setTagMode}
+        onSort={filters.setSort}
+        onClearAll={filters.clearFilters}
       />
 
       <ExplorePageProblemSection
         loading={loading}
-        problemsummary={problems}
         error={error}
+        problems={problems}
+        selectedTags={filters.query.tags}
+        filtered={filters.filtered}
+        onTagClick={filters.toggleTag}
+        onClearFilters={filters.clearFilters}
       />
 
-      {!loading && !error && (
-        <p className="mt-3 font-mono text-[13px] text-muted-foreground">
-          Showing {problems.length} of {totalProblems} problems
+      {!error && totalCount > 0 && (
+        <p className="mt-3 font-mono text-[13px] text-muted-foreground" aria-live="polite">
+          Showing {first}–{last} of {totalCount} {totalCount === 1 ? "problem" : "problems"}
         </p>
       )}
 
-      {!loading && !error && totalPages > 1 && (
+      {!error && totalPages > 1 && (
         <div className="mt-8">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+          <Pagination currentPage={filters.query.page} totalPages={totalPages} onPageChange={filters.setPage} />
         </div>
       )}
     </main>
