@@ -101,7 +101,7 @@ const EMPTY_FORM = {
   timed: false,
   durationMinutes: 60,
   usernames: "",
-  singleUse: true,
+  oneAttemptOnly: true,
   expiresAt: "",
 };
 
@@ -201,7 +201,6 @@ const AdminTests = () => {
 
   const inviteInput = (usernames: string[]): CreateTestInput["invites"] => ({
     usernames,
-    singleUse: form.singleUse,
     expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,
   });
   const names = form.usernames.split(/[\s,]+/).filter(Boolean);
@@ -223,6 +222,7 @@ const AdminTests = () => {
         problemCount: form.problemCount,
         slotDifficulties: form.advanced ? form.slots : undefined,
         durationMinutes: form.timed ? form.durationMinutes : undefined,
+        multipleAttempts: !form.oneAttemptOnly,
         invites: inviteInput(form.visibility === "PRIVATE" ? names : []),
       });
       toast.success("Test created");
@@ -357,6 +357,18 @@ const AdminTests = () => {
           )}
         </div>
 
+        <div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.oneAttemptOnly} onChange={(e) => set("oneAttemptOnly", e.target.checked)} />
+            One attempt only
+          </label>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {form.oneAttemptOnly
+              ? "Each user gets a single attempt. For private tests the link stops working once it is finished or time runs out."
+              : "Users may start again after finishing or running out of time. Each attempt draws new problems."}
+          </p>
+        </div>
+
         {form.selectionMode === "POOL" && (
           <div>
             <Label>Pool ({poolIds.length} selected)</Label>
@@ -378,15 +390,9 @@ const AdminTests = () => {
               />
               <p className="mt-1 text-[13px] text-muted-foreground">Each user gets their own link, only they can open it.</p>
             </div>
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={form.singleUse} onChange={(e) => set("singleUse", e.target.checked)} />
-                One attempt only: the link dies once the test is finished or time runs out
-              </label>
-              <div>
-                <Label htmlFor="test-expires">Link expires (optional)</Label>
-                <Input id="test-expires" type="datetime-local" value={form.expiresAt} onChange={(e) => set("expiresAt", e.target.value)} />
-              </div>
+            <div className="md:w-1/2">
+              <Label htmlFor="test-expires">Link expires (optional)</Label>
+              <Input id="test-expires" type="datetime-local" value={form.expiresAt} onChange={(e) => set("expiresAt", e.target.value)} />
             </div>
           </div>
         )}
@@ -409,7 +415,8 @@ const AdminTests = () => {
                     <span className="block truncate text-sm font-medium">{t.title}</span>
                     <span className="text-[13px] text-muted-foreground">
                       {t.visibility === "PUBLIC" ? "Public" : `Private, ${t.invites} link${t.invites === 1 ? "" : "s"}`} ·{" "}
-                      {t.problemCount} problems · {t.durationMinutes ? `${t.durationMinutes} min` : "untimed"} · {t.attempts} attempt
+                      {t.problemCount} problems · {t.durationMinutes ? `${t.durationMinutes} min` : "untimed"} ·{" "}
+                      {t.multipleAttempts ? "multiple attempts" : "one attempt"} · {t.attempts} attempt
                       {t.attempts === 1 ? "" : "s"}
                     </span>
                   </button>
@@ -478,7 +485,7 @@ const AdminTests = () => {
                     Add links
                   </Button>
                 </div>
-                <p className="text-[13px] text-muted-foreground">New links use the one-attempt and expiry settings from the form on the left.</p>
+                <p className="text-[13px] text-muted-foreground">New links follow the attempt setting of this test and use the expiry from the form on the left.</p>
               </>
             ) : (
               <p className="text-sm text-muted-foreground">Public tests need no link: they are listed for every signed-in user.</p>

@@ -2,14 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Button from "@/atoms/Button";
-import type { TestSummary } from "@/service/adminService";
 import { formatClock } from "@/hooks/useAttemptClock";
-import { apiErrorText, testService, type ActiveAttempt, type ApiError } from "@/service/testService";
+import { apiErrorText, testService, type ActiveAttempt, type ApiError, type PublicTest } from "@/service/testService";
 
 /** Public tests anyone signed in can start. */
 const Tests = () => {
   const navigate = useNavigate();
-  const [tests, setTests] = useState<TestSummary[] | null>(null);
+  const [tests, setTests] = useState<PublicTest[] | null>(null);
   const [needsLogin, setNeedsLogin] = useState(false);
   const [starting, setStarting] = useState<number | null>(null);
   const [active, setActive] = useState<ActiveAttempt[]>([]);
@@ -27,12 +26,13 @@ const Tests = () => {
     try {
       await testService.finish(a.attemptId);
       loadActive();
+      loadTests(); // its Start button may now be Done
     } catch (e) {
       toast.error(apiErrorText(e, "Could not finish the test"));
     }
   };
 
-  useEffect(() => {
+  const loadTests = () =>
     testService
       .publicTests()
       .then(setTests)
@@ -41,12 +41,15 @@ const Tests = () => {
         else toast.error(apiErrorText(e, "Failed to load tests"));
         setTests([]);
       });
+  useEffect(() => {
+    loadTests();
   }, []);
 
-  const start = async (test: TestSummary) => {
+  const start = async (test: PublicTest) => {
+    const attempts = test.multipleAttempts ? "You can take it again later." : "You only get one attempt.";
     const warning = test.durationMinutes
-      ? `Start "${test.title}"? The ${test.durationMinutes} minute timer begins now and you only get one attempt.`
-      : `Start "${test.title}"? You only get one attempt.`;
+      ? `Start "${test.title}"? The ${test.durationMinutes} minute timer begins now. ${attempts}`
+      : `Start "${test.title}"? ${attempts}`;
     if (!window.confirm(warning)) return;
     setStarting(test.id);
     try {
@@ -112,12 +115,23 @@ const Tests = () => {
                   {t.description && <p className="mt-0.5 text-sm text-muted-foreground">{t.description}</p>}
                   <p className="mt-1 text-[13px] text-muted-foreground">
                     {t.problemCount} problem{t.problemCount === 1 ? "" : "s"} ·{" "}
-                    {t.durationMinutes ? `${t.durationMinutes} minutes` : "no time limit"}
+                    {t.durationMinutes ? `${t.durationMinutes} minutes` : "no time limit"} ·{" "}
+                    {t.multipleAttempts ? "multiple attempts" : "one attempt"}
                   </p>
                 </div>
-                <Button onClick={() => start(t)} disabled={starting === t.id}>
-                  {starting === t.id ? "Starting…" : "Start"}
-                </Button>
+                {t.myStatus === "DONE" ? (
+                  <Button disabled title="You have already taken this test">
+                    Done
+                  </Button>
+                ) : t.myStatus === "IN_PROGRESS" && t.myAttemptId ? (
+                  <Link to={`/test/attempt/${t.myAttemptId}`}>
+                    <Button>Resume</Button>
+                  </Link>
+                ) : (
+                  <Button onClick={() => start(t)} disabled={starting === t.id}>
+                    {starting === t.id ? "Starting…" : t.myStatus === "RETAKE" ? "Take again" : "Start"}
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

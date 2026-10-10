@@ -116,6 +116,8 @@ class CustomTest(Base):
     slot_difficulties = Column(ARRAY(String), nullable=True)
     duration_minutes = Column(Integer, nullable=True)     # NULL = untimed
     is_active = Column(Boolean, nullable=False, default=True)
+    # False: each user gets one attempt. True: a user may start again once an attempt is over
+    allow_retakes = Column(Boolean, nullable=False, default=False)
     created_by = Column(BigInteger, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

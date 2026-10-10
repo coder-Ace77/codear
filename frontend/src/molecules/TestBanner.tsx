@@ -14,7 +14,7 @@ const TestBanner = ({ attemptId }: { attemptId: number }) => {
     testService.attempt(attemptId).then(setAttempt).catch(() => {});
   }, [attemptId]);
   useEffect(load, [load]);
-  const left = useAttemptClock(attempt, load);
+  const { remaining, elapsed } = useAttemptClock(attempt, load);
 
   const finish = async () => {
     if (!window.confirm("Finish the test? You will not be able to come back to it.")) return;
@@ -40,7 +40,15 @@ const TestBanner = ({ attemptId }: { attemptId: number }) => {
           <span className="text-danger">Test over</span>
         ) : (
           <>
-            {left !== null && <span className={`font-mono ${left <= 300 ? "text-danger" : ""}`}>{formatClock(left)}</span>}
+            {remaining !== null ? (
+              <span className={`font-mono ${remaining <= 300 ? "text-danger" : ""}`} title="Time left">
+                {formatClock(remaining)} left
+              </span>
+            ) : (
+              <span className="font-mono text-muted-foreground" title="No time limit">
+                {formatClock(elapsed)} elapsed
+              </span>
+            )}
             <button
               onClick={finish}
               className="inline-flex h-7 items-center rounded-sm border border-input px-3 text-[13px] font-semibold transition-colors hover:border-foreground hover:bg-highlight-wash"
