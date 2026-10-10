@@ -11,6 +11,7 @@ from app.core.auth import CurrentUser
 from app.models.problem import CustomTest, Problem, Submission, SubmissionStatus, TestAttempt, TestInvite, User
 from app.schemas.test_schema import (
     AttemptOut,
+    ActiveAttempt,
     AttemptProblem,
     AttemptResult,
     CreatedTest,
@@ -46,6 +47,37 @@ def _is_over(attempt: TestAttempt) -> bool:
     return attempt.finished_at is not None or (attempt.expires_at is not None and attempt.expires_at <= _now())
 
 
+def draw_problems(candidates: List[tuple], slots: Optional[List[str]], count: int) -> List[int]:
+    """Picks `count` distinct problem ids at random from `candidates` ((id, difficulty) pairs).
+    `slots` says which difficulty each position must have (ANY, EASY, MEDIUM, HARD); None means all ANY.
+    Raises ValueError when the candidates cannot fill every slot."""
+    slots = slots or ["ANY"] * count
+    by_level = {}
+    for pid, level in candidates:
+        by_level.setdefault((level or "").strip().upper(), []).append(pid)
+
+    chosen: List[Optional[int]] = [None] * len(slots)
+    used = set()
+    # fixed difficulties first, so the open slots only draw from what is left over
+    for i, wanted in enumerate(slots):
+        if wanted == "ANY":
+            continue
+        pool = [pid for pid in by_level.get(wanted, []) if pid not in used]
+        if not pool:
+            raise ValueError(f"not enough {wanted.lower()} problems")
+        chosen[i] = _random.choice(pool)
+        used.add(chosen[i])
+    for i, wanted in enumerate(slots):
+        if wanted != "ANY":
+            continue
+        pool = [pid for pid, _ in candidates if pid not in used]
+        if not pool:
+            raise ValueError("not enough problems")
+        chosen[i] = _random.choice(pool)
+        used.add(chosen[i])
+    return chosen
+
+
 class TestService:
     def __init__(self, db: Session):
         self.db = db
@@ -53,15 +85,17 @@ class TestService:
     # ---------------------------------------------------------------- admin
 
     def create(self, req: CreateTestRequest, admin: CurrentUser) -> CreatedTest:
+        slots = [d.value for d in req.slotDifficulties] if req.slotDifficulties else None
         if req.selectionMode == SelectionMode.POOL:
             found = {row[0] for row in self.db.query(Problem.id).filter(Problem.id.in_(req.poolProblemIds)).all()}
             missing = [pid for pid in req.poolProblemIds if pid not in found]
             if missing:
                 raise HTTPException(status_code=400, detail=f"Unknown problem ids: {missing}")
-        else:
-            available = self.db.query(func.count(Problem.id)).scalar() or 0
-            if req.problemCount > available:
-                raise HTTPException(status_code=400, detail=f"Only {available} problems exist")
+        try:
+            # the same draw a participant will get, so a test that could not be started is refused now
+            draw_problems(self._candidates(req.selectionMode.value, req.poolProblemIds), slots, req.problemCount)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"This test cannot be built: {e}")
 
         test = CustomTest(
             title=req.title,
@@ -70,6 +104,7 @@ class TestService:
             selection_mode=req.selectionMode.value,
             pool_problem_ids=req.poolProblemIds,
             problem_count=req.problemCount,
+            slot_difficulties=slots,
             duration_minutes=req.durationMinutes,
             created_by=admin.id,
         )
@@ -155,6 +190,7 @@ class TestService:
             visibility=test.visibility,
             selectionMode=test.selection_mode,
             problemCount=test.problem_count,
+            slotDifficulties=test.slot_difficulties,
             durationMinutes=test.duration_minutes,
             isActive=test.is_active,
             createdAt=_utc(test.created_at),
@@ -248,14 +284,12 @@ class TestService:
         return self._attempt_out(self._begin(test, user, invite=invite), test)
 
     def _begin(self, test: CustomTest, user: CurrentUser, invite: Optional[TestInvite]) -> TestAttempt:
-        if test.selection_mode == SelectionMode.POOL.value:
-            candidates = [
-                row[0] for row in self.db.query(Problem.id).filter(Problem.id.in_(test.pool_problem_ids or [])).all()
-            ]
-        else:
-            candidates = [row[0] for row in self.db.query(Problem.id).all()]
-        if len(candidates) < test.problem_count:
-            # problems were deleted after the test was made
+        try:
+            drawn = draw_problems(
+                self._candidates(test.selection_mode, test.pool_problem_ids), test.slot_difficulties, test.problem_count
+            )
+        except ValueError:
+            # problems were deleted (or re-rated) after the test was made
             raise HTTPException(status_code=409, detail="This test does not have enough problems left")
 
         started = _now()
@@ -263,7 +297,7 @@ class TestService:
             test_id=test.id,
             invite_id=invite.id if invite else None,
             user_id=user.id,
-            problem_ids=_random.sample(candidates, test.problem_count),
+            problem_ids=drawn,
             started_at=started,
             expires_at=started + datetime.timedelta(minutes=test.duration_minutes) if test.duration_minutes else None,
         )
@@ -271,6 +305,46 @@ class TestService:
         self.db.commit()
         self.db.refresh(attempt)
         return attempt
+
+    def _candidates(self, selection_mode: str, pool: Optional[List[int]]) -> List[tuple]:
+        query = self.db.query(Problem.id, Problem.difficulty)
+        if selection_mode == SelectionMode.POOL.value:
+            query = query.filter(Problem.id.in_(pool or []))
+        return [(pid, level) for pid, level in query.all()]
+
+    def active_attempts(self, user: CurrentUser) -> List[ActiveAttempt]:
+        """The caller's attempts that can still be worked on."""
+        now = _now()
+        attempts = (
+            self.db.query(TestAttempt)
+            .filter(
+                TestAttempt.user_id == user.id,
+                TestAttempt.finished_at.is_(None),
+                (TestAttempt.expires_at.is_(None)) | (TestAttempt.expires_at > now),
+            )
+            .order_by(TestAttempt.started_at.desc())
+            .all()
+        )
+        if not attempts:
+            return []
+        solved = self._solved_at([a.id for a in attempts])
+        titles = {
+            t.id: t.title
+            for t in self.db.query(CustomTest).filter(CustomTest.id.in_({a.test_id for a in attempts})).all()
+        }
+        return [
+            ActiveAttempt(
+                attemptId=a.id,
+                testId=a.test_id,
+                title=titles.get(a.test_id, "Test"),
+                startedAt=_utc(a.started_at),
+                expiresAt=_utc(a.expires_at),
+                secondsRemaining=max(0, int((a.expires_at - now).total_seconds())) if a.expires_at else None,
+                solved=len(solved[a.id]),
+                total=len(a.problem_ids),
+            )
+            for a in attempts
+        ]
 
     def get_attempt(self, attempt_id: int, user: CurrentUser) -> AttemptOut:
         attempt = self.db.query(TestAttempt).filter(TestAttempt.id == attempt_id).first()
@@ -309,7 +383,7 @@ class TestService:
             finished=_is_over(attempt),
             # deleted problems drop out; the order drawn is kept
             problems=[
-                AttemptProblem(id=pid, title=rows[pid].title, difficulty=rows[pid].difficulty)
+                AttemptProblem(id=pid, title=rows[pid].title)
                 for pid in attempt.problem_ids
                 if pid in rows
             ],

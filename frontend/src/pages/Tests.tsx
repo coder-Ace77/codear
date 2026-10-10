@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Button from "@/atoms/Button";
 import type { TestSummary } from "@/service/adminService";
-import { apiErrorText, testService, type ApiError } from "@/service/testService";
+import { formatClock } from "@/hooks/useAttemptClock";
+import { apiErrorText, testService, type ActiveAttempt, type ApiError } from "@/service/testService";
 
 /** Public tests anyone signed in can start. */
 const Tests = () => {
@@ -11,6 +12,25 @@ const Tests = () => {
   const [tests, setTests] = useState<TestSummary[] | null>(null);
   const [needsLogin, setNeedsLogin] = useState(false);
   const [starting, setStarting] = useState<number | null>(null);
+  const [active, setActive] = useState<ActiveAttempt[]>([]);
+  const [, setTick] = useState(0);
+
+  const loadActive = () => testService.activeAttempts().then(setActive).catch(() => {});
+  useEffect(() => {
+    loadActive();
+    const timer = setInterval(() => setTick((t) => t + 1), 1000); // redraw the countdowns
+    return () => clearInterval(timer);
+  }, []);
+
+  const finish = async (a: ActiveAttempt) => {
+    if (!window.confirm(`Finish "${a.title}"? You will not be able to come back to it.`)) return;
+    try {
+      await testService.finish(a.attemptId);
+      loadActive();
+    } catch (e) {
+      toast.error(apiErrorText(e, "Could not finish the test"));
+    }
+  };
 
   useEffect(() => {
     testService
@@ -43,6 +63,36 @@ const Tests = () => {
     <main className="mx-auto max-w-3xl px-6 pb-16 pt-12">
       <h1 className="font-serif text-5xl font-medium leading-[1.05] tracking-[-0.02em]">Tests</h1>
       <p className="mt-1 text-muted-foreground">Timed sets of problems, drawn at random when you start.</p>
+
+      {active.length > 0 && (
+        <section className="mt-8">
+          <h2 className="overline mb-2">In progress</h2>
+          <ul className="divide-y divide-border border-y border-border">
+            {active.map((a) => {
+              const left =
+                a.expiresAt === null ? null : Math.max(0, Math.round((new Date(a.expiresAt).getTime() - Date.now()) / 1000));
+              return (
+                <li key={a.attemptId} className="flex items-center justify-between gap-4 py-3">
+                  <div className="min-w-0">
+                    <span className="block truncate font-medium">{a.title}</span>
+                    <span className="text-[13px] text-muted-foreground">
+                      {a.solved} of {a.total} solved{left !== null ? ` · ${formatClock(left)} left` : " · no time limit"}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link to={`/test/attempt/${a.attemptId}`}>
+                      <Button size="sm">Resume</Button>
+                    </Link>
+                    <Button size="sm" variant="outline" onClick={() => finish(a)}>
+                      Finish
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <div className="mt-8">
         {tests === null ? (

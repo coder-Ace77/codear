@@ -3,13 +3,15 @@ import { Problem } from "@/types/problem";
 
 interface ProblemDescriptionProps {
   problem: Problem;
+  /** Not shown while a test is running. */
+  hideDifficulty?: boolean;
 }
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <h2 className="overline mb-2 mt-8">{children}</h2>
 );
 
-const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem }) => {
+const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem, hideDifficulty = false }) => {
   const difficultyVariant = problem.difficulty.toLowerCase() as "easy" | "medium" | "hard";
   const sampleTestCase = problem.testCases?.find((tc) => tc.isSample) || problem.testCases?.[0];
   const constraintItems = problem.constraints
@@ -23,7 +25,7 @@ const ProblemDescription: React.FC<ProblemDescriptionProps> = ({ problem }) => {
       </h1>
 
       <div className="mb-4 flex flex-wrap items-center gap-3 font-sans text-[13px] leading-5 text-muted-foreground">
-        <Badge variant={difficultyVariant}>{problem.difficulty}</Badge>
+        {!hideDifficulty && <Badge variant={difficultyVariant}>{problem.difficulty}</Badge>}
         {problem.tags.length > 0 && <span>{problem.tags.join(" · ")}</span>}
         <span className="font-mono">#{String(problem.id).padStart(3, "0")}</span>
       </div>

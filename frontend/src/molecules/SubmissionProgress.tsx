@@ -22,7 +22,8 @@ interface Props {
   slow: boolean;
   error: string | null;
   onDismiss: () => void;
-  onViewSubmissions: () => void;
+  /** Left out during a test, which has no submissions page. */
+  onViewSubmissions?: () => void;
 }
 
 const SubmissionProgress = ({ progress, phase, connectionLost, slow, error, onDismiss, onViewSubmissions }: Props) => {
@@ -151,12 +152,12 @@ const SubmissionProgress = ({ progress, phase, connectionLost, slow, error, onDi
 
       {(finished || phase === "failed") && (
         <div className="mt-3 flex gap-3">
-          <button
+          {onViewSubmissions && <button
             onClick={onViewSubmissions}
             className="inline-flex h-7 items-center rounded-sm border border-input px-3 text-[13px] font-semibold transition-colors hover:border-foreground hover:bg-highlight-wash"
           >
             View in submissions
-          </button>
+          </button>}
           <button
             onClick={onDismiss}
             className="inline-flex h-7 items-center px-1 text-[13px] font-medium text-muted-foreground underline underline-offset-[3px] hover:text-foreground"

@@ -221,7 +221,7 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, 
           slow={watch.slow}
           error={watch.error}
           onDismiss={watch.reset}
-          onViewSubmissions={() => setAcitveTab("submissions")}
+          onViewSubmissions={attemptId ? undefined : () => setAcitveTab("submissions")}
         />
       )}
 

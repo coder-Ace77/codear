@@ -55,6 +55,7 @@ const Coding = () => {
         <ProblemPanel
           problem={problem}
           activeTab={activeTab}
+          testMode={attemptId !== null}
           setActiveTab={setActiveTab}
           submissionId={submissionId}
           submissionsVersion={submissionsVersion}

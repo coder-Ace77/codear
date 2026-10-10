@@ -331,3 +331,81 @@ def test_accepted_problems_show_as_solved_and_in_the_admin_results(client, admin
     assert by_id[second]["solved"] is False and by_id[second]["submissions"] == 1
 
     assert client.get(f"{ADMIN}/{test['id']}/results", headers=auth_header).status_code == 403
+
+
+# --- difficulty per problem ---
+
+
+def levelled(add_problem):
+    ids = {}
+    for level, n in (("Easy", 2), ("Medium", 2), ("Hard", 1)):
+        for i in range(n):
+            ids.setdefault(level, []).append(add_problem(title=f"{level}{i}", difficulty=level))
+    return ids
+
+
+def test_each_problem_slot_gets_its_requested_difficulty(client, admin_header, auth_header, add_problem):
+    ids = levelled(add_problem)
+    created = client.post(
+        ADMIN,
+        json=body(problemCount=3, slotDifficulties=["HARD", "EASY", "ANY"]),
+        headers=admin_header,
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["test"]["slotDifficulties"] == ["HARD", "EASY", "ANY"]
+
+    attempt = client.post(f"{TESTS}/public/{created.json()['test']['id']}/start", headers=auth_header).json()
+    drawn = [p["id"] for p in attempt["problems"]]
+    assert drawn[0] == ids["Hard"][0]
+    assert drawn[1] in ids["Easy"]
+    assert len(set(drawn)) == 3
+    assert all("difficulty" not in p for p in attempt["problems"])
+
+
+def test_a_difficulty_mix_the_problems_cannot_fill_is_refused(client, admin_header, add_problem):
+    levelled(add_problem)
+    too_many_hard = body(problemCount=2, slotDifficulties=["HARD", "HARD"])
+    assert client.post(ADMIN, json=too_many_hard, headers=admin_header).status_code == 400
+    wrong_length = body(problemCount=2, slotDifficulties=["EASY"])
+    assert client.post(ADMIN, json=wrong_length, headers=admin_header).status_code == 422
+
+
+def test_difficulty_slots_work_within_a_pool(client, admin_header, auth_header, add_problem):
+    ids = levelled(add_problem)
+    pool = ids["Easy"] + ids["Hard"]
+    ok = client.post(
+        ADMIN,
+        json=body(selectionMode="POOL", poolProblemIds=pool, problemCount=2, slotDifficulties=["EASY", "EASY"]),
+        headers=admin_header,
+    )
+    assert ok.status_code == 201
+    no_medium = body(selectionMode="POOL", poolProblemIds=pool, problemCount=1, slotDifficulties=["MEDIUM"])
+    assert client.post(ADMIN, json=no_medium, headers=admin_header).status_code == 400
+
+
+# --- active attempts ---
+
+
+def test_active_attempts_lists_only_running_ones(client, admin_header, auth_header, add_problem):
+    test, attempt = start_public(client, admin_header, auth_header, add_problem, durationMinutes=30)
+    active = client.get(f"{TESTS}/attempts/active", headers=auth_header).json()
+    assert [a["attemptId"] for a in active] == [attempt["attemptId"]]
+    assert active[0]["total"] == 2 and active[0]["solved"] == 0 and active[0]["secondsRemaining"] > 0
+    assert client.get(f"{TESTS}/attempts/active", headers=other_bearer()).json() == []
+
+    client.post(f"{TESTS}/attempts/{attempt['attemptId']}/finish", headers=auth_header)
+    assert client.get(f"{TESTS}/attempts/active", headers=auth_header).json() == []
+
+
+# --- test submissions stay out of the real problems ---
+
+
+def test_test_submissions_do_not_show_up_on_the_problem(client, admin_header, auth_header, add_problem):
+    _, attempt = start_public(client, admin_header, auth_header, add_problem)
+    pid = attempt["problems"][0]["id"]
+    assert submit(client, auth_header, attempt["attemptId"], pid).status_code == 200
+
+    assert client.get(f"/api/v1/problem/submissions/subuser/{pid}", headers=auth_header).json() == []
+    assert client.get("/api/v1/problem/recent", headers=auth_header).json() == []
+    found = client.get("/api/v1/problem/search?search=P").json()["content"]
+    assert all(p["submissions"] == 0 for p in found)

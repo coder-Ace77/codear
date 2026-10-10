@@ -60,6 +60,7 @@ export const adminService = {
 };
 
 export type TestVisibility = "PUBLIC" | "PRIVATE";
+export type SlotDifficulty = "ANY" | "EASY" | "MEDIUM" | "HARD";
 export type TestSelectionMode = "ALL_PROBLEMS" | "POOL";
 
 export interface CreateTestInput {
@@ -69,6 +70,8 @@ export interface CreateTestInput {
   selectionMode: TestSelectionMode;
   poolProblemIds?: number[];
   problemCount: number;
+  /** One entry per problem, in order. Omit for no preference. */
+  slotDifficulties?: SlotDifficulty[];
   /** Omit for an untimed test. */
   durationMinutes?: number;
   invites: { usernames: string[]; singleUse: boolean; expiresAt?: string };
@@ -94,6 +97,7 @@ export interface TestSummary {
   visibility: TestVisibility;
   selectionMode: TestSelectionMode;
   problemCount: number;
+  slotDifficulties: SlotDifficulty[] | null;
   durationMinutes: number | null;
   isActive: boolean;
   createdAt: string | null;

@@ -235,7 +235,7 @@ class ProblemService:
                 Problem.difficulty
             )
             .join(Submission, Problem.id == Submission.problem_id)
-            .filter(Submission.user_id == user_id)
+            .filter(Submission.user_id == user_id, Submission.attempt_id.is_(None))
             .group_by(Problem.id, Problem.title, Problem.tags, Problem.difficulty)
             .order_by(desc(func.max(Submission.submitted_at)))
             .limit(5)

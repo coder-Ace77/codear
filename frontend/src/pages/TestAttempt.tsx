@@ -74,8 +74,7 @@ const TestAttempt = () => {
                   {p.title}
                 </span>
                 <span className="text-[13px] text-muted-foreground">
-                  {attempt.solved.includes(p.id) && <span className="mr-3 text-success">Solved</span>}
-                  {p.difficulty}
+                  {attempt.solved.includes(p.id) && <span className="text-success">Solved</span>}
                 </span>
               </Link>
             </li>

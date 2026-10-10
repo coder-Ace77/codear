@@ -42,6 +42,7 @@ _STATS = """
            COUNT(*) FILTER (WHERE status = 'PASSED') AS accepted,
            COUNT(DISTINCT user_id) FILTER (WHERE status = 'PASSED') AS solvers
     FROM submissions
+    WHERE attempt_id IS NULL
     GROUP BY problem_id
 """
 
