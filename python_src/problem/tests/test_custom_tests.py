@@ -467,3 +467,72 @@ def test_untimed_attempts_report_elapsed_time(client, admin_header, auth_header,
     _, attempt = start_public(client, admin_header, auth_header, add_problem)
     assert attempt["secondsRemaining"] is None
     assert attempt["secondsElapsed"] >= 0
+
+
+# --- each user's history ---
+
+
+def test_history_records_solved_problems_and_time_taken(client, admin_header, auth_header, add_problem):
+    test, attempt = start_public(client, admin_header, auth_header, add_problem)
+    first = attempt["problems"][0]["id"]
+    mark_passed(submit(client, auth_header, attempt["attemptId"], first).json()["submissionId"])
+
+    # a running attempt is not history yet
+    assert client.get(f"{TESTS}/history", headers=auth_header).json()["attempts"] == []
+
+    session = SessionLocal()
+    try:
+        row = session.query(TestAttempt).filter(TestAttempt.id == attempt["attemptId"]).one()
+        row.started_at = datetime.datetime.utcnow() - datetime.timedelta(minutes=7)
+        session.commit()
+    finally:
+        session.close()
+    client.post(f"{TESTS}/attempts/{attempt['attemptId']}/finish", headers=auth_header)
+
+    history = client.get(f"{TESTS}/history", headers=auth_header).json()
+    assert (history["attemptsTaken"], history["problemsSolved"], history["problemsGiven"]) == (1, 1, 2)
+    row = history["attempts"][0]
+    assert row["testTitle"] == test["title"] and row["outcome"] == "FINISHED"
+    assert 7 * 60 <= row["timeTakenSeconds"] < 8 * 60
+    assert history["averageTimeSeconds"] == row["timeTakenSeconds"]
+    assert [p["solved"] for p in row["problems"]] == [True, False]
+
+    assert client.get(f"{TESTS}/history", headers=other_bearer()).json()["attempts"] == []
+
+
+def test_a_timed_out_attempt_counts_the_full_time(client, admin_header, auth_header, add_problem):
+    _, attempt = start_public(client, admin_header, auth_header, add_problem, durationMinutes=5)
+    session = SessionLocal()
+    try:
+        row = session.query(TestAttempt).filter(TestAttempt.id == attempt["attemptId"]).one()
+        row.started_at = datetime.datetime.utcnow() - datetime.timedelta(minutes=6)
+        row.expires_at = row.started_at + datetime.timedelta(minutes=5)
+        session.commit()
+    finally:
+        session.close()
+
+    row = client.get(f"{TESTS}/history", headers=auth_header).json()["attempts"][0]
+    assert row["outcome"] == "TIME_UP" and row["timeTakenSeconds"] == 300
+
+
+def test_history_survives_the_problem_being_deleted(client, admin_header, auth_header, add_problem):
+    _, attempt = start_public(client, admin_header, auth_header, add_problem)
+    first = attempt["problems"][0]
+    mark_passed(submit(client, auth_header, attempt["attemptId"], first["id"]).json()["submissionId"])
+    client.post(f"{TESTS}/attempts/{attempt['attemptId']}/finish", headers=auth_header)
+
+    assert client.delete(f"/api/v1/problem/{first['id']}", headers=admin_header).status_code == 200
+
+    row = client.get(f"{TESTS}/history", headers=auth_header).json()["attempts"][0]
+    assert row["problems"][0] == {**row["problems"][0], "title": first["title"], "solved": True}
+
+
+def test_admins_can_look_up_anyones_history(client, admin_header, auth_header, add_problem):
+    _, attempt = start_public(client, admin_header, auth_header, add_problem)
+    client.post(f"{TESTS}/attempts/{attempt['attemptId']}/finish", headers=auth_header)
+
+    found = client.get(f"{ADMIN}/history", params={"username": "TESTER"}, headers=admin_header)
+    assert found.status_code == 200 and found.json()["username"] == "tester"
+    assert found.json()["attemptsTaken"] == 1
+    assert client.get(f"{ADMIN}/history", params={"username": "ghost"}, headers=admin_header).status_code == 404
+    assert client.get(f"{ADMIN}/history", params={"username": "tester"}, headers=auth_header).status_code == 403

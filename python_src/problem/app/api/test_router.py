@@ -14,6 +14,7 @@ from app.schemas.test_schema import (
     CreatedTest,
     CreateTestRequest,
     PublicTest,
+    TestHistory,
     TestDetail,
     TestSummary,
 )
@@ -37,6 +38,12 @@ def create_test(req: CreateTestRequest, admin: CurrentUser = Depends(require_adm
 @admin_router.get("", response_model=List[TestSummary])
 def list_tests(_admin: CurrentUser = Depends(require_admin), db: Session = Depends(get_db)):
     return TestService(db).list_tests()
+
+
+@admin_router.get("/history", response_model=TestHistory)
+def user_history(username: str, _admin: CurrentUser = Depends(require_admin), db: Session = Depends(get_db)):
+    """Any user's past test attempts, looked up by username."""
+    return TestService(db).history_by_username(username)
 
 
 @admin_router.get("/{test_id}", response_model=TestDetail)
@@ -84,6 +91,12 @@ def start_public(test_id: int, user: CurrentUser = Depends(get_current_user), db
 @router.post("/invite/{token}/start", response_model=AttemptOut)
 def start_with_invite(token: str, user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
     return TestService(db).start_with_invite(token, user)
+
+
+@router.get("/history", response_model=TestHistory)
+def my_history(user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Your past test attempts: what you solved and how long each took."""
+    return TestService(db).history(user.id)
 
 
 @router.get("/attempts/active", response_model=List[ActiveAttempt])

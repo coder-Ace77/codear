@@ -122,18 +122,39 @@ export interface CreatedTest {
 
 export interface AttemptResult {
   attemptId: number;
+  testId: number;
+  testTitle: string;
   userId: number;
   username: string | null;
   startedAt: string;
   finishedAt: string | null;
   expiresAt: string | null;
+  /** The test's time limit; null when untimed. */
+  durationMinutes: number | null;
   over: boolean;
+  outcome: "FINISHED" | "TIME_UP" | "IN_PROGRESS";
+  /** Start to finish (or to the deadline); so far, for a running attempt. */
+  timeTakenSeconds: number;
   solvedCount: number;
   total: number;
   problems: { id: number; title: string; solved: boolean; submissions: number; solvedAt: string | null }[];
 }
 
+/** One user's completed test attempts, newest first, with totals. */
+export interface TestHistory {
+  userId: number;
+  username: string | null;
+  attemptsTaken: number;
+  problemsSolved: number;
+  problemsGiven: number;
+  averageTimeSeconds: number | null;
+  attempts: AttemptResult[];
+}
+
 export const testAdminService = {
+  async history(username: string) {
+    return (await apiClient.get<TestHistory>("/problem/admin/tests/history", { params: { username } })).data;
+  },
   async results(id: number) {
     return (await apiClient.get<AttemptResult[]>(`/problem/admin/tests/${id}/results`)).data;
   },

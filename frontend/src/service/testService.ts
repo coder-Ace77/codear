@@ -1,5 +1,5 @@
 import apiClient from "@/lib/apiClient";
-import type { TestSummary } from "@/service/adminService";
+import type { TestHistory, TestSummary } from "@/service/adminService";
 
 /** No difficulty on purpose: it is not shown while a test is running. */
 export interface AttemptProblem {
@@ -51,6 +51,9 @@ export const testService = {
   },
   async startWithInvite(token: string) {
     return (await apiClient.post<Attempt>(`/problem/tests/invite/${encodeURIComponent(token)}/start`)).data;
+  },
+  async history() {
+    return (await apiClient.get<TestHistory>("/problem/tests/history")).data;
   },
   async activeAttempts() {
     return (await apiClient.get<ActiveAttempt[]>("/problem/tests/attempts/active")).data;

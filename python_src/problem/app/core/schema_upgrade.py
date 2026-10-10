@@ -19,6 +19,7 @@ COLUMNS = (
     ("submissions", "attempt_id", "INTEGER"),
     ("custom_tests", "slot_difficulties", "VARCHAR[]"),
     ("custom_tests", "allow_retakes", "BOOLEAN NOT NULL DEFAULT FALSE"),
+    ("test_attempts", "problem_titles", "VARCHAR[]"),
 )
 
 

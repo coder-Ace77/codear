@@ -175,15 +175,35 @@ class ProblemResult(BaseModel):
 
 class AttemptResult(BaseModel):
     attemptId: int
+    testId: int
+    testTitle: str
     userId: int
     username: Optional[str] = None
     startedAt: datetime
     finishedAt: Optional[datetime] = None
     expiresAt: Optional[datetime] = None
+    # the test's time limit, None when untimed
+    durationMinutes: Optional[int] = None
     over: bool
+    # FINISHED (the user ended it), TIME_UP (the clock ran out) or IN_PROGRESS
+    outcome: str
+    # from start to finish (or to the deadline); for a running attempt, so far
+    timeTakenSeconds: int
     solvedCount: int
     total: int
     problems: List[ProblemResult]
+
+
+class TestHistory(BaseModel):
+    """One user's completed test attempts, newest first, with totals across them."""
+    userId: int
+    username: Optional[str] = None
+    attemptsTaken: int
+    problemsSolved: int
+    problemsGiven: int
+    # mean over the completed attempts, None when there are none
+    averageTimeSeconds: Optional[int] = None
+    attempts: List[AttemptResult]
 
 
 class ActiveAttempt(BaseModel):
