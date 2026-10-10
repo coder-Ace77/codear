@@ -151,6 +151,8 @@ class TestAttempt(Base):
     invite_id = Column(Integer, ForeignKey("test_invites.id"), nullable=True, index=True)
     user_id = Column(BigInteger, nullable=False, index=True)
     problem_ids = Column(ARRAY(BigInteger), nullable=False)
+    # titles as they were when drawn, so the history still reads right if a problem is renamed or deleted
+    problem_titles = Column(ARRAY(String), nullable=True)
     started_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
     expires_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)

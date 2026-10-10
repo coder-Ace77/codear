@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Button from "@/atoms/Button";
 import { formatClock } from "@/hooks/useAttemptClock";
+import TestHistoryView from "@/molecules/TestHistoryView";
+import type { TestHistory } from "@/service/adminService";
 import { apiErrorText, testService, type ActiveAttempt, type ApiError, type PublicTest } from "@/service/testService";
 
 /** Public tests anyone signed in can start. */
@@ -13,6 +15,11 @@ const Tests = () => {
   const [starting, setStarting] = useState<number | null>(null);
   const [active, setActive] = useState<ActiveAttempt[]>([]);
   const [, setTick] = useState(0);
+  const [history, setHistory] = useState<TestHistory | null>(null);
+  const loadHistory = () => testService.history().then(setHistory).catch(() => {});
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
   const loadActive = () => testService.activeAttempts().then(setActive).catch(() => {});
   useEffect(() => {
@@ -27,6 +34,7 @@ const Tests = () => {
       await testService.finish(a.attemptId);
       loadActive();
       loadTests(); // its Start button may now be Done
+      loadHistory();
     } catch (e) {
       toast.error(apiErrorText(e, "Could not finish the test"));
     }
@@ -137,6 +145,13 @@ const Tests = () => {
           </ul>
         )}
       </div>
+
+      {history && (
+        <section className="mt-12">
+          <h2 className="mb-4 font-serif text-2xl">Your history</h2>
+          <TestHistoryView history={history} emptyText="Tests you finish will show up here." />
+        </section>
+      )}
     </main>
   );
 };

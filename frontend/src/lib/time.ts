@@ -4,3 +4,11 @@
  */
 export const parseUtc = (value: string) =>
   new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(value) ? value : `${value}Z`);
+
+/** A length of time for people: "45s", "12m 5s", "1h 20m". */
+export const formatDuration = (seconds: number) => {
+  if (seconds < 60) return `${seconds}s`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m ${seconds % 60}s`;
+};

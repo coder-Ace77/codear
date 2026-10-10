@@ -19,6 +19,7 @@ from app.schemas.test_schema import (
     InviteOut,
     InviteSettings,
     PublicTest,
+    TestHistory,
     ProblemResult,
     SelectionMode,
     TestDetail,
@@ -315,12 +316,14 @@ class TestService:
             # problems were deleted (or re-rated) after the test was made
             raise HTTPException(status_code=409, detail="This test does not have enough problems left")
 
+        titles = dict(self.db.query(Problem.id, Problem.title).filter(Problem.id.in_(drawn)).all())
         started = _now()
         attempt = TestAttempt(
             test_id=test.id,
             invite_id=invite.id if invite else None,
             user_id=user.id,
             problem_ids=drawn,
+            problem_titles=[titles.get(pid, "") for pid in drawn],
             started_at=started,
             expires_at=started + datetime.timedelta(minutes=test.duration_minutes) if test.duration_minutes else None,
         )
@@ -446,6 +449,42 @@ class TestService:
     def results(self, test_id: int) -> List[AttemptResult]:
         self._get_test(test_id)
         attempts = self.db.query(TestAttempt).filter(TestAttempt.test_id == test_id).order_by(TestAttempt.id).all()
+        return self._results_for(attempts)
+
+    HISTORY_LIMIT = 200
+
+    def history(self, user_id: int) -> TestHistory:
+        """Every test attempt of this user that is over, newest first."""
+        now = _now()
+        attempts = (
+            self.db.query(TestAttempt)
+            .filter(
+                TestAttempt.user_id == user_id,
+                (TestAttempt.finished_at.isnot(None)) | (TestAttempt.expires_at <= now),
+            )
+            .order_by(TestAttempt.started_at.desc())
+            .limit(self.HISTORY_LIMIT)
+            .all()
+        )
+        rows = self._results_for(attempts)
+        user = self.db.query(User).filter(User.id == user_id).first()
+        return TestHistory(
+            userId=user_id,
+            username=user.username if user else None,
+            attemptsTaken=len(rows),
+            problemsSolved=sum(r.solvedCount for r in rows),
+            problemsGiven=sum(r.total for r in rows),
+            averageTimeSeconds=round(sum(r.timeTakenSeconds for r in rows) / len(rows)) if rows else None,
+            attempts=rows,
+        )
+
+    def history_by_username(self, username: str) -> TestHistory:
+        user = self.db.query(User).filter(func.lower(User.username) == username.strip().lower()).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="No such user")
+        return self.history(user.id)
+
+    def _results_for(self, attempts: List[TestAttempt]) -> List[AttemptResult]:
         if not attempts:
             return []
         ids = [a.id for a in attempts]
@@ -458,31 +497,46 @@ class TestService:
             .all()
         }
         names = {u.id: u.username for u in self.db.query(User).filter(User.id.in_({a.user_id for a in attempts})).all()}
-        titles = {
+        tests = {t.id: t for t in self.db.query(CustomTest).filter(CustomTest.id.in_({a.test_id for a in attempts})).all()}
+        live_titles = {
             p.id: p.title
             for p in self.db.query(Problem).filter(Problem.id.in_({p for a in attempts for p in a.problem_ids})).all()
         }
+        now = _now()
         out = []
         for a in attempts:
+            snapshot = dict(zip(a.problem_ids, a.problem_titles or []))
             problems = [
                 ProblemResult(
                     id=pid,
-                    title=titles.get(pid, f"Problem {pid} (deleted)"),
+                    title=snapshot.get(pid) or live_titles.get(pid) or f"Problem {pid} (deleted)",
                     solved=pid in solved[a.id],
                     submissions=counts.get((a.id, pid), 0),
                     solvedAt=_utc(solved[a.id].get(pid)),
                 )
                 for pid in a.problem_ids
             ]
+            if a.finished_at is not None:
+                outcome, ended = "FINISHED", a.finished_at
+            elif a.expires_at is not None and a.expires_at <= now:
+                outcome, ended = "TIME_UP", a.expires_at
+            else:
+                outcome, ended = "IN_PROGRESS", now
+            test = tests.get(a.test_id)
             out.append(
                 AttemptResult(
                     attemptId=a.id,
+                    testId=a.test_id,
+                    testTitle=test.title if test else "Test",
                     userId=a.user_id,
                     username=names.get(a.user_id),
                     startedAt=_utc(a.started_at),
                     finishedAt=_utc(a.finished_at),
                     expiresAt=_utc(a.expires_at),
-                    over=_is_over(a),
+                    durationMinutes=test.duration_minutes if test else None,
+                    over=outcome != "IN_PROGRESS",
+                    outcome=outcome,
+                    timeTakenSeconds=max(0, int((ended - a.started_at).total_seconds())),
                     solvedCount=sum(1 for p in problems if p.solved),
                     total=len(problems),
                     problems=problems,

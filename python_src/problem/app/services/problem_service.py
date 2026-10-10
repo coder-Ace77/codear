@@ -257,8 +257,10 @@ class ProblemService:
             # Delete Editorials (FK Constraint)
             self.db.query(Editorial).filter(Editorial.problem_id == problem_id).delete()
             
-            # Delete Submissions (Cleanup)
-            self.db.query(Submission).filter(Submission.problem_id == problem_id).delete()
+            # Delete Submissions (Cleanup). Test submissions stay: they are the record of past test attempts.
+            self.db.query(Submission).filter(
+                Submission.problem_id == problem_id, Submission.attempt_id.is_(None)
+            ).delete()
             
             # Delete Problem (TestCases cascade automatically)
             self.db.delete(problem)

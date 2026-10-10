@@ -13,6 +13,7 @@ import {
   testAdminService,
   type AttemptResult,
   type CreateTestInput,
+  type TestHistory,
   type SlotDifficulty,
   type TestDetail,
   type TestSelectionMode,
@@ -20,6 +21,8 @@ import {
   type TestVisibility,
 } from "@/service/adminService";
 import type { ApiError } from "@/service/testService";
+import TestHistoryView from "@/molecules/TestHistoryView";
+import { formatDuration } from "@/lib/time";
 import type { ProblemSummary } from "@/types/problemSearch";
 
 const errorText = (e: unknown, fallback: string) => {
@@ -72,7 +75,11 @@ const Results = ({ testId }: { testId: number }) => {
                 {r.solvedCount}/{r.total}
               </td>
               <td className="py-1.5 pr-3 text-[13px] text-muted-foreground">
-                {r.over ? (r.finishedAt ? `finished after ${minutes(r.startedAt, r.finishedAt)} min` : "out of time") : "in progress"}
+                {r.outcome === "FINISHED"
+                  ? `finished in ${formatDuration(r.timeTakenSeconds)}`
+                  : r.outcome === "TIME_UP"
+                    ? "time ran out"
+                    : `in progress, ${formatDuration(r.timeTakenSeconds)} so far`}
               </td>
               <td className="py-1.5 text-[13px]">
                 {r.problems.map((p) => (
@@ -87,6 +94,45 @@ const Results = ({ testId }: { testId: number }) => {
         </tbody>
       </table>
     </div>
+  );
+};
+
+/** Look up any user's past test attempts. */
+const UserHistory = () => {
+  const [username, setUsername] = useState("");
+  const [history, setHistory] = useState<TestHistory | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const lookUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim()) return;
+    setBusy(true);
+    try {
+      setHistory(await testAdminService.history(username.trim()));
+    } catch (err) {
+      setHistory(null);
+      toast.error(errorText(err, "Failed to load history"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section>
+      <h2 className="mb-3 font-serif text-2xl">User history</h2>
+      <form onSubmit={lookUp} className="mb-4 flex gap-2">
+        <Input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} aria-label="Username" />
+        <Button type="submit" variant="outline" disabled={busy || !username.trim()}>
+          {busy ? "Looking…" : "Look up"}
+        </Button>
+      </form>
+      {history && (
+        <>
+          <p className="mb-3 text-sm text-muted-foreground">{history.username}</p>
+          <TestHistoryView history={history} emptyText="This user has not finished any tests." />
+        </>
+      )}
+    </section>
   );
 };
 
@@ -497,6 +543,8 @@ const AdminTests = () => {
             </div>
           </section>
         )}
+
+        <UserHistory />
       </div>
     </div>
   );
