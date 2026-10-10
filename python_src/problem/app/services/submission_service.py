@@ -31,7 +31,8 @@ class SubmissionService:
             problem_id=data.problemId,
             code=data.code,
             language=data.language,
-            status=SubmissionStatus.IN_PROGRESS
+            status=SubmissionStatus.IN_PROGRESS,
+            attempt_id=data.attemptId,
         )
         self.db.add(new_sub)
         self.db.commit()

@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 from app.core.local_cache import LocalCache
 from app.database import SessionLocal, redis_client
 from app.main import app
-from app.models.problem import ApiKey, Editorial, Problem, Submission, TestCase, User
+from app.models.problem import ApiKey, CustomTest, Editorial, Problem, Submission, TestAttempt, TestCase, TestInvite, User
 from tests.helpers import ADMIN_ID, OTHER_USER_ID, USER_ID, admin_bearer, bearer
 
 
@@ -45,6 +45,9 @@ def clean_state():
     """Postgres, Redis and the in-process LocalCache all outlive a single test."""
     session = SessionLocal()
     try:
+        session.query(TestAttempt).delete()
+        session.query(TestInvite).delete()
+        session.query(CustomTest).delete()
         session.query(ApiKey).delete()
         session.query(Editorial).delete()
         session.query(Submission).delete()

@@ -13,6 +13,9 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+  // only ever go to a path on this site, never an address that arrived in the URL
+  const next = new URLSearchParams(window.location.search).get("next");
+  const destination = next && /^\/(?!\/)[\w\-./]*$/.test(next) ? next : "/profile";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +30,7 @@ const Login = () => {
       if (response && response.data && response.data.token) {
         localStorage.setItem("token", response.data.token);
         toast.success("Signed in");
-        navigate("/profile");
+        navigate(destination);
       } else {
         toast.error("Sign in failed. Check your email and password.");
       }

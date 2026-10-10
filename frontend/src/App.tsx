@@ -14,6 +14,9 @@ import Admin from "./pages/Admin";
 import Developers from "./pages/Developers";
 import NotFound from "./pages/NotFound";
 import SubmissionResult from "./pages/SubmissionResult";
+import Tests from "./pages/Tests";
+import TakeTest from "./pages/TakeTest";
+import TestAttempt from "./pages/TestAttempt";
 import ToastProvider from "./components/providers/ToastProvider";
 
 import BackendHealthCheck from "@/components/ui/BackendHealthCheck";
@@ -38,6 +41,9 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/developers" element={<Developers />} />
+            <Route path="/tests" element={<Tests />} />
+            <Route path="/test/attempt/:attemptId" element={<TestAttempt />} />
+            <Route path="/test/:token" element={<TakeTest />} />
             <Route path="/submissions/:submissionId" element={<SubmissionResult />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

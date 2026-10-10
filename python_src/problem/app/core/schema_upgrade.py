@@ -16,6 +16,7 @@ COLUMNS = (
     ("submissions", "failed_test", "INTEGER"),
     ("problems", "checker", "VARCHAR(40)"),
     ("problems", "checker_tolerance", "DOUBLE PRECISION"),
+    ("submissions", "attempt_id", "INTEGER"),
 )
 
 

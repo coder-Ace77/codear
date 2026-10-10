@@ -7,6 +7,7 @@ from app.schemas.search_schema import SearchQuery, parse_search_query
 from app.services.problem_service import ProblemService
 from sqlalchemy.orm import Session
 from app.services.submission_service import SubmissionService
+from app.services.test_service import TestService
 from app.schemas.problem_schema import  ProblemDTO, ProblemSendDTO, ProblemsMetaData, ProblemSummaryDTO, CodeRequest, SubmissionResponse
 import uuid
 from app.schemas.problem_schema import TestDTO
@@ -65,6 +66,8 @@ async def submit(
     user: CurrentUser = Depends(rate_limited_submitter),
     db=Depends(get_db)
 ):
+    if data.attemptId is not None:
+        TestService(db).check_can_submit(data.attemptId, data.problemId, user)
     service = SubmissionService(db)
     res = await service.submit_code(data, user.id)
     return {"message": "Code submitted successfully", "submissionId": res}

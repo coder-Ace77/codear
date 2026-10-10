@@ -44,6 +44,7 @@ const Navbar = () => {
     const links = [
       { path: "/", label: "Home" },
       { path: "/explore", label: "Problems" },
+      { path: "/tests", label: "Tests" },
       { path: "/developers", label: "API" },
     ];
     if (isAdmin(user)) links.push({ path: "/admin", label: "Admin" });

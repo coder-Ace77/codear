@@ -24,8 +24,8 @@ export const fetchProblem = async (
 
 
 export const codingService = {
-  async submitCode(problemId, code, language) {
-    const body = { problemId, code, language };
+  async submitCode(problemId, code, language, attemptId = null) {
+    const body = { problemId, code, language, ...(attemptId ? { attemptId } : {}) };
     const response = await apiClient.post('/problem/submit', body);
     return response.data; 
   },
