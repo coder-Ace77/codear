@@ -9,7 +9,7 @@ import { useSubmissionProgress } from "@/hooks/useSubmissionProgress";
 import SubmissionProgress from "@/molecules/SubmissionProgress";
 
 
-const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, onSubmissionFinished }) => {
+const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, onSubmissionFinished, attemptId = null }) => {
   const [language, setLanguage] = useState(() => localStorage.getItem("preferred-language") || "python");
   const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem("preferred-font-size")) || 14);
   const [output, setOutput] = useState("");
@@ -79,7 +79,8 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, 
       const { submissionId } = await codingService.submitCode(
         problemId,
         code,
-        language
+        language,
+        attemptId
       );
       setSubmissionId(submissionId);
       setIsSubmitting(false);
@@ -93,6 +94,8 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, 
         const wait = header || fromText || 10;
         setCooldown(wait);
         toast.error(`You can submit again in ${wait} seconds.`);
+      } else if (err.response?.status === 409 && typeof err.response.data?.detail === "string") {
+        toast.error(err.response.data.detail); // the test is over
       } else {
         toast.error("Error submitting code. Please try again");
       }

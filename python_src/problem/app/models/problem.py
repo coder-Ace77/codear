@@ -77,6 +77,8 @@ class Submission(Base):
     # why it got that status (an engine Verdict name) and the first failing test; NULL for old submissions
     verdict = Column(String(40), nullable=True)
     failed_test = Column(Integer, nullable=True)
+    # the test attempt this was submitted for; NULL for ordinary practice submissions
+    attempt_id = Column(Integer, nullable=True, index=True)
     result = Column(Text)
     total_tests = Column(Integer)
     passed_tests = Column(Integer)
@@ -96,3 +98,57 @@ class Editorial(Base):
     upvotes = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.datetime.utcnow)
+
+class CustomTest(Base):
+    """A test an admin put together: a set of problems drawn at random when someone starts it,
+    optionally timed, either open to everyone or reached only through per-user invite links."""
+    __tablename__ = "custom_tests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text)
+    visibility = Column(String(10), nullable=False)       # PUBLIC | PRIVATE
+    # ALL_PROBLEMS draws from every problem; POOL draws from `pool_problem_ids` only
+    selection_mode = Column(String(20), nullable=False)
+    pool_problem_ids = Column(ARRAY(BigInteger), nullable=True)
+    problem_count = Column(Integer, nullable=False)
+    duration_minutes = Column(Integer, nullable=True)     # NULL = untimed
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_by = Column(BigInteger, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    invites = relationship("TestInvite", back_populates="test", cascade="all, delete-orphan")
+    attempts = relationship("TestAttempt", back_populates="test", cascade="all, delete-orphan")
+
+
+class TestInvite(Base):
+    """A link for one user. The token in the URL is the only secret; the signed-in user must also be
+    the invited one. A single-use invite stops working once its attempt is finished or has run out of time."""
+    __tablename__ = "test_invites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    test_id = Column(Integer, ForeignKey("custom_tests.id"), nullable=False, index=True)
+    user_id = Column(BigInteger, nullable=False)
+    token = Column(String(64), unique=True, index=True, nullable=False)
+    single_use = Column(Boolean, nullable=False, default=True)
+    expires_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    test = relationship("CustomTest", back_populates="invites")
+
+
+class TestAttempt(Base):
+    """One user taking one test. The problems are drawn when it starts and fixed from then on."""
+    __tablename__ = "test_attempts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    test_id = Column(Integer, ForeignKey("custom_tests.id"), nullable=False, index=True)
+    invite_id = Column(Integer, ForeignKey("test_invites.id"), nullable=True, index=True)
+    user_id = Column(BigInteger, nullable=False, index=True)
+    problem_ids = Column(ARRAY(BigInteger), nullable=False)
+    started_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
+
+    test = relationship("CustomTest", back_populates="attempts")

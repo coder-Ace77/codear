@@ -66,6 +66,8 @@ class CodeRequest(BaseModel):
     problemId: int
     code: str = Field(max_length=65536)
     language: str = Field(max_length=16)
+    # set when the code is part of a test; the server checks it is the caller's attempt and still running
+    attemptId: Optional[int] = None
 
     _code_not_blank = field_validator("code")(_not_blank)
 

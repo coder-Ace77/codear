@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import TestBanner, { TEST_BANNER_HEIGHT } from "@/molecules/TestBanner";
 import EditorPanel from "@/molecules/EditorPanel";
 import ProblemPanel from "@/molecules/ProblemPanel";
 import { Problem } from "@/types/problem";
@@ -11,6 +12,8 @@ import type { Tab } from "@/types/Tabs";
 
 const Coding = () => {
   const { id } = useParams<{ id: string }>();
+  const attemptParam = Number(useSearchParams()[0].get("attempt"));
+  const attemptId = Number.isInteger(attemptParam) && attemptParam > 0 ? attemptParam : null;
   const [problem, setProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +45,12 @@ const Coding = () => {
   if (!problem) { return <CodingProblemNotFound />; }
 
   return (
-    <div className="relative flex h-[calc(100vh-3.5rem)] w-full overflow-y-auto bg-background lg:overflow-hidden">
+    <>
+    {attemptId !== null && <TestBanner attemptId={attemptId} />}
+    <div
+      className="relative flex w-full overflow-y-auto bg-background lg:overflow-hidden"
+      style={{ height: `calc(100vh - 3.5rem - ${attemptId !== null ? TEST_BANNER_HEIGHT : "0rem"})` }}
+    >
       <div className="flex min-h-full w-full flex-col lg:h-full lg:min-h-0 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[minmax(0,1fr)]">
         <ProblemPanel
           problem={problem}
@@ -60,10 +68,12 @@ const Coding = () => {
             setAcitveTab={setActiveTab}
             setSubmissionId={setSubmissionId}
             onSubmissionFinished={() => setSubmissionsVersion((v) => v + 1)}
+            attemptId={attemptId}
           />
         </div>
       </div>
     </div>
+    </>
   );
 };
 

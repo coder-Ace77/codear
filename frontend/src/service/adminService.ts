@@ -58,3 +58,96 @@ export const adminService = {
     return res.data;
   },
 };
+
+export type TestVisibility = "PUBLIC" | "PRIVATE";
+export type TestSelectionMode = "ALL_PROBLEMS" | "POOL";
+
+export interface CreateTestInput {
+  title: string;
+  description?: string;
+  visibility: TestVisibility;
+  selectionMode: TestSelectionMode;
+  poolProblemIds?: number[];
+  problemCount: number;
+  /** Omit for an untimed test. */
+  durationMinutes?: number;
+  invites: { usernames: string[]; singleUse: boolean; expiresAt?: string };
+}
+
+export interface TestInvite {
+  id: number;
+  userId: number;
+  username: string | null;
+  token: string;
+  singleUse: boolean;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  /** Path of the link on this site, e.g. /test/<token>. */
+  path: string;
+  used: boolean;
+}
+
+export interface TestSummary {
+  id: number;
+  title: string;
+  description: string | null;
+  visibility: TestVisibility;
+  selectionMode: TestSelectionMode;
+  problemCount: number;
+  durationMinutes: number | null;
+  isActive: boolean;
+  createdAt: string | null;
+  attempts: number;
+  invites: number;
+}
+
+export interface TestDetail extends TestSummary {
+  poolProblemIds: number[] | null;
+  inviteList: TestInvite[];
+}
+
+export interface CreatedTest {
+  test: TestDetail;
+  /** Usernames that matched nobody. */
+  unknownUsernames: string[];
+}
+
+export interface AttemptResult {
+  attemptId: number;
+  userId: number;
+  username: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+  expiresAt: string | null;
+  over: boolean;
+  solvedCount: number;
+  total: number;
+  problems: { id: number; title: string; solved: boolean; submissions: number; solvedAt: string | null }[];
+}
+
+export const testAdminService = {
+  async results(id: number) {
+    return (await apiClient.get<AttemptResult[]>(`/problem/admin/tests/${id}/results`)).data;
+  },
+  async list() {
+    return (await apiClient.get<TestSummary[]>("/problem/admin/tests")).data;
+  },
+  async get(id: number) {
+    return (await apiClient.get<TestDetail>(`/problem/admin/tests/${id}`)).data;
+  },
+  async create(input: CreateTestInput) {
+    return (await apiClient.post<CreatedTest>("/problem/admin/tests", input)).data;
+  },
+  async addInvites(id: number, invites: CreateTestInput["invites"]) {
+    return (await apiClient.post<CreatedTest>(`/problem/admin/tests/${id}/invites`, invites)).data;
+  },
+  async setActive(id: number, isActive: boolean) {
+    return (await apiClient.patch<TestDetail>(`/problem/admin/tests/${id}`, { isActive })).data;
+  },
+  async revokeInvite(testId: number, inviteId: number) {
+    await apiClient.delete(`/problem/admin/tests/${testId}/invites/${inviteId}`);
+  },
+  async remove(id: number) {
+    await apiClient.delete(`/problem/admin/tests/${id}`);
+  },
+};

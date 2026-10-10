@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware  # Import this
 
-from app.api import problem_router, editorial_router, admin_router
+from app.api import problem_router, editorial_router, admin_router, test_router
 from app.api.submission_router import router as sub_router
 from app.core.schema_upgrade import ensure_columns
 from app.database import engine, Base
@@ -45,6 +45,8 @@ async def runtime_exception_handler(request: Request, exc: Exception):
 app.include_router(problem_router.router)
 app.include_router(editorial_router.router)
 app.include_router(admin_router.router)
+app.include_router(test_router.admin_router)
+app.include_router(test_router.router)
 app.include_router(sub_router)
 
 @app.get("/api/v1/problem/health-check")
