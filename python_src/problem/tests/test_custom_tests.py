@@ -1,7 +1,7 @@
 import datetime
 from unittest.mock import patch
 
-from app.database import SessionLocal
+from app.database import SessionLocal, redis_client
 from app.models.problem import Submission, SubmissionStatus, TestAttempt, TestInvite
 from tests.helpers import other_bearer
 
@@ -240,6 +240,9 @@ SUBMIT = "/api/v1/problem/submit"
 
 
 def submit(client, headers, attempt_id, problem_id):
+    # users may submit once every 10 seconds; these tests are about the attempt checks, not that limit
+    for key in redis_client.scan_iter("rl:submit:*"):
+        redis_client.delete(key)
     with patch("app.services.submission_service.sqs.send_to_queue"):
         return client.post(
             SUBMIT,
