@@ -18,6 +18,7 @@ from app.schemas.test_schema import (
     CreateTestRequest,
     InviteOut,
     InviteSettings,
+    PublicTest,
     ProblemResult,
     SelectionMode,
     TestDetail,
@@ -106,6 +107,7 @@ class TestService:
             problem_count=req.problemCount,
             slot_difficulties=slots,
             duration_minutes=req.durationMinutes,
+            allow_retakes=req.multipleAttempts,
             created_by=admin.id,
         )
         self.db.add(test)
@@ -132,6 +134,7 @@ class TestService:
         users = self.db.query(User).filter(func.lower(User.username).in_(lowered)).all()
         by_name = {u.username.lower(): u for u in users}
         expires = _naive_utc(settings.expiresAt)
+        single_use = settings.singleUse if settings.singleUse is not None else not test.allow_retakes
         unknown = []
         for name in settings.usernames:
             user = by_name.get(name.lower())
@@ -143,7 +146,7 @@ class TestService:
                     test_id=test.id,
                     user_id=user.id,
                     token=secrets.token_urlsafe(24),
-                    single_use=settings.singleUse,
+                    single_use=single_use,
                     expires_at=expires,
                 )
             )
@@ -192,6 +195,7 @@ class TestService:
             problemCount=test.problem_count,
             slotDifficulties=test.slot_difficulties,
             durationMinutes=test.duration_minutes,
+            multipleAttempts=bool(test.allow_retakes),
             isActive=test.is_active,
             createdAt=_utc(test.created_at),
             attempts=attempts,
@@ -230,14 +234,33 @@ class TestService:
 
     # ---------------------------------------------------------- participants
 
-    def list_public(self) -> List[TestSummary]:
+    def list_public(self, user: CurrentUser) -> List[PublicTest]:
         tests = (
             self.db.query(CustomTest)
             .filter(CustomTest.visibility == Visibility.PUBLIC.value, CustomTest.is_active.is_(True))
             .order_by(CustomTest.created_at.desc())
             .all()
         )
-        return [self._summary(t, 0, 0) for t in tests]
+        latest = {}
+        if tests:
+            for attempt in (
+                self.db.query(TestAttempt)
+                .filter(TestAttempt.user_id == user.id, TestAttempt.test_id.in_([t.id for t in tests]))
+                .order_by(TestAttempt.id)
+                .all()
+            ):
+                latest[attempt.test_id] = attempt  # ordered by id, so the last one wins
+        out = []
+        for t in tests:
+            attempt = latest.get(t.id)
+            if attempt is None:
+                status, attempt_id = "NOT_STARTED", None
+            elif not _is_over(attempt):
+                status, attempt_id = "IN_PROGRESS", attempt.id
+            else:
+                status, attempt_id = ("RETAKE" if t.allow_retakes else "DONE"), attempt.id
+            out.append(PublicTest(**self._summary(t, 0, 0).model_dump(), myStatus=status, myAttemptId=attempt_id))
+        return out
 
     def start_public(self, test_id: int, user: CurrentUser) -> AttemptOut:
         # The row lock makes two simultaneous starts by the same user queue up, so the second one
@@ -252,10 +275,10 @@ class TestService:
             .order_by(TestAttempt.id.desc())
             .first()
         )
-        if previous:
-            if _is_over(previous):
-                raise HTTPException(status_code=409, detail="You have already taken this test")
+        if previous and not _is_over(previous):
             return self._attempt_out(previous, test)
+        if previous and not test.allow_retakes:
+            raise HTTPException(status_code=409, detail="You have already taken this test")
         return self._attempt_out(self._begin(test, user, invite=None), test)
 
     def start_with_invite(self, token: str, user: CurrentUser) -> AttemptOut:
@@ -369,9 +392,12 @@ class TestService:
             p.id: p for p in self.db.query(Problem).filter(Problem.id.in_(attempt.problem_ids)).all()
         }
         solved = self._solved_at([attempt.id])[attempt.id]
+        now = _now()
         remaining = None
         if attempt.expires_at is not None:
-            remaining = max(0, int((attempt.expires_at - _now()).total_seconds()))
+            remaining = max(0, int((attempt.expires_at - now).total_seconds()))
+        ended = min(m for m in (now, attempt.finished_at, attempt.expires_at) if m is not None)
+        elapsed = max(0, int((ended - attempt.started_at).total_seconds()))
         return AttemptOut(
             attemptId=attempt.id,
             testId=test.id,
@@ -380,6 +406,7 @@ class TestService:
             startedAt=_utc(attempt.started_at),
             expiresAt=_utc(attempt.expires_at),
             secondsRemaining=remaining,
+            secondsElapsed=elapsed,
             finished=_is_over(attempt),
             # deleted problems drop out; the order drawn is kept
             problems=[

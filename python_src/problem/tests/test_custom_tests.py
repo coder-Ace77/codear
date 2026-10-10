@@ -409,3 +409,61 @@ def test_test_submissions_do_not_show_up_on_the_problem(client, admin_header, au
     assert client.get("/api/v1/problem/recent", headers=auth_header).json() == []
     found = client.get("/api/v1/problem/search?search=P").json()["content"]
     assert all(p["submissions"] == 0 for p in found)
+
+
+# --- one attempt or many ---
+
+
+def test_public_test_with_multiple_attempts_can_be_retaken(client, admin_header, auth_header, add_problem):
+    test, attempt = start_public(client, admin_header, auth_header, add_problem, multipleAttempts=True)
+    assert test["multipleAttempts"] is True
+    client.post(f"{TESTS}/attempts/{attempt['attemptId']}/finish", headers=auth_header)
+
+    again = client.post(f"{TESTS}/public/{test['id']}/start", headers=auth_header)
+    assert again.status_code == 200 and again.json()["attemptId"] != attempt["attemptId"]
+
+
+def test_invite_links_follow_the_tests_attempt_setting(client, admin_header, add_problem):
+    ids = three_problems(add_problem)
+    many = client.post(
+        ADMIN,
+        json=body(visibility="PRIVATE", selectionMode="POOL", poolProblemIds=ids, multipleAttempts=True,
+                  invites={"usernames": ["tester"]}),
+        headers=admin_header,
+    ).json()["test"]
+    assert many["inviteList"][0]["singleUse"] is False
+
+    added = client.post(f"{ADMIN}/{many['id']}/invites", json={"usernames": ["someone_else"]}, headers=admin_header)
+    assert added.json()["test"]["inviteList"][1]["singleUse"] is False
+
+    once = make_private(client, admin_header, ids)["test"]
+    assert once["multipleAttempts"] is False and once["inviteList"][0]["singleUse"] is True
+
+
+# --- the caller's standing in the public list, and the clock ---
+
+
+def my_status(client, headers, test_id):
+    return next(t for t in client.get(f"{TESTS}/public", headers=headers).json() if t["id"] == test_id)
+
+
+def test_public_list_shows_where_the_caller_stands(client, admin_header, auth_header, add_problem):
+    test, attempt = start_public(client, admin_header, auth_header, add_problem)
+    assert my_status(client, auth_header, test["id"])["myStatus"] == "IN_PROGRESS"
+    assert my_status(client, auth_header, test["id"])["myAttemptId"] == attempt["attemptId"]
+    assert my_status(client, other_bearer(), test["id"])["myStatus"] == "NOT_STARTED"
+
+    client.post(f"{TESTS}/attempts/{attempt['attemptId']}/finish", headers=auth_header)
+    assert my_status(client, auth_header, test["id"])["myStatus"] == "DONE"
+
+
+def test_a_finished_retakeable_test_shows_as_retake(client, admin_header, auth_header, add_problem):
+    test, attempt = start_public(client, admin_header, auth_header, add_problem, multipleAttempts=True)
+    client.post(f"{TESTS}/attempts/{attempt['attemptId']}/finish", headers=auth_header)
+    assert my_status(client, auth_header, test["id"])["myStatus"] == "RETAKE"
+
+
+def test_untimed_attempts_report_elapsed_time(client, admin_header, auth_header, add_problem):
+    _, attempt = start_public(client, admin_header, auth_header, add_problem)
+    assert attempt["secondsRemaining"] is None
+    assert attempt["secondsElapsed"] >= 0

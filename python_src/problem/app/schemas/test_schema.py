@@ -28,7 +28,8 @@ class SlotDifficulty(str, Enum):
 
 class InviteSettings(BaseModel):
     usernames: List[str] = Field(default_factory=list, max_length=MAX_INVITEES)
-    singleUse: bool = True
+    # None: follow the test's multipleAttempts setting
+    singleUse: Optional[bool] = None
     # links stop working at this moment, whether or not they were used
     expiresAt: Optional[datetime] = None
 
@@ -56,6 +57,8 @@ class CreateTestRequest(BaseModel):
     slotDifficulties: Optional[List[SlotDifficulty]] = None
     # None = untimed
     durationMinutes: Optional[int] = Field(None, ge=1, le=MAX_DURATION_MINUTES)
+    # False: one attempt per user. True: a user may start again after finishing or running out of time
+    multipleAttempts: bool = False
     # PRIVATE tests: who gets a link and how it behaves
     invites: InviteSettings = Field(default_factory=InviteSettings)
 
@@ -114,10 +117,18 @@ class TestSummary(BaseModel):
     problemCount: int
     slotDifficulties: Optional[List[SlotDifficulty]] = None
     durationMinutes: Optional[int] = None
+    multipleAttempts: bool = False
     isActive: bool
     createdAt: Optional[datetime] = None
     attempts: int = 0
     invites: int = 0
+
+
+class PublicTest(TestSummary):
+    # the caller's standing: NOT_STARTED, IN_PROGRESS (attemptId is the one to resume),
+    # DONE (one-attempt test already taken) or RETAKE (taken before, may start again)
+    myStatus: str = "NOT_STARTED"
+    myAttemptId: Optional[int] = None
 
 
 class TestDetail(TestSummary):
@@ -146,6 +157,8 @@ class AttemptOut(BaseModel):
     expiresAt: Optional[datetime] = None
     # seconds left, None when untimed; 0 once time is up
     secondsRemaining: Optional[int] = None
+    # seconds since it started, stopping when it ended; lets untimed tests show a clock too
+    secondsElapsed: int = 0
     finished: bool
     problems: List[AttemptProblem]
     # ids of the problems already accepted in this attempt

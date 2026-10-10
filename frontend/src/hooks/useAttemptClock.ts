@@ -1,26 +1,37 @@
 import { useEffect, useRef, useState } from "react";
 import type { Attempt } from "@/service/testService";
 
+export interface AttemptClock {
+  /** Seconds left; null when the test is untimed. */
+  remaining: number | null;
+  /** Seconds since the attempt started, frozen once it is over. */
+  elapsed: number;
+}
+
 /**
- * Seconds left in an attempt, counted down locally from what the server said (so a wrong clock on the
- * user's machine cannot change it). null when untimed. Calls onExpire once when it reaches zero.
+ * Counts locally from the numbers the server sent (so a wrong clock on the user's machine changes nothing):
+ * down for timed tests, up for every test. Calls onExpire once when a timed test reaches zero.
  */
-export const useAttemptClock = (attempt: Attempt | null, onExpire?: () => void) => {
-  const [left, setLeft] = useState<number | null>(null);
+export const useAttemptClock = (attempt: Attempt | null, onExpire?: () => void): AttemptClock => {
+  const [clock, setClock] = useState<AttemptClock>({ remaining: null, elapsed: 0 });
   const expire = useRef(onExpire);
   expire.current = onExpire;
 
   useEffect(() => {
-    if (!attempt || attempt.secondsRemaining === null || attempt.finished) {
-      setLeft(attempt?.finished && attempt.secondsRemaining !== null ? 0 : null);
+    if (!attempt) return;
+    const elapsedAtLoad = attempt.secondsElapsed ?? 0;
+    if (attempt.finished) {
+      // as the server left it: 0 means time ran out, more means it was finished early
+      setClock({ remaining: attempt.secondsRemaining, elapsed: elapsedAtLoad });
       return;
     }
-    const deadline = Date.now() + attempt.secondsRemaining * 1000;
+    const loadedAt = Date.now();
     let fired = false;
     const tick = () => {
-      const s = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-      setLeft(s);
-      if (s === 0 && !fired) {
+      const passed = Math.floor((Date.now() - loadedAt) / 1000);
+      const remaining = attempt.secondsRemaining === null ? null : Math.max(0, attempt.secondsRemaining - passed);
+      setClock({ remaining, elapsed: elapsedAtLoad + passed });
+      if (remaining === 0 && !fired) {
         fired = true;
         expire.current?.();
       }
@@ -30,7 +41,7 @@ export const useAttemptClock = (attempt: Attempt | null, onExpire?: () => void) 
     return () => clearInterval(timer);
   }, [attempt]);
 
-  return left;
+  return clock;
 };
 
 export const formatClock = (seconds: number) => {

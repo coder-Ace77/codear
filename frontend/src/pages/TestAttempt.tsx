@@ -23,7 +23,7 @@ const TestAttempt = () => {
   }, [load]);
 
   // At zero, ask the server: it is the one that decides whether time is really up.
-  const left = useAttemptClock(attempt, load);
+  const { remaining, elapsed } = useAttemptClock(attempt, load);
 
   const finish = async () => {
     if (!window.confirm("Finish the test? You will not be able to come back to it.")) return;
@@ -45,12 +45,24 @@ const TestAttempt = () => {
           <h1 className="font-serif text-4xl font-medium tracking-[-0.02em]">{attempt.title}</h1>
           {attempt.description && <p className="mt-1 whitespace-pre-line text-muted-foreground">{attempt.description}</p>}
         </div>
-        {left !== null && (
-          <div className="text-right">
-            <div className="overline">Time left</div>
-            <div className={`font-mono text-3xl ${left <= 300 && !over ? "text-danger" : ""}`}>{formatClock(left)}</div>
-          </div>
-        )}
+        <div className="shrink-0 text-right">
+          {attempt.finished ? (
+            <>
+              <div className="overline">Time taken</div>
+              <div className="font-mono text-3xl">{formatClock(elapsed)}</div>
+            </>
+          ) : remaining !== null ? (
+            <>
+              <div className="overline">Time left</div>
+              <div className={`font-mono text-3xl ${remaining <= 300 ? "text-danger" : ""}`}>{formatClock(remaining)}</div>
+            </>
+          ) : (
+            <>
+              <div className="overline">Elapsed · no time limit</div>
+              <div className="font-mono text-3xl">{formatClock(elapsed)}</div>
+            </>
+          )}
+        </div>
       </div>
 
       <p className="mt-6 text-sm text-muted-foreground">
@@ -59,7 +71,7 @@ const TestAttempt = () => {
 
       {over ? (
         <p className="mt-3 border-l-2 border-border pl-4 text-muted-foreground">
-          This test is over. {left === 0 ? "Time ran out." : "You finished it."}
+          This test is over. {remaining === 0 ? "Time ran out." : "You finished it."}
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-border border-y border-border">

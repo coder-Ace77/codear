@@ -18,6 +18,7 @@ COLUMNS = (
     ("problems", "checker_tolerance", "DOUBLE PRECISION"),
     ("submissions", "attempt_id", "INTEGER"),
     ("custom_tests", "slot_difficulties", "VARCHAR[]"),
+    ("custom_tests", "allow_retakes", "BOOLEAN NOT NULL DEFAULT FALSE"),
 )
 
 

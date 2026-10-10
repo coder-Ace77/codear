@@ -13,6 +13,7 @@ from app.schemas.test_schema import (
     AttemptResult,
     CreatedTest,
     CreateTestRequest,
+    PublicTest,
     TestDetail,
     TestSummary,
 )
@@ -70,9 +71,9 @@ def delete_test(test_id: int, _admin: CurrentUser = Depends(require_admin), db: 
 
 # --- taking a test ---
 
-@router.get("/public", response_model=List[TestSummary])
-def public_tests(_user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
-    return TestService(db).list_public()
+@router.get("/public", response_model=List[PublicTest])
+def public_tests(user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    return TestService(db).list_public(user)
 
 
 @router.post("/public/{test_id}/start", response_model=AttemptOut)

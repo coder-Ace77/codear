@@ -74,7 +74,10 @@ export interface CreateTestInput {
   slotDifficulties?: SlotDifficulty[];
   /** Omit for an untimed test. */
   durationMinutes?: number;
-  invites: { usernames: string[]; singleUse: boolean; expiresAt?: string };
+  /** false: one attempt per user. */
+  multipleAttempts: boolean;
+  /** singleUse left out: follow multipleAttempts. */
+  invites: { usernames: string[]; singleUse?: boolean; expiresAt?: string };
 }
 
 export interface TestInvite {
@@ -99,6 +102,7 @@ export interface TestSummary {
   problemCount: number;
   slotDifficulties: SlotDifficulty[] | null;
   durationMinutes: number | null;
+  multipleAttempts: boolean;
   isActive: boolean;
   createdAt: string | null;
   attempts: number;

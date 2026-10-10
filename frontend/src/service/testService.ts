@@ -27,6 +27,8 @@ export interface Attempt {
   expiresAt: string | null;
   /** Seconds left when the response was made; null when untimed. */
   secondsRemaining: number | null;
+  /** Seconds since it started, stopping when it ended. */
+  secondsElapsed: number;
   /** Finished by the user, or out of time. */
   finished: boolean;
   problems: AttemptProblem[];
@@ -34,9 +36,15 @@ export interface Attempt {
   solved: number[];
 }
 
+/** A public test, with where the caller stands on it. */
+export interface PublicTest extends TestSummary {
+  myStatus: "NOT_STARTED" | "IN_PROGRESS" | "DONE" | "RETAKE";
+  myAttemptId: number | null;
+}
+
 export const testService = {
   async publicTests() {
-    return (await apiClient.get<TestSummary[]>("/problem/tests/public")).data;
+    return (await apiClient.get<PublicTest[]>("/problem/tests/public")).data;
   },
   async startPublic(testId: number) {
     return (await apiClient.post<Attempt>(`/problem/tests/public/${testId}/start`)).data;
