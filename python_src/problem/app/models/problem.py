@@ -112,6 +112,8 @@ class CustomTest(Base):
     selection_mode = Column(String(20), nullable=False)
     pool_problem_ids = Column(ARRAY(BigInteger), nullable=True)
     problem_count = Column(Integer, nullable=False)
+    # one entry per problem slot: ANY, EASY, MEDIUM or HARD. NULL = every slot is ANY
+    slot_difficulties = Column(ARRAY(String), nullable=True)
     duration_minutes = Column(Integer, nullable=True)     # NULL = untimed
     is_active = Column(Boolean, nullable=False, default=True)
     created_by = Column(BigInteger, nullable=False)

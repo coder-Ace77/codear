@@ -1,10 +1,21 @@
 import apiClient from "@/lib/apiClient";
 import type { TestSummary } from "@/service/adminService";
 
+/** No difficulty on purpose: it is not shown while a test is running. */
 export interface AttemptProblem {
   id: number;
   title: string;
-  difficulty: "Easy" | "Medium" | "Hard" | string;
+}
+
+export interface ActiveAttempt {
+  attemptId: number;
+  testId: number;
+  title: string;
+  startedAt: string;
+  expiresAt: string | null;
+  secondsRemaining: number | null;
+  solved: number;
+  total: number;
 }
 
 export interface Attempt {
@@ -32,6 +43,9 @@ export const testService = {
   },
   async startWithInvite(token: string) {
     return (await apiClient.post<Attempt>(`/problem/tests/invite/${encodeURIComponent(token)}/start`)).data;
+  },
+  async activeAttempts() {
+    return (await apiClient.get<ActiveAttempt[]>("/problem/tests/attempts/active")).data;
   },
   async attempt(attemptId: number) {
     return (await apiClient.get<Attempt>(`/problem/tests/attempts/${attemptId}`)).data;

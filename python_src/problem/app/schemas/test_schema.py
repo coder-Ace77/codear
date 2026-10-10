@@ -19,6 +19,13 @@ class SelectionMode(str, Enum):
     POOL = "POOL"                  # random problems from the ones the admin picked
 
 
+class SlotDifficulty(str, Enum):
+    ANY = "ANY"
+    EASY = "EASY"
+    MEDIUM = "MEDIUM"
+    HARD = "HARD"
+
+
 class InviteSettings(BaseModel):
     usernames: List[str] = Field(default_factory=list, max_length=MAX_INVITEES)
     singleUse: bool = True
@@ -45,6 +52,8 @@ class CreateTestRequest(BaseModel):
     # required for POOL, ignored otherwise
     poolProblemIds: Optional[List[int]] = None
     problemCount: int = Field(ge=1, le=MAX_PROBLEMS_PER_TEST)
+    # Optional: the difficulty wanted for each problem, in order (one entry per problem). Leave out for any.
+    slotDifficulties: Optional[List[SlotDifficulty]] = None
     # None = untimed
     durationMinutes: Optional[int] = Field(None, ge=1, le=MAX_DURATION_MINUTES)
     # PRIVATE tests: who gets a link and how it behaves
@@ -60,6 +69,11 @@ class CreateTestRequest(BaseModel):
 
     @model_validator(mode="after")
     def consistent(self):
+        if self.slotDifficulties is not None:
+            if len(self.slotDifficulties) != self.problemCount:
+                raise ValueError("slotDifficulties needs exactly one entry per problem")
+            if all(d == SlotDifficulty.ANY for d in self.slotDifficulties):
+                self.slotDifficulties = None
         if self.selectionMode == SelectionMode.POOL:
             pool = list(dict.fromkeys(self.poolProblemIds or []))
             if not pool:
@@ -98,6 +112,7 @@ class TestSummary(BaseModel):
     visibility: Visibility
     selectionMode: SelectionMode
     problemCount: int
+    slotDifficulties: Optional[List[SlotDifficulty]] = None
     durationMinutes: Optional[int] = None
     isActive: bool
     createdAt: Optional[datetime] = None
@@ -117,9 +132,9 @@ class CreatedTest(BaseModel):
 
 
 class AttemptProblem(BaseModel):
+    # no difficulty here on purpose: it is not shown while a test is running
     id: int
     title: str
-    difficulty: str
 
 
 class AttemptOut(BaseModel):
@@ -156,3 +171,14 @@ class AttemptResult(BaseModel):
     solvedCount: int
     total: int
     problems: List[ProblemResult]
+
+
+class ActiveAttempt(BaseModel):
+    attemptId: int
+    testId: int
+    title: str
+    startedAt: datetime
+    expiresAt: Optional[datetime] = None
+    secondsRemaining: Optional[int] = None
+    solved: int
+    total: int

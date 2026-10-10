@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.auth import CurrentUser, get_current_user, require_admin
 from app.database import get_db
 from app.schemas.test_schema import (
+    ActiveAttempt,
     AddInvitesRequest,
     AttemptOut,
     AttemptResult,
@@ -82,6 +83,11 @@ def start_public(test_id: int, user: CurrentUser = Depends(get_current_user), db
 @router.post("/invite/{token}/start", response_model=AttemptOut)
 def start_with_invite(token: str, user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
     return TestService(db).start_with_invite(token, user)
+
+
+@router.get("/attempts/active", response_model=List[ActiveAttempt])
+def active_attempts(user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    return TestService(db).active_attempts(user)
 
 
 @router.get("/attempts/{attempt_id}", response_model=AttemptOut)

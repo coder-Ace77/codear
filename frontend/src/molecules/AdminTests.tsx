@@ -13,6 +13,7 @@ import {
   testAdminService,
   type AttemptResult,
   type CreateTestInput,
+  type SlotDifficulty,
   type TestDetail,
   type TestSelectionMode,
   type TestSummary,
@@ -95,6 +96,8 @@ const EMPTY_FORM = {
   visibility: "PUBLIC" as TestVisibility,
   selectionMode: "ALL_PROBLEMS" as TestSelectionMode,
   problemCount: 3,
+  advanced: false,
+  slots: ["ANY", "ANY", "ANY"] as SlotDifficulty[],
   timed: false,
   durationMinutes: 60,
   usernames: "",
@@ -183,6 +186,15 @@ const AdminTests = () => {
     reload();
   }, [reload]);
 
+  const setCount = (n: number) =>
+    setForm((f) => ({
+      ...f,
+      problemCount: n,
+      slots: Array.from({ length: n }, (_, i) => f.slots[i] ?? "ANY"),
+    }));
+  const setSlot = (index: number, value: SlotDifficulty) =>
+    setForm((f) => ({ ...f, slots: f.slots.map((s, i) => (i === index ? value : s)) }));
+
   const poolIds = Object.keys(pool).map(Number);
   const set = <K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -209,6 +221,7 @@ const AdminTests = () => {
         selectionMode: form.selectionMode,
         poolProblemIds: form.selectionMode === "POOL" ? poolIds : undefined,
         problemCount: form.problemCount,
+        slotDifficulties: form.advanced ? form.slots : undefined,
         durationMinutes: form.timed ? form.durationMinutes : undefined,
         invites: inviteInput(form.visibility === "PRIVATE" ? names : []),
       });
@@ -301,7 +314,7 @@ const AdminTests = () => {
               min={1}
               max={50}
               value={form.problemCount}
-              onChange={(e) => set("problemCount", parseInt(e.target.value) || 1)}
+              onChange={(e) => setCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
             />
           </div>
           <div>
@@ -320,6 +333,28 @@ const AdminTests = () => {
               <span className="text-sm text-muted-foreground">min</span>
             </div>
           </div>
+        </div>
+
+        <div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.advanced} onChange={(e) => set("advanced", e.target.checked)} />
+            Advanced: choose the difficulty of each problem
+          </label>
+          {form.advanced && (
+            <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+              {form.slots.map((slot, i) => (
+                <div key={i}>
+                  <Label htmlFor={`slot-${i}`}>Problem {i + 1}</Label>
+                  <Select id={`slot-${i}`} value={slot} onChange={(e) => setSlot(i, e.target.value as SlotDifficulty)}>
+                    <option value="ANY">Any</option>
+                    <option value="EASY">Easy</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HARD">Hard</option>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {form.selectionMode === "POOL" && (
@@ -395,6 +430,7 @@ const AdminTests = () => {
                 <h3 className="font-serif text-xl">{open.title}</h3>
                 <p className="text-[13px] text-muted-foreground">
                   {open.selectionMode === "POOL" ? `${open.poolProblemIds?.length ?? 0} problems in the pool` : "Whole problem set"}
+                  {open.slotDifficulties && ` · ${open.slotDifficulties.map((d) => d.toLowerCase()).join(", ")}`}
                 </p>
               </div>
               <Button

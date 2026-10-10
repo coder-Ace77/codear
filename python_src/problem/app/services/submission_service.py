@@ -142,6 +142,7 @@ class SubmissionService:
             self.db.query(Submission)
             .filter(Submission.user_id == user_id)
             .filter(Submission.problem_id == problem_id)
+            .filter(Submission.attempt_id.is_(None))  # test submissions belong to the test, not the problem
             .order_by(Submission.submitted_at.desc()) # Added ordering for better UX
             .all()
         )

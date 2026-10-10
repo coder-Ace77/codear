@@ -17,6 +17,7 @@ COLUMNS = (
     ("problems", "checker", "VARCHAR(40)"),
     ("problems", "checker_tolerance", "DOUBLE PRECISION"),
     ("submissions", "attempt_id", "INTEGER"),
+    ("custom_tests", "slot_difficulties", "VARCHAR[]"),
 )
 
 
