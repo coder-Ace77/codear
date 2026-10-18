@@ -3,21 +3,35 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-from sqlalchemy.pool import NullPool
 import urllib.parse
 
 load_dotenv()
 
-user = os.getenv('DB_USER')
-password = urllib.parse.quote_plus(os.getenv('PASSWORD'))
-host = os.getenv('DB_HOST')
-port = os.getenv('DB_PORT')
-db_name = os.getenv('DB_NAME')
 db_ssl_mode = os.getenv('DB_SSL_MODE', 'require')
 
-SQLALCHEMY_DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode={db_ssl_mode}"
-connect_args = {} if db_ssl_mode == 'disable' else {"sslmode": db_ssl_mode}
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args, poolclass=NullPool)
+# DATABASE_URL (e.g. a Neon connection string) takes precedence over the individual DB_* settings.
+SQLALCHEMY_DATABASE_URL = os.getenv('DATABASE_URL')
+if SQLALCHEMY_DATABASE_URL:
+    connect_args = {}
+else:
+    user = os.getenv('DB_USER')
+    password = urllib.parse.quote_plus(os.getenv('PASSWORD'))
+    host = os.getenv('DB_HOST')
+    port = os.getenv('DB_PORT')
+    db_name = os.getenv('DB_NAME')
+    SQLALCHEMY_DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{db_name}?sslmode={db_ssl_mode}"
+    connect_args = {} if db_ssl_mode == 'disable' else {"sslmode": db_ssl_mode}
+
+# Keep a small pool so warm requests reuse their connection instead of paying a fresh TLS handshake each time.
+# pre_ping replaces connections the server dropped while idle (or while a Lambda container was frozen).
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args=connect_args,
+    pool_size=int(os.getenv('DB_POOL_SIZE', '5')),
+    max_overflow=int(os.getenv('DB_MAX_OVERFLOW', '5')),
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

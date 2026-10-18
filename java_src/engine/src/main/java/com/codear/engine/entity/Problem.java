@@ -24,8 +24,13 @@ public class Problem {
     private String title;
     @Column(columnDefinition = "TEXT")
     private String description;
+    // The problem service creates these as unbounded VARCHAR; without TEXT here, ddl-auto=update would shrink
+    // them to varchar(255) on every engine start and longer descriptions would be rejected.
+    @Column(columnDefinition = "TEXT")
     private String inputDescription;
+    @Column(columnDefinition = "TEXT")
     private String outputDescription;
+    @Column(columnDefinition = "TEXT")
     private String constraints;
     private String difficulty;
     

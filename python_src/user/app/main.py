@@ -5,8 +5,13 @@ from app.api import user_router
 from app.database import engine, Base
 from fastapi.middleware.cors import CORSMiddleware  # Import this
 
-# Create database tables (equivalent to spring.jpa.hibernate.ddl-auto=update)
-Base.metadata.create_all(bind=engine)
+def setup_schema():
+    Base.metadata.create_all(bind=engine)
+
+# Create database tables (equivalent to spring.jpa.hibernate.ddl-auto=update). Lambda sets
+# RUN_SCHEMA_SETUP=false so cold starts skip this, and runs setup_schema once per deploy (see lambda_handler.py).
+if os.getenv("RUN_SCHEMA_SETUP", "true").lower() == "true":
+    setup_schema()
 
 app = FastAPI(title="User Microservice")
 

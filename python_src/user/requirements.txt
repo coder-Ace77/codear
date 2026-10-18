@@ -9,3 +9,4 @@ python-dotenv
 httpx
 bcrypt==3.2.0
 redis
+mangum
