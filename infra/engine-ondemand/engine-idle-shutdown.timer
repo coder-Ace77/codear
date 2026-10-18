@@ -1,0 +1,9 @@
+[Unit]
+Description=Check every minute whether the judge is idle
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1min
+
+[Install]
+WantedBy=timers.target
