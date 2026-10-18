@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the latest engine image from Docker Hub
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/codear-engine/run-engine.sh --if-changed
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target
