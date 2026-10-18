@@ -10,9 +10,14 @@ from app.api.submission_router import router as sub_router
 from app.core.schema_upgrade import ensure_columns
 from app.database import engine, Base
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
-ensure_columns(engine)
+def setup_schema():
+    Base.metadata.create_all(bind=engine)
+    ensure_columns(engine)
+
+# Create database tables. Lambda sets RUN_SCHEMA_SETUP=false so cold starts skip these DB round trips,
+# and runs setup_schema once per deploy instead (see lambda_handler.py).
+if os.getenv("RUN_SCHEMA_SETUP", "true").lower() == "true":
+    setup_schema()
 
 app = FastAPI(
     title="Problem Microservice",
