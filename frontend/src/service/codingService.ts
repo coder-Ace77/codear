@@ -1,6 +1,6 @@
 import apiClient from "@/lib/apiClient";
 import { Problem } from "@/types/problem";
-import type { SubmissionProgress } from "@/types/submissionProgress";
+import type { Submission } from "@/types/submission";
 
 
 export const fetchProblem = async (
@@ -30,20 +30,11 @@ export const codingService = {
     return response.data; 
   },
 
-  async getSubmissionStatus(submissionId) {
-    const response = await apiClient.get(`/problem/submissions/${submissionId}`);
-    return response.data; 
-  },
-
-  /**
-   * Long-poll one step of a submission's progress. The server holds the request until something newer than
-   * `since` exists (or about 20 s pass), so call it in a loop with the version from the last answer.
-   */
-  async getSubmissionProgress(submissionId: string, since: number, signal?: AbortSignal) {
-    const response = await apiClient.get<SubmissionProgress>(`/problem/submissions/${submissionId}/progress`, {
-      params: { since, wait: 20 },
+  /** Long-polls one submission: the server holds the request for up to 10 s while it is still being judged. */
+  async getSubmissionStatus(submissionId: string, signal?: AbortSignal) {
+    const response = await apiClient.get<Submission>(`/problem/submissions/${submissionId}`, {
       signal,
-      timeout: 35000, // the server waits up to 20 s, plus the network
+      timeout: 25000, // the server waits up to 10 s, plus the network
     });
     return response.data;
   },
