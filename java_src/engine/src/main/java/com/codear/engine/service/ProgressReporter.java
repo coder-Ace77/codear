@@ -37,7 +37,8 @@ public class ProgressReporter implements TestProgressListener {
     private long lastWriteMs = 0;
 
     public ProgressReporter(CacheService cache, ObjectMapper mapper, String submissionId, long firstVersion,
-            LongSupplier clockMs) {
+            LongSupplier clockMs){
+
         this.cache = cache;
         this.mapper = mapper;
         this.key = "progress:" + submissionId;
@@ -46,7 +47,8 @@ public class ProgressReporter implements TestProgressListener {
     }
 
     /** The engine picked the submission up. */
-    public void preparing() {
+    public void preparing(){
+        
         stage = "PREPARING";
         publish(true);
     }
