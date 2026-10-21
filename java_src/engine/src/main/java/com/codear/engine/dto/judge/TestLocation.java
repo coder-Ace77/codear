@@ -1,4 +1,4 @@
-package com.codear.engine.judge;
+package com.codear.engine.dto.judge;
 
 import lombok.Value;
 

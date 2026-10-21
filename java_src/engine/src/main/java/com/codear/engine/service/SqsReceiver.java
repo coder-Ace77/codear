@@ -9,10 +9,10 @@ import com.codear.engine.constants.JudgeDefaults;
 import com.codear.engine.dto.Code;
 import com.codear.engine.dto.ResourceConstraints;
 import com.codear.engine.dto.TestDTO;
-import com.codear.engine.judge.CustomRunResult;
-import com.codear.engine.judge.ExpectedTest;
-import com.codear.engine.judge.JudgeReport;
-import com.codear.engine.judge.JudgeRequest;
+import com.codear.engine.dto.judge.CustomRunResult;
+import com.codear.engine.dto.judge.ExpectedTest;
+import com.codear.engine.dto.judge.JudgeReport;
+import com.codear.engine.dto.judge.JudgeRequest;
 import com.codear.engine.judge.JudgeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

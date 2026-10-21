@@ -13,10 +13,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.codear.engine.dto.judge.JudgeLimits;
 import com.codear.engine.dto.sandbox.SandboxRequest;
 import com.codear.engine.enums.Language;
 import com.codear.engine.exception.UnsupportedLanguageException;
-import com.codear.engine.judge.JudgeLimits;
 import com.github.dockerjava.api.model.Capability;
 import com.github.dockerjava.api.model.HostConfig;
 

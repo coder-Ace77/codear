@@ -22,8 +22,7 @@ import com.codear.engine.enums.CompileStatus;
 import lombok.Value;
 
 /**
- * Turns the tar archive of the runner's results folder into a {@link SandboxResult}. Each file is read up to a
- * size cap, so a program's output can never make the engine hold more than that in memory.
+ * Turns the tar archive of the runner's results folder into a {@link SandboxResult}.
  */
 public final class ResultArchiveReader {
 

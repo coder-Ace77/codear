@@ -6,6 +6,7 @@ import static com.codear.engine.constants.JudgeDefaults.MEMORY_ERROR_MARKERS;
 import java.util.Locale;
 
 import com.codear.engine.constants.SandboxProtocol;
+import com.codear.engine.dto.judge.JudgeLimits;
 import com.codear.engine.dto.sandbox.SandboxResult.TestRun;
 import com.codear.engine.enums.RunOutcome;
 

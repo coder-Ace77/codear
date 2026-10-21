@@ -3,11 +3,11 @@ package com.codear.engine.service;
 import org.springframework.stereotype.Service;
 
 import com.codear.engine.dto.TestDTO;
+import com.codear.engine.dto.judge.JudgeReport;
 import com.codear.engine.enums.RunStatus;
-import com.codear.engine.judge.FailureMessages;
-import com.codear.engine.judge.JudgeReport;
 import com.codear.engine.repository.SubmissionRepository;
 import com.codear.engine.util.CacheService;
+import com.codear.engine.util.judge.FailureMessages;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

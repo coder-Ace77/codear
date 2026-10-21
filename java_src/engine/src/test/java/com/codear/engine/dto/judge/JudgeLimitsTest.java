@@ -1,4 +1,4 @@
-package com.codear.engine.judge;
+package com.codear.engine.dto.judge;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -35,7 +35,7 @@ class JudgeLimitsTest {
 
     @Test
     void aProblemWithoutLimitsGetsTheDefaults() {
-        JudgeLimits limits = JudgeLimitsFactory.forProblem(null, List.of());
+        JudgeLimits limits = JudgeLimits.forProblem(null, List.of());
 
         assertEquals(1000, limits.getTimeLimitMs());
         assertEquals(256, limits.getMemoryLimitMb());
@@ -44,8 +44,8 @@ class JudgeLimitsTest {
 
     @Test
     void aProblemsOwnLimitsAreUsedAndNonsenseFallsBackToTheDefaults() {
-        JudgeLimits own = JudgeLimitsFactory.forProblem(new ResourceConstraints(2000L, 128, "Hard"), List.of());
-        JudgeLimits broken = JudgeLimitsFactory.forProblem(new ResourceConstraints(0L, -5, "Hard"), List.of());
+        JudgeLimits own = JudgeLimits.forProblem(new ResourceConstraints(2000L, 128, "Hard"), List.of());
+        JudgeLimits broken = JudgeLimits.forProblem(new ResourceConstraints(0L, -5, "Hard"), List.of());
 
         assertEquals(2000, own.getTimeLimitMs());
         assertEquals(128, own.getMemoryLimitMb());
@@ -55,14 +55,14 @@ class JudgeLimitsTest {
 
     @Test
     void theOutputCapIsAMultipleOfTheLargestExpectedAnswerWithinSaneBounds() {
-        assertEquals(64 * 1024, JudgeLimitsFactory.outputLimitFor(List.of()));
-        assertEquals(64 * 1024, JudgeLimitsFactory.outputLimitFor(List.of(new ExpectedTest(1, "", "YES", true))));
+        assertEquals(64 * 1024, JudgeLimits.outputLimitFor(List.of()));
+        assertEquals(64 * 1024, JudgeLimits.outputLimitFor(List.of(new ExpectedTest(1, "", "YES", true))));
 
-        long fortyThousandLines = JudgeLimitsFactory.outputLimitFor(
+        long fortyThousandLines = JudgeLimits.outputLimitFor(
                 List.of(new ExpectedTest(1, "", "YES\n".repeat(40_000), false)));
         assertEquals(160_000L * 4 + 4096, fortyThousandLines);
 
-        assertEquals(8L * 1024 * 1024, JudgeLimitsFactory.outputLimitFor(
+        assertEquals(8L * 1024 * 1024, JudgeLimits.outputLimitFor(
                 List.of(new ExpectedTest(1, "", "x".repeat(5_000_000), false))));
     }
 }

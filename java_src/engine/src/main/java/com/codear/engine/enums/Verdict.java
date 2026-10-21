@@ -1,6 +1,4 @@
-package com.codear.engine.judge;
-
-import com.codear.engine.enums.RunStatus;
+package com.codear.engine.enums;
 
 /** Why a submission got the result it got. {@link RunStatus} stays the coarse PASSED/FAILED the rest of the system reads. */
 public enum Verdict {

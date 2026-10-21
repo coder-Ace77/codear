@@ -16,8 +16,13 @@ import org.junit.jupiter.api.Test;
 
 import com.codear.engine.checker.ComparatorFactory;
 import com.codear.engine.dto.ResourceConstraints;
+import com.codear.engine.dto.judge.CustomRunResult;
+import com.codear.engine.dto.judge.ExpectedTest;
+import com.codear.engine.dto.judge.JudgeReport;
+import com.codear.engine.dto.judge.JudgeRequest;
 import com.codear.engine.dto.sandbox.SandboxRequest;
 import com.codear.engine.dto.sandbox.SandboxResult;
+import com.codear.engine.enums.Verdict;
 import com.codear.engine.exception.SandboxException;
 import com.codear.engine.sandbox.SandboxRunner;
 

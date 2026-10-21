@@ -12,8 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.codear.engine.constants.SandboxProtocol;
+import com.codear.engine.dto.judge.JudgeLimits;
 import com.codear.engine.dto.sandbox.SandboxRequest;
-import com.codear.engine.judge.JudgeLimits;
 import com.github.dockerjava.api.model.Capability;
 import com.github.dockerjava.api.model.HostConfig;
 

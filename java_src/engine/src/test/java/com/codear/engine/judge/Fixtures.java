@@ -2,6 +2,8 @@ package com.codear.engine.judge;
 
 import java.util.List;
 
+import com.codear.engine.dto.judge.ExpectedTest;
+import com.codear.engine.dto.judge.JudgeLimits;
 import com.codear.engine.dto.sandbox.SandboxResult;
 import com.codear.engine.dto.sandbox.SandboxResult.CompileResult;
 import com.codear.engine.dto.sandbox.SandboxResult.TestRun;

@@ -1,4 +1,4 @@
-package com.codear.engine.judge;
+package com.codear.engine.util.judge;
 
 import static com.codear.engine.constants.JudgeDefaults.COMPILE_DIR_PREFIX;
 import static com.codear.engine.constants.JudgeDefaults.MAX_COMPILE_MESSAGE_CHARS;
@@ -6,6 +6,8 @@ import static com.codear.engine.constants.JudgeDefaults.MAX_DIFF_FIELD_CHARS;
 import static com.codear.engine.constants.JudgeDefaults.MAX_STDERR_MESSAGE_CHARS;
 
 import java.util.Map;
+
+import com.codear.engine.dto.judge.TestLocation;
 
 /**
  * The sentences a person reads when a submission fails. Everything is capped in length, hides the sandbox's

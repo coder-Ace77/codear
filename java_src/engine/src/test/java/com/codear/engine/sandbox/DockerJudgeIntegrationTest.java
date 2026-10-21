@@ -24,16 +24,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.codear.engine.checker.ComparatorFactory;
 import com.codear.engine.dto.ResourceConstraints;
+import com.codear.engine.dto.judge.CustomRunResult;
+import com.codear.engine.dto.judge.ExpectedTest;
+import com.codear.engine.dto.judge.JudgeLimits;
+import com.codear.engine.dto.judge.JudgeReport;
+import com.codear.engine.dto.judge.JudgeRequest;
 import com.codear.engine.dto.sandbox.SandboxRequest;
 import com.codear.engine.dto.sandbox.SandboxResult;
 import com.codear.engine.enums.Language;
-import com.codear.engine.judge.CustomRunResult;
-import com.codear.engine.judge.ExpectedTest;
-import com.codear.engine.judge.JudgeLimitsFactory;
-import com.codear.engine.judge.JudgeReport;
-import com.codear.engine.judge.JudgeRequest;
+import com.codear.engine.enums.Verdict;
 import com.codear.engine.judge.JudgeService;
-import com.codear.engine.judge.Verdict;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
@@ -217,7 +217,7 @@ class DockerJudgeIntegrationTest {
     void theRunStopsAtTheFirstRuntimeFailureSoLaterTestsAreNotRun() {
         List<String> inputs = tests.stream().map(ExpectedTest::getInput).toList();
         SandboxResult result = sandbox.run(new SandboxRequest(Language.PYTHON, "raise SystemExit(2)\n", inputs,
-                JudgeLimitsFactory.forProblem(constraints, tests)));
+                JudgeLimits.forProblem(constraints, tests)));
 
         assertTrue(result.runFor(0).isPresent());
         assertTrue(result.runFor(1).isEmpty());

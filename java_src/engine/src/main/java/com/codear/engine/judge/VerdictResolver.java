@@ -6,10 +6,16 @@ import java.util.List;
 import java.util.Optional;
 
 import com.codear.engine.checker.OutputComparator;
-import com.codear.engine.dto.sandbox.SandboxResult;
+import com.codear.engine.dto.judge.ExpectedTest;
+import com.codear.engine.dto.judge.JudgeLimits;
+import com.codear.engine.dto.judge.JudgeReport;
+import com.codear.engine.dto.judge.TestLocation;
 import com.codear.engine.dto.sandbox.SandboxResult.TestRun;
+import com.codear.engine.dto.sandbox.SandboxResult;
 import com.codear.engine.enums.CompileStatus;
 import com.codear.engine.enums.RunOutcome;
+import com.codear.engine.enums.Verdict;
+import com.codear.engine.util.judge.FailureMessages;
 
 /**
  * Turns what the sandbox recorded into a verdict. Tests are judged in order and the first one that fails decides:

@@ -1,4 +1,6 @@
-package com.codear.engine.judge;
+package com.codear.engine.dto.judge;
+
+import com.codear.engine.enums.Verdict;
 
 import lombok.Value;
 

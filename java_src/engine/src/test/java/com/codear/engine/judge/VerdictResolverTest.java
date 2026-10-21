@@ -18,7 +18,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.codear.engine.checker.ComparatorFactory;
+import com.codear.engine.dto.judge.ExpectedTest;
+import com.codear.engine.dto.judge.JudgeReport;
 import com.codear.engine.enums.RunStatus;
+import com.codear.engine.enums.Verdict;
 
 class VerdictResolverTest {
 
