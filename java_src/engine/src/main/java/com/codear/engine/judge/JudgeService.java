@@ -1,18 +1,29 @@
 package com.codear.engine.judge;
 
+import static com.codear.engine.constants.JudgeDefaults.MAX_SOURCE_CHARS;
+
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import com.codear.engine.dto.ResourceConstraints;
-import com.codear.engine.sandbox.Language;
-import com.codear.engine.sandbox.RunOutcome;
-import com.codear.engine.sandbox.SandboxException;
-import com.codear.engine.sandbox.SandboxRequest;
-import com.codear.engine.sandbox.SandboxResult;
+import com.codear.engine.dto.judge.CustomRunResult;
+import com.codear.engine.dto.judge.ExpectedTest;
+import com.codear.engine.dto.judge.JudgeLimits;
+import com.codear.engine.dto.judge.JudgeReport;
+import com.codear.engine.dto.judge.JudgeRequest;
+import com.codear.engine.dto.judge.TestLocation;
+import com.codear.engine.dto.sandbox.SandboxRequest;
+import com.codear.engine.dto.sandbox.SandboxResult.TestRun;
+import com.codear.engine.dto.sandbox.SandboxResult;
+import com.codear.engine.enums.CompileStatus;
+import com.codear.engine.enums.Language;
+import com.codear.engine.enums.RunOutcome;
+import com.codear.engine.exception.SandboxException;
+import com.codear.engine.exception.UnsupportedLanguageException;
 import com.codear.engine.sandbox.SandboxRunner;
-import com.codear.engine.sandbox.TestRun;
+import com.codear.engine.util.judge.FailureMessages;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,54 +42,54 @@ public class JudgeService {
      * gets an answer and the queue message is not lost.
      */
     public JudgeReport judge(JudgeRequest request) {
-        List<ExpectedTest> tests = request.tests();
+        List<ExpectedTest> tests = request.getTests();
         int total = tests.size();
 
         if (tests.isEmpty()) {
             return JudgeReport.systemError(0, FailureMessages.noTests());
         }
 
-        Optional<JudgeReport> rejected = CodeValidator.reject(request.code(), total);
+        Optional<JudgeReport> rejected = reject(request.getCode(), total);
         if (rejected.isPresent()) {
             return rejected.get();
         }
 
         Language language;
         try {
-            language = Language.from(request.language());
-        } catch (Language.UnsupportedLanguageException e) {
-            return JudgeReport.compileError(total, FailureMessages.unsupportedLanguage(request.language()), "");
+            language = Language.from(request.getLanguage());
+        } catch (UnsupportedLanguageException e) {
+            return JudgeReport.compileError(total, FailureMessages.unsupportedLanguage(request.getLanguage()), "");
         }
 
-        JudgeLimits limits = JudgeLimitsFactory.forProblem(request.constraints(), tests);
-        List<String> inputs = tests.stream().map(ExpectedTest::input).toList();
+        JudgeLimits limits = JudgeLimits.forProblem(request.getConstraints(), tests);
+        List<String> inputs = tests.stream().map(ExpectedTest::getInput).toList();
 
         SandboxResult result;
         try {
-            result = sandbox.run(new SandboxRequest(language, request.code(), inputs, limits));
+            result = sandbox.run(new SandboxRequest(language, request.getCode(), inputs, limits));
         } catch (SandboxException e) {
             log.error("Sandbox failed: {}", e.getMessage(), e);
             return JudgeReport.systemError(total, FailureMessages.judgeFailure());
         }
 
-        return new VerdictResolver(request.comparator()).resolve(result, tests, limits);
+        return new VerdictResolver(request.getComparator()).resolve(result, tests, limits);
     }
 
     /** Runs the code on one input a person typed, with no expected answer. */
     public CustomRunResult runCustom(String code, String languageName, String input, ResourceConstraints constraints) {
-        Optional<JudgeReport> rejected = CodeValidator.reject(code, 1);
+        Optional<JudgeReport> rejected = reject(code, 1);
         if (rejected.isPresent()) {
-            return new CustomRunResult(rejected.get().message(), false);
+            return new CustomRunResult(rejected.get().getMessage(), false);
         }
 
         Language language;
         try {
             language = Language.from(languageName);
-        } catch (Language.UnsupportedLanguageException e) {
+        } catch (UnsupportedLanguageException e) {
             return new CustomRunResult(FailureMessages.unsupportedLanguage(languageName), false);
         }
 
-        JudgeLimits limits = JudgeLimitsFactory.forCustomRun(constraints);
+        JudgeLimits limits = JudgeLimits.forCustomRun(constraints);
         SandboxResult result;
         try {
             result = sandbox.run(new SandboxRequest(language, code, List.of(input == null ? "" : input), limits));
@@ -89,11 +100,21 @@ public class JudgeService {
         return describeCustomRun(result, limits);
     }
 
+    private static Optional<JudgeReport> reject(String code, int totalTests) {
+        if (code == null || code.isBlank()) {
+            return Optional.of(JudgeReport.compileError(totalTests, FailureMessages.emptySource(), ""));
+        }
+        if (code.length() > MAX_SOURCE_CHARS) {
+            return Optional.of(JudgeReport.compileError(totalTests, FailureMessages.sourceTooLarge(MAX_SOURCE_CHARS), ""));
+        }
+        return Optional.empty();
+    }
+
     private CustomRunResult describeCustomRun(SandboxResult result, JudgeLimits limits) {
-        if (!result.compile().ok()) {
-            String message = result.compile().timedOut()
-                    ? FailureMessages.compileTimeout(limits.compileTimeoutSeconds())
-                    : FailureMessages.compileError(result.compile().output());
+        if (result.getCompile().getStatus() != CompileStatus.OK) {
+            String message = result.getCompile().getStatus() == CompileStatus.TIMED_OUT
+                    ? FailureMessages.compileTimeout(limits.getCompileTimeoutSeconds())
+                    : FailureMessages.compileError(result.getCompile().getOutput());
             return new CustomRunResult(message, false);
         }
         Optional<TestRun> recorded = result.runFor(0);
@@ -104,12 +125,12 @@ public class JudgeService {
         TestLocation where = TestLocation.customRun();
         RunOutcome outcome = classifier.classify(run, limits);
         return switch (outcome) {
-            case OK -> new CustomRunResult(run.stdout(), true);
-            case TIME_LIMIT -> new CustomRunResult(FailureMessages.timeLimit(where, limits.timeLimitMs()), false);
-            case MEMORY_LIMIT -> new CustomRunResult(FailureMessages.memoryLimit(where, limits.memoryLimitMb()), false);
+            case OK -> new CustomRunResult(run.getStdout(), true);
+            case TIME_LIMIT -> new CustomRunResult(FailureMessages.timeLimit(where, limits.getTimeLimitMs()), false);
+            case MEMORY_LIMIT -> new CustomRunResult(FailureMessages.memoryLimit(where, limits.getMemoryLimitMb()), false);
             case OUTPUT_LIMIT -> new CustomRunResult(FailureMessages.outputLimit(where), false);
             case RUNTIME_ERROR -> new CustomRunResult(
-                    FailureMessages.runtimeError(where, true, run.exitCode(), run.stderrTail()), false);
+                    FailureMessages.runtimeError(where, true, run.getExitCode(), run.getStderrTail()), false);
         };
     }
 }

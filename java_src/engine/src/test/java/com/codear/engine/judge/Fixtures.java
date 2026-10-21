@@ -2,9 +2,13 @@ package com.codear.engine.judge;
 
 import java.util.List;
 
-import com.codear.engine.sandbox.CompileResult;
-import com.codear.engine.sandbox.SandboxResult;
-import com.codear.engine.sandbox.TestRun;
+import com.codear.engine.dto.judge.ExpectedTest;
+import com.codear.engine.dto.judge.JudgeLimits;
+import com.codear.engine.dto.sandbox.SandboxResult;
+import com.codear.engine.dto.sandbox.SandboxResult.CompileResult;
+import com.codear.engine.dto.sandbox.SandboxResult.TestRun;
+import com.codear.engine.enums.CompileStatus;
+
 
 /** Short builders so a test can say what happened in one line. */
 final class Fixtures {
@@ -28,15 +32,15 @@ final class Fixtures {
     }
 
     static SandboxResult finished(TestRun... runs) {
-        return new SandboxResult(CompileResult.succeeded(), List.of(runs), true, false);
+        return new SandboxResult(new CompileResult(CompileStatus.OK, ""), List.of(runs), true, false);
     }
 
     static SandboxResult cutOff(boolean oomKilled, TestRun... runs) {
-        return new SandboxResult(CompileResult.succeeded(), List.of(runs), false, oomKilled);
+        return new SandboxResult(new CompileResult(CompileStatus.OK, ""), List.of(runs), false, oomKilled);
     }
 
     static SandboxResult compileFailed(int exit, String output) {
-        return new SandboxResult(new CompileResult(exit, output), List.of(), true, false);
+        return new SandboxResult(new CompileResult(CompileStatus.fromExitCode(exit), output), List.of(), true, false);
     }
 
     static ExpectedTest sample(int number, String expected) {

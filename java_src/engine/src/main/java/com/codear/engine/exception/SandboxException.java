@@ -1,4 +1,4 @@
-package com.codear.engine.sandbox;
+package com.codear.engine.exception;
 
 /** The sandbox itself failed (Docker, files, results), as opposed to the submitted program failing. */
 public class SandboxException extends RuntimeException {

@@ -1,6 +1,5 @@
 package com.codear.engine.repository;
 
-import org.springframework.stereotype.Repository;
 import com.codear.engine.entity.User;
 
 // This import is not used for @Param, use the one below
@@ -14,7 +13,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
-@Repository
 public interface UserRepository extends JpaRepository<User,Long>{
 
     @Modifying

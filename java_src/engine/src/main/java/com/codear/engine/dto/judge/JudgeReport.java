@@ -1,14 +1,26 @@
-package com.codear.engine.judge;
+package com.codear.engine.dto.judge;
+
+import com.codear.engine.enums.Verdict;
+
+import lombok.Value;
 
 /**
  * The outcome of judging one submission.
- *
- * @param failedTest  1-based number of the first test that failed; null when none did (accepted, compile error)
- * @param message     what the person sees
- * @param diagnostics extra detail kept with the submission (not shown by default)
  */
-public record JudgeReport(Verdict verdict, Integer failedTest, int totalTests, int passedTests,
-        String message, String diagnostics, long maxTimeMs, long peakMemoryKb) {
+@Value
+public class JudgeReport {
+
+    Verdict verdict;
+    /** 1-based number of the first test that failed; null when none did (accepted, compile error) */
+    Integer failedTest;
+    int totalTests;
+    int passedTests;
+    /** what the person sees */
+    String message;
+    /** extra detail kept with the submission (not shown by default) */
+    String diagnostics;
+    long maxTimeMs;
+    long peakMemoryKb;
 
     public static final String ALL_PASSED = "All tests passed";
 

@@ -6,8 +6,9 @@ import static com.codear.engine.constants.JudgeDefaults.MEMORY_ERROR_MARKERS;
 import java.util.Locale;
 
 import com.codear.engine.constants.SandboxProtocol;
-import com.codear.engine.sandbox.RunOutcome;
-import com.codear.engine.sandbox.TestRun;
+import com.codear.engine.dto.judge.JudgeLimits;
+import com.codear.engine.dto.sandbox.SandboxResult.TestRun;
+import com.codear.engine.enums.RunOutcome;
 
 /**
  * Decides which limit a run hit, from what the runner recorded. The runner stops the program at its limits and
@@ -16,7 +17,7 @@ import com.codear.engine.sandbox.TestRun;
 public final class RunClassifier {
 
     public RunOutcome classify(TestRun run, JudgeLimits limits) {
-        int exit = run.exitCode();
+        int exit = run.getExitCode();
 
         if (exit == SandboxProtocol.EXIT_OK) {
             return classifyFinishedRun(run, limits);
@@ -31,7 +32,7 @@ public final class RunClassifier {
             // SIGKILL comes from three places: the CPU limit, the wall limit and the memory killer.
             return killedByTime(run, limits) ? RunOutcome.TIME_LIMIT : RunOutcome.MEMORY_LIMIT;
         }
-        if (mentionsMemoryError(run.stderrTail()) || run.peakKb() > limits.memoryLimitKb()) {
+        if (mentionsMemoryError(run.getStderrTail()) || run.getPeakKb() > limits.memoryLimitKb()) {
             return RunOutcome.MEMORY_LIMIT;
         }
         return RunOutcome.RUNTIME_ERROR;
@@ -42,22 +43,22 @@ public final class RunClassifier {
         if (hitOutputLimit(run, limits)) {
             return RunOutcome.OUTPUT_LIMIT;
         }
-        if (run.cpuMs() > limits.timeLimitMs()) {
+        if (run.getCpuMs() > limits.getTimeLimitMs()) {
             return RunOutcome.TIME_LIMIT;
         }
-        if (run.peakKb() > limits.memoryLimitKb()) {
+        if (run.getPeakKb() > limits.memoryLimitKb()) {
             return RunOutcome.MEMORY_LIMIT;
         }
         return RunOutcome.OK;
     }
 
     private boolean hitOutputLimit(TestRun run, JudgeLimits limits) {
-        return run.stdoutBytes() >= limits.outputLimitBytes();
+        return run.getStdoutBytes() >= limits.getOutputLimitBytes();
     }
 
     private boolean killedByTime(TestRun run, JudgeLimits limits) {
-        boolean usedItsCpuTime = run.cpuMs() >= limits.timeLimitMs() * LIMIT_HIT_FRACTION;
-        boolean usedItsWallTime = run.wallMs() >= limits.wallLimitSeconds() * 1000L * LIMIT_HIT_FRACTION;
+        boolean usedItsCpuTime = run.getCpuMs() >= limits.getTimeLimitMs() * LIMIT_HIT_FRACTION;
+        boolean usedItsWallTime = run.getWallMs() >= limits.wallLimitSeconds() * 1000L * LIMIT_HIT_FRACTION;
         return usedItsCpuTime || usedItsWallTime;
     }
 

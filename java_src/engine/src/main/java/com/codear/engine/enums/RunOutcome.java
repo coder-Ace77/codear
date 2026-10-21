@@ -1,4 +1,4 @@
-package com.codear.engine.sandbox;
+package com.codear.engine.enums;
 
 /** What one test run amounted to, before any answer is compared. */
 public enum RunOutcome {
