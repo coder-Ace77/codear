@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import com.codear.engine.dto.TestDTO;
 import com.codear.engine.enums.RunStatus;
+import com.codear.engine.judge.FailureMessages;
 import com.codear.engine.judge.JudgeReport;
 import com.codear.engine.repository.SubmissionRepository;
 import com.codear.engine.util.CacheService;
@@ -11,7 +12,6 @@ import com.codear.engine.util.CacheService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/** Saves what judging decided. */
 @Slf4j
 @Service
 @AllArgsConstructor
@@ -20,40 +20,43 @@ public class SubmissionService {
     private final SubmissionRepository submissionRepository;
     private final CacheService cacheService;
 
-    /** True when the submission exists and has not been judged yet. */
     public boolean isInProgress(String submissionId) {
         return submissionRepository.findBySubmissionId(submissionId)
                 .map(submission -> submission.getStatus() == RunStatus.IN_PROGRESS)
                 .orElse(false);
     }
 
-    /**
-     * Writes the verdict to the database and then flips the plain status flag the API also reads.
-     *
-     * @return false when the submission was already judged (a duplicate delivery), in which case nothing changed
-     */
     public boolean recordVerdict(String submissionId, JudgeReport report) {
-        RunStatus status = report.verdict().runStatus();
+        RunStatus status = report.getVerdict().runStatus();
         int updated = submissionRepository.finishSubmission(
                 submissionId,
                 status,
-                report.verdict().name(),
-                report.failedTest(),
-                report.message(),
-                report.diagnostics(),
-                report.totalTests(),
-                report.passedTests(),
-                report.maxTimeMs(),
+                report.getVerdict().name(),
+                report.getFailedTest(),
+                report.getMessage(),
+                report.getDiagnostics(),
+                report.getTotalTests(),
+                report.getPassedTests(),
+                report.getMaxTimeMs(),
                 report.memoryLabel());
-        if (updated == 0) {
-            log.warn("Submission {} was already judged; keeping the first verdict", submissionId);
+        if(updated == 0){
             return false;
         }
         cacheService.set(submissionId, status.toString());
         return true;
     }
 
-    /** Stores the output of a person's own run where the API will find it. */
+    public void recordJudgeFailure(String submissionId) {
+        if (submissionId == null) {
+            return;
+        }
+        try {
+            recordVerdict(submissionId, JudgeReport.systemError(0, FailureMessages.judgeFailure()));
+        } catch (Exception e) {
+            log.error("Could not record the failure of submission {}: {}", submissionId, e.getMessage());
+        }
+    }
+
     public void updateTestResult(String submissionId, String result) {
         TestDTO testDTO = cacheService.get(submissionId, TestDTO.class);
         if (testDTO == null) {

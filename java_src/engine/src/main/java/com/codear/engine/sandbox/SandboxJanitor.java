@@ -21,10 +21,8 @@ import com.github.dockerjava.api.model.Container;
 
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Cleans up after crashes: sandbox containers and scratch folders that were never removed because the engine died
- * mid-run. Only things this engine created are touched (a label on containers, a name prefix on folders).
- */
+import com.codear.engine.util.sandbox.SandboxWorkspace;
+
 @Slf4j
 public class SandboxJanitor {
 
@@ -37,7 +35,7 @@ public class SandboxJanitor {
     }
 
     @Scheduled(initialDelay = 30_000, fixedDelay = JANITOR_INTERVAL_MS)
-    public void sweep() {
+    public void sweep(){
         try {
             int containers = removeStaleContainers();
             int folders = removeStaleWorkspaces();
@@ -49,13 +47,13 @@ public class SandboxJanitor {
         }
     }
 
-    int removeStaleContainers() {
+    int removeStaleContainers(){
         long cutoff = System.currentTimeMillis() - Duration.ofMinutes(STALE_CONTAINER_MINUTES).toMillis();
         List<Container> containers = docker.listContainersCmd().withShowAll(true)
                 .withLabelFilter(List.of(SANDBOX_LABEL)).exec();
         int removed = 0;
-        for (Container container : containers) {
-            if (createdAtMillis(container) < cutoff) {
+        for (Container container : containers){
+            if(createdAtMillis(container)<cutoff){
                 docker.removeContainerCmd(container.getId()).withForce(true).withRemoveVolumes(true).exec();
                 removed++;
             }
@@ -63,14 +61,14 @@ public class SandboxJanitor {
         return removed;
     }
 
-    int removeStaleWorkspaces() {
-        if (!Files.isDirectory(workspaceRoot)) {
+    int removeStaleWorkspaces(){
+        if (!Files.isDirectory(workspaceRoot)){
             return 0;
         }
         long cutoff = System.currentTimeMillis() - Duration.ofMinutes(STALE_WORKSPACE_MINUTES).toMillis();
         int removed = 0;
-        try (Stream<Path> entries = Files.list(workspaceRoot)) {
-            for (Path entry : (Iterable<Path>) entries::iterator) {
+        try (Stream<Path> entries = Files.list(workspaceRoot)){
+            for (Path entry : (Iterable<Path>) entries::iterator){
                 boolean ours = SandboxWorkspace.isWorkspaceName(entry.getFileName().toString());
                 if (ours && entry.toFile().lastModified() < cutoff && FileSystemUtils.deleteRecursively(entry.toFile())) {
                     removed++;
@@ -82,7 +80,7 @@ public class SandboxJanitor {
         return removed;
     }
 
-    private static long createdAtMillis(Container container) {
+    private static long createdAtMillis(Container container){
         String label = container.getLabels() == null ? null : container.getLabels().get(SANDBOX_CREATED_LABEL);
         try {
             return label == null ? container.getCreated() * 1000 : Long.parseLong(label);

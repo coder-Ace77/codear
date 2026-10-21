@@ -8,8 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import com.codear.engine.sandbox.RunOutcome;
-import com.codear.engine.sandbox.TestRun;
+import com.codear.engine.dto.sandbox.SandboxResult.TestRun;
+import com.codear.engine.enums.RunOutcome;
+
 
 /** The rules that turn "how the process ended" into "which limit it hit". Limits: 1000 ms CPU, 256 MB, 64 KB output, 3 s wall. */
 class RunClassifierTest {

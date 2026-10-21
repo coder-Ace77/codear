@@ -9,6 +9,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import com.codear.engine.constants.SandboxProtocol;
+import com.codear.engine.dto.sandbox.SandboxRequest;
+import com.codear.engine.dto.sandbox.SandboxResult;
+import com.codear.engine.enums.Language;
+import com.codear.engine.exception.SandboxException;
+import com.codear.engine.util.sandbox.ContainerSpec;
+import com.codear.engine.util.sandbox.ResultArchiveReader;
+import com.codear.engine.util.sandbox.SandboxWorkspace;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
 import com.github.dockerjava.api.exception.DockerClientException;
@@ -16,17 +23,13 @@ import com.github.dockerjava.api.exception.DockerException;
 
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * Runs a submission in a short-lived Docker container: copy the workspace in, let the runner script do its work,
- * copy its results folder out, and always remove the container.
- */
 @Slf4j
 public class DockerSandbox implements SandboxRunner {
 
     private final DockerClient docker;
     private final Function<Language, String> imageFor;
     private final Path workspaceRoot;
-    private final ContainerSpecFactory spec = new ContainerSpecFactory();
+    private final ContainerSpec spec = new ContainerSpec();
     private final ResultArchiveReader archiveReader = new ResultArchiveReader();
 
     public DockerSandbox(DockerClient docker, Function<Language, String> imageFor, Path workspaceRoot) {
@@ -37,8 +40,8 @@ public class DockerSandbox implements SandboxRunner {
 
     @Override
     public SandboxResult run(SandboxRequest request) {
-        try (SandboxWorkspace workspace = SandboxWorkspace.create(workspaceRoot, request.language(),
-                request.code(), request.inputs())) {
+        try (SandboxWorkspace workspace = SandboxWorkspace.create(workspaceRoot, request.getLanguage(),
+                request.getCode(), request.getInputs())) {
             String containerId = createContainer(request, workspace);
             try {
                 copyIn(containerId, workspace);
@@ -59,11 +62,11 @@ public class DockerSandbox implements SandboxRunner {
 
     private String createContainer(SandboxRequest request, SandboxWorkspace workspace) {
         String remoteDir = remoteDir(workspace);
-        return docker.createContainerCmd(imageFor.apply(request.language()))
+        return docker.createContainerCmd(imageFor.apply(request.getLanguage()))
                 .withCmd("sh", remoteDir + "/" + SandboxProtocol.RUNNER_FILE)
                 .withEnv(spec.environment(request))
                 .withWorkingDir(remoteDir)
-                .withHostConfig(spec.hostConfig(request.limits()))
+                .withHostConfig(spec.hostConfig(request.getLimits()))
                 .withLabels(spec.labels(System.currentTimeMillis()))
                 .exec()
                 .getId();
@@ -76,11 +79,10 @@ public class DockerSandbox implements SandboxRunner {
                 .exec();
     }
 
-    /** @return true when the container finished by itself, false when the overall timeout cut it off */
     private boolean startAndWait(String containerId, SandboxRequest request) {
         docker.startContainerCmd(containerId).exec();
 
-        long timeoutSeconds = request.limits().totalTimeoutSeconds(request.inputs().size());
+        long timeoutSeconds = request.getLimits().totalTimeoutSeconds(request.getInputs().size());
         try {
             docker.waitContainerCmd(containerId).exec(new WaitContainerResultCallback())
                     .awaitStatusCode(timeoutSeconds, TimeUnit.SECONDS);
@@ -103,9 +105,9 @@ public class DockerSandbox implements SandboxRunner {
     private SandboxResult copyResultsOut(String containerId, SandboxWorkspace workspace, SandboxRequest request,
             boolean oomKilled) {
         String resultsPath = remoteDir(workspace) + "/" + SandboxProtocol.RESULTS_DIR + "/.";
-        long maxFileBytes = request.limits().outputLimitBytes() + 1024;
+        long maxFileBytes = request.getLimits().getOutputLimitBytes() + 1024;
         try (InputStream archive = docker.copyArchiveFromContainerCmd(containerId, resultsPath).exec()) {
-            return archiveReader.read(archive, request.inputs().size(), maxFileBytes, oomKilled);
+            return archiveReader.read(archive, request.getInputs().size(), maxFileBytes, oomKilled);
         } catch (IOException | DockerException e) {
             throw new SandboxException("Could not read the sandbox results: " + e.getMessage(), e);
         }

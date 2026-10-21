@@ -5,14 +5,12 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.codear.engine.checker.ComparatorFactory;
-import com.codear.engine.checker.OutputComparator;
 import com.codear.engine.constants.JudgeDefaults;
 import com.codear.engine.dto.Code;
 import com.codear.engine.dto.ResourceConstraints;
 import com.codear.engine.dto.TestDTO;
 import com.codear.engine.judge.CustomRunResult;
 import com.codear.engine.judge.ExpectedTest;
-import com.codear.engine.judge.FailureMessages;
 import com.codear.engine.judge.JudgeReport;
 import com.codear.engine.judge.JudgeRequest;
 import com.codear.engine.judge.JudgeService;
@@ -22,7 +20,6 @@ import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/** Takes work off the queue and hands it to the judge. The deciding is done elsewhere; this only wires things up. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -47,19 +44,19 @@ public class SqsReceiver {
                 return;
             }
 
-            long startedAt = System.currentTimeMillis();
-            List<ExpectedTest> tests = loadTests(code.getProblemId());
+            List<ExpectedTest> tests = ExpectedTest.fromAll(problemCrudService.getAllTestCases(code.getProblemId()));
             ResourceConstraints constraints = problemCrudService.getPromblemConstraints(code.getProblemId());
 
-            JudgeReport report = judgeService.judge(
-                    new JudgeRequest(code.getCode(), code.getLanguage(), tests, constraints, comparatorFor(constraints)));
+            JudgeReport report = judgeService.judge(new JudgeRequest(code.getCode(), code.getLanguage(), tests,
+                    constraints, ComparatorFactory.forConstraints(constraints)));
 
             submissionService.recordVerdict(submissionId, report);
-            log.info("Judged {} as {} in {} ms", submissionId, report.verdict(), System.currentTimeMillis() - startedAt);
         } catch (Exception e) {
             log.error("Error processing SQS submission: {}", e.getMessage(), e);
             log.error("Raw message: {}", message);
-            failSubmission(code);
+            if (code != null){
+                submissionService.recordJudgeFailure(code.getSubmissionId());
+            }
         }
     }
 
@@ -73,36 +70,10 @@ public class SqsReceiver {
             ResourceConstraints constraints = problemCrudService.getPromblemConstraints(request.getProblemId());
             CustomRunResult result = judgeService.runCustom(
                     request.getCode(), request.getLanguage(), request.getInput(), constraints);
-            submissionService.updateTestResult(request.getSubmissionId(), result.text());
+            submissionService.updateTestResult(request.getSubmissionId(), result.getText());
         } catch (Exception e) {
             log.error("Error processing SQS test request: {}", e.getMessage(), e);
             log.error("Raw message: {}", message);
-        }
-    }
-
-    private static OutputComparator comparatorFor(ResourceConstraints constraints) {
-        return constraints == null
-                ? ComparatorFactory.defaultComparator()
-                : ComparatorFactory.forProblem(constraints.getChecker(), constraints.getCheckerTolerance());
-    }
-
-    private List<ExpectedTest> loadTests(Long problemId) {
-        List<com.codear.engine.entity.TestCase> stored = problemCrudService.getAllTestCases(problemId);
-        return java.util.stream.IntStream.range(0, stored.size())
-                .mapToObj(i -> ExpectedTest.from(i, stored.get(i)))
-                .toList();
-    }
-
-    /** Judging itself failed, so record that instead of leaving the submission in progress forever. */
-    private void failSubmission(Code code) {
-        if (code == null || code.getSubmissionId() == null) {
-            return;
-        }
-        try {
-            submissionService.recordVerdict(code.getSubmissionId(),
-                    JudgeReport.systemError(0, FailureMessages.judgeFailure()));
-        } catch (Exception e) {
-            log.error("Could not record the failure of submission {}: {}", code.getSubmissionId(), e.getMessage());
         }
     }
 }

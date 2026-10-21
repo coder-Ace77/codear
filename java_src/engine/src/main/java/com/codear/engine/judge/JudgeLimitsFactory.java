@@ -40,7 +40,7 @@ public final class JudgeLimitsFactory {
      */
     static long outputLimitFor(List<ExpectedTest> tests) {
         long largest = tests.stream()
-                .mapToLong(t -> t.expectedOutput().getBytes(StandardCharsets.UTF_8).length)
+                .mapToLong(t -> t.getExpectedOutput().getBytes(StandardCharsets.UTF_8).length)
                 .max()
                 .orElse(0);
         long wanted = largest * OUTPUT_LIMIT_FACTOR + OUTPUT_LIMIT_SLACK_BYTES;

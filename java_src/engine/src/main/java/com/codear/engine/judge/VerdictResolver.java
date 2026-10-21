@@ -6,9 +6,10 @@ import java.util.List;
 import java.util.Optional;
 
 import com.codear.engine.checker.OutputComparator;
-import com.codear.engine.sandbox.RunOutcome;
-import com.codear.engine.sandbox.SandboxResult;
-import com.codear.engine.sandbox.TestRun;
+import com.codear.engine.dto.sandbox.SandboxResult;
+import com.codear.engine.dto.sandbox.SandboxResult.TestRun;
+import com.codear.engine.enums.CompileStatus;
+import com.codear.engine.enums.RunOutcome;
 
 /**
  * Turns what the sandbox recorded into a verdict. Tests are judged in order and the first one that fails decides:
@@ -26,38 +27,38 @@ public final class VerdictResolver {
 
     public JudgeReport resolve(SandboxResult result, List<ExpectedTest> tests, JudgeLimits limits) {
         int total = tests.size();
-        if (!result.compile().ok()) {
+        if (result.getCompile().getStatus() != CompileStatus.OK) {
             return compileFailure(result, total, limits);
         }
 
         long maxTimeMs = 0;
         long peakKb = 0;
         for (ExpectedTest test : tests) {
-            Optional<TestRun> recorded = result.runFor(test.number() - 1);
+            Optional<TestRun> recorded = result.runFor(test.getNumber() - 1);
             if (recorded.isEmpty()) {
                 return unfinished(result, test, total, limits, maxTimeMs, peakKb);
             }
             TestRun run = recorded.get();
-            maxTimeMs = Math.max(maxTimeMs, run.cpuMs());
-            peakKb = Math.max(peakKb, run.peakKb());
+            maxTimeMs = Math.max(maxTimeMs, run.getCpuMs());
+            peakKb = Math.max(peakKb, run.getPeakKb());
 
-            TestLocation where = new TestLocation(test.number(), total);
+            TestLocation where = new TestLocation(test.getNumber(), total);
             RunOutcome outcome = classifier.classify(run, limits);
             if (outcome != RunOutcome.OK) {
                 return failedRun(outcome, where, test, run, limits, maxTimeMs, peakKb);
             }
-            if (!comparator.matches(test.expectedOutput(), run.stdout())) {
-                String message = FailureMessages.wrongAnswer(where, test.visible(), test.expectedOutput(), run.stdout());
-                return JudgeReport.failedOnTest(Verdict.WRONG_ANSWER, test.number(), total, message, "", maxTimeMs, peakKb);
+            if (!comparator.matches(test.getExpectedOutput(), run.getStdout())) {
+                String message = FailureMessages.wrongAnswer(where, test.isVisible(), test.getExpectedOutput(), run.getStdout());
+                return JudgeReport.failedOnTest(Verdict.WRONG_ANSWER, test.getNumber(), total, message, "", maxTimeMs, peakKb);
             }
         }
         return JudgeReport.accepted(total, maxTimeMs, peakKb);
     }
 
     private JudgeReport compileFailure(SandboxResult result, int total, JudgeLimits limits) {
-        String output = result.compile().output();
-        String message = result.compile().timedOut()
-                ? FailureMessages.compileTimeout(limits.compileTimeoutSeconds())
+        String output = result.getCompile().getOutput();
+        String message = result.getCompile().getStatus() == CompileStatus.TIMED_OUT
+                ? FailureMessages.compileTimeout(limits.getCompileTimeoutSeconds())
                 : FailureMessages.compileError(output);
         return JudgeReport.compileError(total, message, keepTail(output));
     }
@@ -69,11 +70,11 @@ public final class VerdictResolver {
         switch (outcome) {
             case TIME_LIMIT -> {
                 verdict = Verdict.TIME_LIMIT_EXCEEDED;
-                message = FailureMessages.timeLimit(where, limits.timeLimitMs());
+                message = FailureMessages.timeLimit(where, limits.getTimeLimitMs());
             }
             case MEMORY_LIMIT -> {
                 verdict = Verdict.MEMORY_LIMIT_EXCEEDED;
-                message = FailureMessages.memoryLimit(where, limits.memoryLimitMb());
+                message = FailureMessages.memoryLimit(where, limits.getMemoryLimitMb());
             }
             case OUTPUT_LIMIT -> {
                 verdict = Verdict.OUTPUT_LIMIT_EXCEEDED;
@@ -81,10 +82,10 @@ public final class VerdictResolver {
             }
             default -> {
                 verdict = Verdict.RUNTIME_ERROR;
-                message = FailureMessages.runtimeError(where, test.visible(), run.exitCode(), run.stderrTail());
+                message = FailureMessages.runtimeError(where, test.isVisible(), run.getExitCode(), run.getStderrTail());
             }
         }
-        return JudgeReport.failedOnTest(verdict, test.number(), where.total(), message, keepTail(run.stderrTail()),
+        return JudgeReport.failedOnTest(verdict, test.getNumber(), where.getTotal(), message, keepTail(run.getStderrTail()),
                 maxTimeMs, peakKb);
     }
 
@@ -93,13 +94,13 @@ public final class VerdictResolver {
      */
     private JudgeReport unfinished(SandboxResult result, ExpectedTest test, int total, JudgeLimits limits,
             long maxTimeMs, long peakKb) {
-        TestLocation where = new TestLocation(test.number(), total);
-        if (result.oomKilled()) {
-            return JudgeReport.failedOnTest(Verdict.MEMORY_LIMIT_EXCEEDED, test.number(), total,
-                    FailureMessages.memoryLimit(where, limits.memoryLimitMb()), "", maxTimeMs, peakKb);
+        TestLocation where = new TestLocation(test.getNumber(), total);
+        if (result.isOomKilled()) {
+            return JudgeReport.failedOnTest(Verdict.MEMORY_LIMIT_EXCEEDED, test.getNumber(), total,
+                    FailureMessages.memoryLimit(where, limits.getMemoryLimitMb()), "", maxTimeMs, peakKb);
         }
-        return JudgeReport.failedOnTest(Verdict.TIME_LIMIT_EXCEEDED, test.number(), total,
-                FailureMessages.timeLimit(where, limits.timeLimitMs()), "", maxTimeMs, peakKb);
+        return JudgeReport.failedOnTest(Verdict.TIME_LIMIT_EXCEEDED, test.getNumber(), total,
+                FailureMessages.timeLimit(where, limits.getTimeLimitMs()), "", maxTimeMs, peakKb);
     }
 
     private static String keepTail(String text) {

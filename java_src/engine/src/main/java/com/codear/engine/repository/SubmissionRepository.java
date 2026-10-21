@@ -15,13 +15,6 @@ import java.util.Optional;
 public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     Optional<Submission> findBySubmissionId(String submissionId);
 
-    /**
-     * Records the verdict, but only for a submission that is still IN_PROGRESS: the queue can deliver a message
-     * twice, and the second judging must not overwrite the first.
-     *
-     * A declared @Modifying query gets no transaction from Spring Data by default, and without one Hibernate
-     * refuses to run it ("Executing an update/delete query"), so every verdict would fail to save.
-     */
     @Transactional
     @Modifying
     @Query("""

@@ -30,11 +30,11 @@ class VerdictResolverTest {
     void everyTestMatchingIsAccepted() {
         JudgeReport report = resolver.resolve(finished(ok(0, "1"), ok(1, "2"), ok(2, "3")), threeTests, LIMITS);
 
-        assertEquals(Verdict.ACCEPTED, report.verdict());
-        assertEquals(RunStatus.PASSED, report.verdict().runStatus());
-        assertEquals(3, report.passedTests());
-        assertNull(report.failedTest());
-        assertEquals(JudgeReport.ALL_PASSED, report.message());
+        assertEquals(Verdict.ACCEPTED, report.getVerdict());
+        assertEquals(RunStatus.PASSED, report.getVerdict().runStatus());
+        assertEquals(3, report.getPassedTests());
+        assertNull(report.getFailedTest());
+        assertEquals(JudgeReport.ALL_PASSED, report.getMessage());
     }
 
     @Test
@@ -44,8 +44,8 @@ class VerdictResolverTest {
                 run(1, 0, 90, 70, 9_000, "2", ""),
                 run(2, 0, 60, 30, 5_000, "3", "")), threeTests, LIMITS);
 
-        assertEquals(70, report.maxTimeMs());
-        assertEquals(9_000, report.peakMemoryKb());
+        assertEquals(70, report.getMaxTimeMs());
+        assertEquals(9_000, report.getPeakMemoryKb());
         assertEquals("8.79MB", report.memoryLabel());
     }
 
@@ -53,10 +53,10 @@ class VerdictResolverTest {
     void theFirstWrongAnswerDecidesAndLaterTestsAreNotConsidered() {
         JudgeReport report = resolver.resolve(finished(ok(0, "1"), ok(1, "WRONG"), ok(2, "ALSO WRONG")), threeTests, LIMITS);
 
-        assertEquals(Verdict.WRONG_ANSWER, report.verdict());
-        assertEquals(2, report.failedTest());
-        assertEquals(1, report.passedTests());
-        assertEquals(3, report.totalTests());
+        assertEquals(Verdict.WRONG_ANSWER, report.getVerdict());
+        assertEquals(2, report.getFailedTest());
+        assertEquals(1, report.getPassedTests());
+        assertEquals(3, report.getTotalTests());
     }
 
     @Test
@@ -64,23 +64,23 @@ class VerdictResolverTest {
         JudgeReport report = resolver.resolve(finished(ok(0, "1"), ok(1, "WRONG")),
                 List.of(sample(1, "1"), hidden(2, "THE-SECRET-ANSWER")), LIMITS);
 
-        assertFalse(report.message().contains("THE-SECRET-ANSWER"));
-        assertTrue(report.message().contains("hidden test"));
+        assertFalse(report.getMessage().contains("THE-SECRET-ANSWER"));
+        assertTrue(report.getMessage().contains("hidden test"));
     }
 
     @Test
     void aWrongAnswerOnASampleShowsExpectedAndGot() {
         JudgeReport report = resolver.resolve(finished(ok(0, "NO")), List.of(sample(1, "YES")), LIMITS);
 
-        assertTrue(report.message().contains("Expected: YES"));
-        assertTrue(report.message().contains("Got: NO"));
+        assertTrue(report.getMessage().contains("Expected: YES"));
+        assertTrue(report.getMessage().contains("Got: NO"));
     }
 
     @Test
     void spacingAndLineBreaksDoNotMakeAnAnswerWrong() {
         JudgeReport report = resolver.resolve(finished(ok(0, "  1  2\n\n3 \n")), List.of(sample(1, "1\n2\n3")), LIMITS);
 
-        assertEquals(Verdict.ACCEPTED, report.verdict());
+        assertEquals(Verdict.ACCEPTED, report.getVerdict());
     }
 
     @Test
@@ -88,19 +88,19 @@ class VerdictResolverTest {
         JudgeReport report = resolver.resolve(
                 Fixtures.compileFailed(1, "/tmp/build/code.cpp:1:1: error: stray"), threeTests, LIMITS);
 
-        assertEquals(Verdict.COMPILE_ERROR, report.verdict());
-        assertNull(report.failedTest());
-        assertEquals(0, report.passedTests());
-        assertTrue(report.message().contains("code.cpp:1:1: error: stray"));
-        assertFalse(report.message().contains("/tmp/build/"));
+        assertEquals(Verdict.COMPILE_ERROR, report.getVerdict());
+        assertNull(report.getFailedTest());
+        assertEquals(0, report.getPassedTests());
+        assertTrue(report.getMessage().contains("code.cpp:1:1: error: stray"));
+        assertFalse(report.getMessage().contains("/tmp/build/"));
     }
 
     @Test
     void aCompilerThatTimedOutIsExplained() {
         JudgeReport report = resolver.resolve(Fixtures.compileFailed(124, ""), threeTests, LIMITS);
 
-        assertEquals(Verdict.COMPILE_ERROR, report.verdict());
-        assertEquals("Compilation took longer than 20 seconds.", report.message());
+        assertEquals(Verdict.COMPILE_ERROR, report.getVerdict());
+        assertEquals("Compilation took longer than 20 seconds.", report.getMessage());
     }
 
     @Test
@@ -108,63 +108,63 @@ class VerdictResolverTest {
         JudgeReport report = resolver.resolve(
                 finished(ok(0, "1"), run(1, 139, 80, 20, 4_000, "", "")), threeTests, LIMITS);
 
-        assertEquals(Verdict.RUNTIME_ERROR, report.verdict());
-        assertEquals(2, report.failedTest());
-        assertEquals(1, report.passedTests());
-        assertTrue(report.message().contains("segmentation fault"));
+        assertEquals(Verdict.RUNTIME_ERROR, report.getVerdict());
+        assertEquals(2, report.getFailedTest());
+        assertEquals(1, report.getPassedTests());
+        assertTrue(report.getMessage().contains("segmentation fault"));
     }
 
     @Test
     void aTimeoutIsATimeLimitVerdictWithTheLimit() {
         JudgeReport report = resolver.resolve(finished(run(0, 124, 3000, 10, 4_000, "", "")), threeTests, LIMITS);
 
-        assertEquals(Verdict.TIME_LIMIT_EXCEEDED, report.verdict());
-        assertEquals(1, report.failedTest());
-        assertEquals("Time limit exceeded on test 1 of 3 (limit 1000 ms).", report.message());
+        assertEquals(Verdict.TIME_LIMIT_EXCEEDED, report.getVerdict());
+        assertEquals(1, report.getFailedTest());
+        assertEquals("Time limit exceeded on test 1 of 3 (limit 1000 ms).", report.getMessage());
     }
 
     @Test
     void aSlowButCorrectRunIsStillTooSlow() {
         JudgeReport report = resolver.resolve(finished(run(0, 0, 1700, 1600, 4_000, "1", "")), threeTests, LIMITS);
 
-        assertEquals(Verdict.TIME_LIMIT_EXCEEDED, report.verdict());
+        assertEquals(Verdict.TIME_LIMIT_EXCEEDED, report.getVerdict());
     }
 
     @Test
     void memoryAndOutputLimitsGetTheirOwnVerdicts() {
         assertEquals(Verdict.MEMORY_LIMIT_EXCEEDED, resolver.resolve(
-                finished(run(0, 134, 80, 20, 4_000, "", "std::bad_alloc")), threeTests, LIMITS).verdict());
+                finished(run(0, 134, 80, 20, 4_000, "", "std::bad_alloc")), threeTests, LIMITS).getVerdict());
         assertEquals(Verdict.OUTPUT_LIMIT_EXCEEDED, resolver.resolve(
-                finished(run(0, 153, 80, 20, 4_000, "x".repeat(64 * 1024), "")), threeTests, LIMITS).verdict());
+                finished(run(0, 153, 80, 20, 4_000, "x".repeat(64 * 1024), "")), threeTests, LIMITS).getVerdict());
     }
 
     @Test
     void theErrorOutputIsKeptAsDiagnosticsButOnlyItsTail() {
         JudgeReport report = resolver.resolve(finished(exitedWith(1, "e".repeat(20_000))), threeTests, LIMITS);
 
-        assertEquals(4096, report.diagnostics().length());
+        assertEquals(4096, report.getDiagnostics().length());
     }
 
     @Test
     void aMissingTestAfterTheContainerWasCutOffIsATimeLimit() {
         JudgeReport report = resolver.resolve(cutOff(false, ok(0, "1")), threeTests, LIMITS);
 
-        assertEquals(Verdict.TIME_LIMIT_EXCEEDED, report.verdict());
-        assertEquals(2, report.failedTest());
+        assertEquals(Verdict.TIME_LIMIT_EXCEEDED, report.getVerdict());
+        assertEquals(2, report.getFailedTest());
     }
 
     @Test
     void aMissingTestAfterAnOomKillIsAMemoryLimit() {
         JudgeReport report = resolver.resolve(cutOff(true), threeTests, LIMITS);
 
-        assertEquals(Verdict.MEMORY_LIMIT_EXCEEDED, report.verdict());
-        assertEquals(1, report.failedTest());
+        assertEquals(Verdict.MEMORY_LIMIT_EXCEEDED, report.getVerdict());
+        assertEquals(1, report.getFailedTest());
     }
 
     @Test
     void nothingPrintedFailsAgainstAnExpectedAnswer() {
         JudgeReport report = resolver.resolve(finished(ok(0, "")), List.of(sample(1, "20")), LIMITS);
 
-        assertEquals(Verdict.WRONG_ANSWER, report.verdict());
+        assertEquals(Verdict.WRONG_ANSWER, report.getVerdict());
     }
 }

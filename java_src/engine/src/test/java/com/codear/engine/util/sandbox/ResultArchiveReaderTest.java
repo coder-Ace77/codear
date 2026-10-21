@@ -1,4 +1,4 @@
-package com.codear.engine.sandbox;
+package com.codear.engine.util.sandbox;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -14,6 +14,10 @@ import java.util.Map;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.junit.jupiter.api.Test;
+
+import com.codear.engine.dto.sandbox.SandboxResult;
+import com.codear.engine.dto.sandbox.SandboxResult.TestRun;
+import com.codear.engine.enums.CompileStatus;
 
 class ResultArchiveReaderTest {
 
@@ -51,17 +55,17 @@ class ResultArchiveReaderTest {
                 "code_1", "0", "meta_1", "0.05 0.04 0.00 9100\n", "out_1", "30\n", "err_1", "",
                 "done", "")), 2, 1_000_000, false);
 
-        assertTrue(result.finished());
-        assertTrue(result.compile().ok());
-        assertEquals(2, result.runs().size());
+        assertTrue(result.isFinished());
+        assertEquals(CompileStatus.OK, result.getCompile().getStatus());
+        assertEquals(2, result.getRuns().size());
         TestRun first = result.runFor(0).orElseThrow();
-        assertEquals(0, first.exitCode());
-        assertEquals(40, first.wallMs());
-        assertEquals(40, first.cpuMs());
-        assertEquals(9000, first.peakKb());
-        assertEquals("3\n", first.stdout());
-        assertEquals(2, first.stdoutBytes());
-        assertEquals("30\n", result.runFor(1).orElseThrow().stdout());
+        assertEquals(0, first.getExitCode());
+        assertEquals(40, first.getWallMs());
+        assertEquals(40, first.getCpuMs());
+        assertEquals(9000, first.getPeakKb());
+        assertEquals("3\n", first.getStdout());
+        assertEquals(2, first.getStdoutBytes());
+        assertEquals("30\n", result.runFor(1).orElseThrow().getStdout());
     }
 
     @Test
@@ -73,9 +77,9 @@ class ResultArchiveReaderTest {
                 "done", "")), 3, 1_000_000, false);
 
         TestRun run = result.runFor(0).orElseThrow();
-        assertEquals(139, run.exitCode());
-        assertEquals(100, run.cpuMs());
-        assertEquals("timeout: the monitored command dumped core", run.stderrTail());
+        assertEquals(139, run.getExitCode());
+        assertEquals(100, run.getCpuMs());
+        assertEquals("timeout: the monitored command dumped core", run.getStderrTail());
         assertTrue(result.runFor(1).isEmpty(), "the runner stopped after the crash");
     }
 
@@ -84,19 +88,18 @@ class ResultArchiveReaderTest {
         SandboxResult result = reader.read(tar(files(
                 "compile.status", "1", "compile.txt", "code.cpp:1:1: error: stray", "done", "")), 3, 1_000_000, false);
 
-        assertFalse(result.compile().ok());
-        assertEquals(1, result.compile().exitCode());
-        assertEquals("code.cpp:1:1: error: stray", result.compile().output());
-        assertTrue(result.runs().isEmpty());
+        assertEquals(CompileStatus.FAILED, result.getCompile().getStatus());
+        assertEquals("code.cpp:1:1: error: stray", result.getCompile().getOutput());
+        assertTrue(result.getRuns().isEmpty());
     }
 
     @Test
     void aContainerCutOffBeforeCompilingCountsAsACompileTimeout() throws IOException {
         SandboxResult result = reader.read(tar(files("compile.txt", "")), 2, 1_000_000, true);
 
-        assertFalse(result.finished());
-        assertTrue(result.compile().timedOut());
-        assertTrue(result.oomKilled());
+        assertFalse(result.isFinished());
+        assertEquals(CompileStatus.TIMED_OUT, result.getCompile().getStatus());
+        assertTrue(result.isOomKilled());
     }
 
     @Test
@@ -105,7 +108,7 @@ class ResultArchiveReaderTest {
                 "compile.status", "0", "code_0", "153", "meta_0", "0.1 0.1 0 1", "out_0", "x".repeat(10_000),
                 "err_0", "", "done", "")), 1, 1_000, false);
 
-        assertEquals(1_001, result.runFor(0).orElseThrow().stdoutBytes());
+        assertEquals(1_001, result.runFor(0).orElseThrow().getStdoutBytes());
     }
 
     @Test
@@ -116,7 +119,7 @@ class ResultArchiveReaderTest {
                 "compile.status", "0", "code_0", "1", "meta_0", "0.1 0.1 0 1", "out_0", "", "err_0", stderr,
                 "done", "")), 1, 1_000_000, false);
 
-        String tail = result.runFor(0).orElseThrow().stderrTail();
+        String tail = result.runFor(0).orElseThrow().getStderrTail();
         assertEquals(4096, tail.length());
         assertTrue(tail.endsWith("THE-END"));
     }
@@ -137,8 +140,8 @@ class ResultArchiveReaderTest {
 
         SandboxResult result = reader.read(new ByteArrayInputStream(bytes.toByteArray()), 1, 1_000, false);
 
-        assertTrue(result.finished());
-        assertTrue(result.compile().ok());
+        assertTrue(result.isFinished());
+        assertEquals(CompileStatus.OK, result.getCompile().getStatus());
     }
 
     @Test
@@ -163,6 +166,6 @@ class ResultArchiveReaderTest {
 
         SandboxResult result = reader.read(new ByteArrayInputStream(bytes.toByteArray()), 1, 1_000, false);
 
-        assertTrue(result.runFor(0).orElseThrow().stdout().startsWith("ok"));
+        assertTrue(result.runFor(0).orElseThrow().getStdout().startsWith("ok"));
     }
 }

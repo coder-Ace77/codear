@@ -37,9 +37,9 @@ class JudgeLimitsTest {
     void aProblemWithoutLimitsGetsTheDefaults() {
         JudgeLimits limits = JudgeLimitsFactory.forProblem(null, List.of());
 
-        assertEquals(1000, limits.timeLimitMs());
-        assertEquals(256, limits.memoryLimitMb());
-        assertEquals(20, limits.compileTimeoutSeconds());
+        assertEquals(1000, limits.getTimeLimitMs());
+        assertEquals(256, limits.getMemoryLimitMb());
+        assertEquals(20, limits.getCompileTimeoutSeconds());
     }
 
     @Test
@@ -47,10 +47,10 @@ class JudgeLimitsTest {
         JudgeLimits own = JudgeLimitsFactory.forProblem(new ResourceConstraints(2000L, 128, "Hard"), List.of());
         JudgeLimits broken = JudgeLimitsFactory.forProblem(new ResourceConstraints(0L, -5, "Hard"), List.of());
 
-        assertEquals(2000, own.timeLimitMs());
-        assertEquals(128, own.memoryLimitMb());
-        assertEquals(1000, broken.timeLimitMs());
-        assertEquals(256, broken.memoryLimitMb());
+        assertEquals(2000, own.getTimeLimitMs());
+        assertEquals(128, own.getMemoryLimitMb());
+        assertEquals(1000, broken.getTimeLimitMs());
+        assertEquals(256, broken.getMemoryLimitMb());
     }
 
     @Test

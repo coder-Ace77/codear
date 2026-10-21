@@ -1,6 +1,9 @@
-package com.codear.engine.sandbox;
+package com.codear.engine.util.sandbox;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -8,6 +11,7 @@ import java.util.List;
 import org.springframework.util.FileSystemUtils;
 
 import com.codear.engine.constants.SandboxProtocol;
+import com.codear.engine.enums.Language;
 
 /**
  * A scratch folder on the engine's disk holding one submission's source, its test inputs and the runner script.
@@ -16,6 +20,7 @@ import com.codear.engine.constants.SandboxProtocol;
 public final class SandboxWorkspace implements AutoCloseable {
 
     private static final String PREFIX = "codear_";
+    private static final String RUNNER_SCRIPT = loadRunnerScript();
 
     private final Path directory;
 
@@ -32,7 +37,7 @@ public final class SandboxWorkspace implements AutoCloseable {
             // the docker daemon may run as another user, so the folder has to be readable by everyone
             makeWorldReadable(directory);
             Files.writeString(directory.resolve(language.sourceFile()), code);
-            Files.writeString(directory.resolve(SandboxProtocol.RUNNER_FILE), RunnerScript.contents());
+            Files.writeString(directory.resolve(SandboxProtocol.RUNNER_FILE), RUNNER_SCRIPT);
             for (int i = 0; i < inputs.size(); i++) {
                 Files.writeString(directory.resolve(SandboxProtocol.inputFile(i)), inputs.get(i));
             }
@@ -51,6 +56,10 @@ public final class SandboxWorkspace implements AutoCloseable {
         return directory.getFileName().toString();
     }
 
+    public static String runnerScript() {
+        return RUNNER_SCRIPT;
+    }
+
     /** Whether a directory name was made by this class, so a janitor knows what it may delete. */
     public static boolean isWorkspaceName(String name) {
         return name != null && name.startsWith(PREFIX);
@@ -64,5 +73,16 @@ public final class SandboxWorkspace implements AutoCloseable {
     private static void makeWorldReadable(Path path) {
         path.toFile().setReadable(true, false);
         path.toFile().setExecutable(true, false);
+    }
+
+    private static String loadRunnerScript() {
+        try (InputStream in = SandboxWorkspace.class.getClassLoader().getResourceAsStream(SandboxProtocol.RUNNER_RESOURCE)) {
+            if (in == null) {
+                throw new IllegalStateException("Missing resource " + SandboxProtocol.RUNNER_RESOURCE);
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

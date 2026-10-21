@@ -1,4 +1,4 @@
-package com.codear.engine.sandbox;
+package com.codear.engine.util.sandbox;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -13,6 +13,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.codear.engine.dto.sandbox.SandboxRequest;
+import com.codear.engine.enums.Language;
+import com.codear.engine.exception.UnsupportedLanguageException;
 import com.codear.engine.judge.JudgeLimits;
 import com.github.dockerjava.api.model.Capability;
 import com.github.dockerjava.api.model.HostConfig;
@@ -29,13 +32,13 @@ class SandboxSetupTest {
 
     @Test
     void anUnknownOrMissingLanguageIsRejected() {
-        assertThrows(Language.UnsupportedLanguageException.class, () -> Language.from("brainfuck"));
-        assertThrows(Language.UnsupportedLanguageException.class, () -> Language.from(null));
+        assertThrows(UnsupportedLanguageException.class, () -> Language.from("brainfuck"));
+        assertThrows(UnsupportedLanguageException.class, () -> Language.from(null));
     }
 
     @Test
     void theRunnerScriptIsOnTheClasspathAndSpeaksTheProtocol() {
-        String script = RunnerScript.contents();
+        String script = SandboxWorkspace.runnerScript();
 
         assertTrue(script.startsWith("#!/bin/sh"));
         for (String name : List.of("LANGUAGE", "NUM_TESTS", "TIME_LIMIT_MS", "CPU_LIMIT_S", "WALL_LIMIT_S",
@@ -71,7 +74,7 @@ class SandboxSetupTest {
     @Test
     void theEnvironmentCarriesEveryLimitTheRunnerNeeds() {
         JudgeLimits limits = new JudgeLimits(1500, 128, 200_000, 20);
-        List<String> env = new ContainerSpecFactory().environment(
+        List<String> env = new ContainerSpec().environment(
                 new SandboxRequest(Language.CPP, "code", List.of("a", "b", "c"), limits));
 
         assertTrue(env.contains("LANGUAGE=cpp"));
@@ -87,7 +90,7 @@ class SandboxSetupTest {
 
     @Test
     void theContainerHasNoNetworkNoSwapFewProcessesAndFewPrivileges() {
-        HostConfig config = new ContainerSpecFactory().hostConfig(new JudgeLimits(1000, 256, 1, 20));
+        HostConfig config = new ContainerSpec().hostConfig(new JudgeLimits(1000, 256, 1, 20));
 
         assertEquals("none", config.getNetworkMode());
         assertEquals(64L, config.getPidsLimit());
@@ -103,7 +106,7 @@ class SandboxSetupTest {
 
     @Test
     void containersAreLabelledSoAJanitorCanFindTheirs() {
-        var labels = new ContainerSpecFactory().labels(1234L);
+        var labels = new ContainerSpec().labels(1234L);
 
         assertEquals("true", labels.get("codear.sandbox"));
         assertEquals("1234", labels.get("codear.created"));

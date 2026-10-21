@@ -24,6 +24,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import com.codear.engine.checker.ComparatorFactory;
 import com.codear.engine.dto.ResourceConstraints;
+import com.codear.engine.dto.sandbox.SandboxRequest;
+import com.codear.engine.dto.sandbox.SandboxResult;
+import com.codear.engine.enums.Language;
 import com.codear.engine.judge.CustomRunResult;
 import com.codear.engine.judge.ExpectedTest;
 import com.codear.engine.judge.JudgeLimitsFactory;
@@ -35,6 +38,8 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
+
+import lombok.Value;
 
 /**
  * The whole judge against the real sandbox: runner script, Docker restrictions, result files and verdict rules,
@@ -88,7 +93,16 @@ class DockerJudgeIntegrationTest {
 
     // ---- scenario table: what each program must be judged as ----
 
-    private record Scenario(String name, String language, String code, Verdict verdict, Integer failedTest, String messagePart) {
+    @Value
+    private static class Scenario {
+
+        String name;
+        String language;
+        String code;
+        Verdict verdict;
+        Integer failedTest;
+        String messagePart;
+
         @Override
         public String toString() {
             return name;
@@ -172,20 +186,20 @@ class DockerJudgeIntegrationTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("scenarios")
     void everyProgramGetsTheRightVerdict(Scenario scenario) {
-        JudgeReport report = judge(scenario.language(), scenario.code());
+        JudgeReport report = judge(scenario.getLanguage(), scenario.getCode());
 
-        assertEquals(scenario.verdict(), report.verdict(), "message was: " + report.message());
-        if (scenario.failedTest() == null) {
-            assertNull(report.failedTest());
+        assertEquals(scenario.getVerdict(), report.getVerdict(), "message was: " + report.getMessage());
+        if (scenario.getFailedTest() == null) {
+            assertNull(report.getFailedTest());
         } else {
-            assertEquals(scenario.failedTest(), report.failedTest());
+            assertEquals(scenario.getFailedTest(), report.getFailedTest());
         }
-        if (scenario.messagePart() != null) {
-            assertTrue(report.message().contains(scenario.messagePart()),
-                    "expected the message to contain '" + scenario.messagePart() + "' but it was: " + report.message());
+        if (scenario.getMessagePart() != null) {
+            assertTrue(report.getMessage().contains(scenario.getMessagePart()),
+                    "expected the message to contain '" + scenario.getMessagePart() + "' but it was: " + report.getMessage());
         }
-        assertFalse(report.message().contains("/tmp/build/"), "sandbox paths must not reach the person");
-        assertTrue(report.message().length() < 4_000, "messages stay short");
+        assertFalse(report.getMessage().contains("/tmp/build/"), "sandbox paths must not reach the person");
+        assertTrue(report.getMessage().length() < 4_000, "messages stay short");
     }
 
     // ---- behaviours beyond the verdict ----
@@ -194,14 +208,14 @@ class DockerJudgeIntegrationTest {
     void aHiddenTestsExpectedOutputNeverAppearsInAnyMessage() {
         JudgeReport report = judge("python", "a, b = map(int, input().split())\nprint(a + b if a < 5 else 999)\n");
 
-        assertEquals(Verdict.WRONG_ANSWER, report.verdict());
-        assertFalse(report.message().contains("30"));
-        assertFalse(report.message().contains("999"));
+        assertEquals(Verdict.WRONG_ANSWER, report.getVerdict());
+        assertFalse(report.getMessage().contains("30"));
+        assertFalse(report.getMessage().contains("999"));
     }
 
     @Test
     void theRunStopsAtTheFirstRuntimeFailureSoLaterTestsAreNotRun() {
-        List<String> inputs = tests.stream().map(ExpectedTest::input).toList();
+        List<String> inputs = tests.stream().map(ExpectedTest::getInput).toList();
         SandboxResult result = sandbox.run(new SandboxRequest(Language.PYTHON, "raise SystemExit(2)\n", inputs,
                 JudgeLimitsFactory.forProblem(constraints, tests)));
 
@@ -214,9 +228,9 @@ class DockerJudgeIntegrationTest {
     void timeAndMemoryAreMeasuredForAcceptedRuns() {
         JudgeReport report = judge("python", PY_SUM);
 
-        assertEquals(Verdict.ACCEPTED, report.verdict());
-        assertTrue(report.peakMemoryKb() > 1_000, "peak memory was " + report.peakMemoryKb());
-        assertTrue(report.maxTimeMs() < 1_000);
+        assertEquals(Verdict.ACCEPTED, report.getVerdict());
+        assertTrue(report.getPeakMemoryKb() > 1_000, "peak memory was " + report.getPeakMemoryKb());
+        assertTrue(report.getMaxTimeMs() < 1_000);
         assertNotEquals("0MB", report.memoryLabel());
     }
 
@@ -228,22 +242,22 @@ class DockerJudgeIntegrationTest {
         JudgeReport report = judge.judge(new JudgeRequest(code, "python", one, constraints,
                 ComparatorFactory.defaultComparator()));
 
-        assertEquals(Verdict.ACCEPTED, report.verdict(), report.message());
+        assertEquals(Verdict.ACCEPTED, report.getVerdict(), report.getMessage());
     }
 
     @Test
     void aCustomRunShowsOutputOrExplainsWhatWentWrong() {
         CustomRunResult hello = judge.runCustom("print('hello', input())", "python", "world\n", constraints);
-        assertTrue(hello.success());
-        assertEquals("hello world\n", hello.text());
+        assertTrue(hello.isSuccess());
+        assertEquals("hello world\n", hello.getText());
 
         CustomRunResult compile = judge.runCustom("int main(){ return x; }", "cpp", "", constraints);
-        assertFalse(compile.success());
-        assertTrue(compile.text().startsWith("Compilation failed:"));
+        assertFalse(compile.isSuccess());
+        assertTrue(compile.getText().startsWith("Compilation failed:"));
 
         CustomRunResult loop = judge.runCustom("while True: pass", "python", "", constraints);
-        assertFalse(loop.success());
-        assertTrue(loop.text().startsWith("Time limit exceeded"));
+        assertFalse(loop.isSuccess());
+        assertTrue(loop.getText().startsWith("Time limit exceeded"));
     }
 
     @Test

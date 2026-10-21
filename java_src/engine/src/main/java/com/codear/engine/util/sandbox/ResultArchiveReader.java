@@ -1,4 +1,4 @@
-package com.codear.engine.sandbox;
+package com.codear.engine.util.sandbox;
 
 import static com.codear.engine.constants.JudgeDefaults.MAX_STDERR_BYTES_KEPT;
 
@@ -14,6 +14,12 @@ import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 
 import com.codear.engine.constants.SandboxProtocol;
+import com.codear.engine.dto.sandbox.SandboxResult;
+import com.codear.engine.dto.sandbox.SandboxResult.CompileResult;
+import com.codear.engine.dto.sandbox.SandboxResult.TestRun;
+import com.codear.engine.enums.CompileStatus;
+
+import lombok.Value;
 
 /**
  * Turns the tar archive of the runner's results folder into a {@link SandboxResult}. Each file is read up to a
@@ -48,9 +54,9 @@ public final class ResultArchiveReader {
         Integer status = parseInt(text(files.get(SandboxProtocol.COMPILE_STATUS_FILE)));
         if (status == null) {
             // the container was cut off before the compile step reported: treat it as the compile running out of time
-            return new CompileResult(finished ? 1 : SandboxProtocol.EXIT_WALL_TIMEOUT, output);
+            return new CompileResult(finished ? CompileStatus.FAILED : CompileStatus.TIMED_OUT, output);
         }
-        return new CompileResult(status, output);
+        return new CompileResult(CompileStatus.fromExitCode(status), output);
     }
 
     private List<TestRun> runs(Map<String, byte[]> files, int numTests) {
@@ -60,9 +66,9 @@ public final class ResultArchiveReader {
             if (exit == null) {
                 continue;
             }
-            RunMetrics metrics = RunMetrics.parse(text(files.get(SandboxProtocol.metricsFile(i))));
+            Metrics metrics = Metrics.parse(text(files.get(SandboxProtocol.metricsFile(i))));
             byte[] out = files.getOrDefault(SandboxProtocol.outputFile(i), new byte[0]);
-            runs.add(new TestRun(i, exit, metrics.wallMs(), metrics.cpuMs(), metrics.peakKb(),
+            runs.add(new TestRun(i, exit, metrics.getWallMs(), metrics.getCpuMs(), metrics.getPeakKb(),
                     new String(out, StandardCharsets.UTF_8), out.length,
                     tail(files.get(SandboxProtocol.errorFile(i)))));
         }
@@ -93,5 +99,51 @@ public final class ResultArchiveReader {
     private static String baseName(String path) {
         int slash = path.lastIndexOf('/');
         return slash >= 0 ? path.substring(slash + 1) : path;
+    }
+
+    /** The numbers GNU time wrote for one test: "<wall s> <user s> <sys s> <peak KB>". */
+    @Value
+    static class Metrics {
+
+        long wallMs;
+        long cpuMs;
+        long peakKb;
+
+        static final Metrics UNKNOWN = new Metrics(0, 0, 0);
+
+        /**
+         * GNU time puts a line such as "Command exited with non-zero status 1" or "Command terminated by signal 11"
+         * before the numbers, so the numbers are always on the last non-blank line.
+         */
+        static Metrics parse(String text) {
+            if (text == null) {
+                return UNKNOWN;
+            }
+            String last = null;
+            for (String line : text.split("\\R")) {
+                if (!line.isBlank()) {
+                    last = line.trim();
+                }
+            }
+            if (last == null) {
+                return UNKNOWN;
+            }
+            String[] parts = last.split("\\s+");
+            if (parts.length != 4) {
+                return UNKNOWN;
+            }
+            try {
+                double wall = Double.parseDouble(parts[0]);
+                double user = Double.parseDouble(parts[1]);
+                double system = Double.parseDouble(parts[2]);
+                return new Metrics(toMs(wall), toMs(user + system), Long.parseLong(parts[3]));
+            } catch (NumberFormatException e) {
+                return UNKNOWN;
+            }
+        }
+
+        private static long toMs(double seconds) {
+            return Math.round(seconds * 1000);
+        }
     }
 }

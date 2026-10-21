@@ -1,20 +1,20 @@
-package com.codear.engine.sandbox;
+package com.codear.engine.enums;
 
 import java.util.Arrays;
 
-/** A language the judge can run: how it is named in a submission, the source file, and the sandbox image. */
+import com.codear.engine.exception.UnsupportedLanguageException;
+
+/** A language the judge can run: how it is named in a submission and the source file it is saved as. */
 public enum Language {
-    PYTHON("python", "code.py", "codear-python:latest"),
-    CPP("cpp", "code.cpp", "codear-cpp:latest");
+    PYTHON("python", "code.py"),
+    CPP("cpp", "code.cpp");
 
     private final String id;
     private final String sourceFile;
-    private final String defaultImage;
 
-    Language(String id, String sourceFile, String defaultImage) {
+    Language(String id, String sourceFile) {
         this.id = id;
         this.sourceFile = sourceFile;
-        this.defaultImage = defaultImage;
     }
 
     public String id() {
@@ -25,21 +25,11 @@ public enum Language {
         return sourceFile;
     }
 
-    public String defaultImage() {
-        return defaultImage;
-    }
-
     /** @throws UnsupportedLanguageException for a name that is not supported */
     public static Language from(String name) {
         return Arrays.stream(values())
                 .filter(language -> language.id.equalsIgnoreCase(name == null ? "" : name.trim()))
                 .findFirst()
                 .orElseThrow(() -> new UnsupportedLanguageException(name));
-    }
-
-    public static class UnsupportedLanguageException extends RuntimeException {
-        public UnsupportedLanguageException(String name) {
-            super("Unsupported language: " + name);
-        }
     }
 }
