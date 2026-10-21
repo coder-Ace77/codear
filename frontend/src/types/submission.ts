@@ -1,4 +1,4 @@
-export type SubmissionStatus = "PENDING" | "RUNNING" | "PASSED" | "FAILED" | "COMPLETED" | "ERROR";
+export type SubmissionStatus = "PENDING" | "IN_PROGRESS" | "RUNNING" | "PASSED" | "FAILED" | "COMPLETED" | "ERROR";
 export interface Submission {
   id: number;
   submissionId: string;

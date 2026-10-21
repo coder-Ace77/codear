@@ -14,7 +14,6 @@
 #   OUTPUT_LIMIT_BYTES  largest file the program may write (its stdout and stderr each count)
 #   COMPILE_TIMEOUT_S   time allowed for compiling
 #   RUN_AS              numeric uid:gid to run untrusted code as (empty: keep root; only for local tests)
-#   TEST_SEPARATOR      line printed after each test, for the live progress bar only
 #
 # Files written to ./results:
 #   compile.status  exit code of the compile step (0 = fine, 124 = timed out)
@@ -33,7 +32,6 @@ set -u
 WORKDIR=$(pwd)
 RESULTS="$WORKDIR/results"
 BUILD=/tmp/build
-SEPARATOR=${TEST_SEPARATOR:-"==="}
 
 mkdir -p "$RESULTS" "$BUILD"
 chmod 700 "$RESULTS"   # the program must not be able to read or list what the judge records
@@ -99,10 +97,8 @@ run_one() {
 if compile; then
     i=0
     while [ "$i" -lt "$NUM_TESTS" ]; do
-        echo "[TEST-START-$i]"
         run_one "$i"
         failed=$?
-        echo "$SEPARATOR"
         [ "$failed" -ne 0 ] && break
         cpu_over_limit "$i" && break
         i=$((i + 1))
@@ -110,4 +106,3 @@ if compile; then
 fi
 
 touch "$RESULTS/done"
-echo "[RUNNER-DONE]"

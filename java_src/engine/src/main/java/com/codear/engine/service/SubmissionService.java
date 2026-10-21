@@ -6,6 +6,7 @@ import com.codear.engine.dto.TestDTO;
 import com.codear.engine.enums.RunStatus;
 import com.codear.engine.judge.JudgeReport;
 import com.codear.engine.repository.SubmissionRepository;
+import com.codear.engine.util.CacheService;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,19 +49,19 @@ public class SubmissionService {
             log.warn("Submission {} was already judged; keeping the first verdict", submissionId);
             return false;
         }
-        cacheService.setValue(submissionId, status.toString());
+        cacheService.set(submissionId, status.toString());
         return true;
     }
 
     /** Stores the output of a person's own run where the API will find it. */
     public void updateTestResult(String submissionId, String result) {
-        TestDTO testDTO = cacheService.getObjectValue(submissionId, TestDTO.class);
+        TestDTO testDTO = cacheService.get(submissionId, TestDTO.class);
         if (testDTO == null) {
             log.warn("Test run {} expired before its result was ready", submissionId);
             return;
         }
         testDTO.setStatus(RunStatus.COMPLETED.toString());
         testDTO.setOutput(result);
-        cacheService.setObjectValue(submissionId, testDTO);
+        cacheService.set(submissionId, testDTO);
     }
 }

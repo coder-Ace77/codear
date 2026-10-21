@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { codingService } from "@/service/codingService";
-import type { SubmissionProgress } from "@/types/submissionProgress";
+import type { Submission } from "@/types/submission";
 
 export type WatchPhase = "idle" | "watching" | "done" | "failed";
 
@@ -20,12 +20,11 @@ const sleep = (ms: number, signal: AbortSignal) =>
   });
 
 /**
- * Follows one submission to its verdict with the server's long-poll. Each request returns the moment the
- * engine reports something new, so progress arrives as it happens with no fixed timer, and a request that
- * times out with nothing new is simply asked again with the same version.
+ * Follows one submission to its verdict. The server holds each request for up to 10 seconds while the judge
+ * works, so the hook simply asks again whenever an answer comes back still IN_PROGRESS.
  */
-export const useSubmissionProgress = () => {
-  const [progress, setProgress] = useState<SubmissionProgress | null>(null);
+export const useSubmissionResult = () => {
+  const [result, setResult] = useState<Submission | null>(null);
   const [phase, setPhase] = useState<WatchPhase>("idle");
   const [connectionLost, setConnectionLost] = useState(false);
   const [slow, setSlow] = useState(false);
@@ -39,7 +38,7 @@ export const useSubmissionProgress = () => {
 
   const reset = useCallback(() => {
     stop();
-    setProgress(null);
+    setResult(null);
     setPhase("idle");
     setConnectionLost(false);
     setSlow(false);
@@ -47,44 +46,37 @@ export const useSubmissionProgress = () => {
   }, [stop]);
 
   const start = useCallback(
-    (submissionId: string, onFinished?: (final: SubmissionProgress) => void) => {
+    (submissionId: string, onFinished?: (final: Submission) => void) => {
       stop();
       const ctrl = new AbortController();
       controller.current = ctrl;
 
+      setResult(null);
       setPhase("watching");
       setConnectionLost(false);
       setSlow(false);
       setError(null);
-      // show the bar immediately instead of waiting for the first answer
-      setProgress({
-        submissionId, version: 0, stage: "QUEUED", message: "Queued", percent: 5,
-        total: null, started: 0, completed: 0, terminal: false, changed: true, status: "IN_PROGRESS",
-      });
 
       (async () => {
         const startedAt = Date.now();
-        let since = 0;
         let failures = 0;
 
         while (!ctrl.signal.aborted) {
           try {
-            const answer = await codingService.getSubmissionProgress(submissionId, since, ctrl.signal);
+            const answer = await codingService.getSubmissionStatus(submissionId, ctrl.signal);
             failures = 0;
             setConnectionLost(false);
-            setSlow(Date.now() - startedAt > SLOW_AFTER_MS && !answer.terminal);
 
-            if (answer.changed) {
-              since = Math.max(since, answer.version);
-              setProgress(answer);
-            }
-            if (answer.terminal) {
+            if (answer.status !== "IN_PROGRESS") {
+              setResult(answer);
+              setSlow(false);
               setPhase("done");
               onFinished?.(answer);
               return;
             }
-            // a server that answered at once with nothing new would otherwise turn this into a busy loop
-            if (!answer.changed) await sleep(300, ctrl.signal);
+            setSlow(Date.now() - startedAt > SLOW_AFTER_MS);
+            // a server that answered at once without waiting would otherwise turn this into a busy loop
+            await sleep(500, ctrl.signal);
           } catch (e) {
             if (ctrl.signal.aborted || axios.isCancel(e)) return;
 
@@ -117,5 +109,5 @@ export const useSubmissionProgress = () => {
   // leaving the page cancels the request in flight
   useEffect(() => stop, [stop]);
 
-  return { progress, phase, connectionLost, slow, error, start, reset };
+  return { result, phase, connectionLost, slow, error, start, reset };
 };

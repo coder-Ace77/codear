@@ -4,20 +4,15 @@ import static com.codear.engine.constants.JudgeDefaults.SANDBOX_REMOTE_ROOT;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import com.codear.engine.constants.SandboxProtocol;
-import com.codear.engine.service.TestProgressListener;
-import com.codear.engine.service.TestProgressParser;
 import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.WaitContainerResultCallback;
 import com.github.dockerjava.api.exception.DockerClientException;
 import com.github.dockerjava.api.exception.DockerException;
-import com.github.dockerjava.api.model.Frame;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,8 +22,6 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class DockerSandbox implements SandboxRunner {
-
-    private static final int LOG_FLUSH_SECONDS = 5;
 
     private final DockerClient docker;
     private final Function<Language, String> imageFor;
@@ -43,13 +36,13 @@ public class DockerSandbox implements SandboxRunner {
     }
 
     @Override
-    public SandboxResult run(SandboxRequest request, TestProgressListener progress) {
+    public SandboxResult run(SandboxRequest request) {
         try (SandboxWorkspace workspace = SandboxWorkspace.create(workspaceRoot, request.language(),
                 request.code(), request.inputs())) {
             String containerId = createContainer(request, workspace);
             try {
                 copyIn(containerId, workspace);
-                boolean exitedByItself = startAndWait(containerId, request, progress);
+                boolean exitedByItself = startAndWait(containerId, request);
                 boolean oomKilled = wasOomKilled(containerId);
                 SandboxResult result = copyResultsOut(containerId, workspace, request, oomKilled);
                 if (!exitedByItself) {
@@ -84,20 +77,8 @@ public class DockerSandbox implements SandboxRunner {
     }
 
     /** @return true when the container finished by itself, false when the overall timeout cut it off */
-    private boolean startAndWait(String containerId, SandboxRequest request, TestProgressListener progress) {
-        TestProgressParser parser = progress == null ? null : new TestProgressParser(progress);
-        ResultCallback.Adapter<Frame> logs = new ResultCallback.Adapter<>() {
-            @Override
-            public void onNext(Frame frame) {
-                feed(parser, frame);
-            }
-        };
-
+    private boolean startAndWait(String containerId, SandboxRequest request) {
         docker.startContainerCmd(containerId).exec();
-        if (progress != null) {
-            progress.containerStarted();
-        }
-        docker.logContainerCmd(containerId).withStdOut(true).withStdErr(true).withFollowStream(true).exec(logs);
 
         long timeoutSeconds = request.limits().totalTimeoutSeconds(request.inputs().size());
         try {
@@ -107,19 +88,6 @@ public class DockerSandbox implements SandboxRunner {
         } catch (DockerClientException timedOut) {
             killQuietly(containerId);
             return false;
-        } finally {
-            closeLogs(logs);
-        }
-    }
-
-    private static void feed(TestProgressParser parser, Frame frame) {
-        if (parser == null || frame == null || frame.getPayload() == null) {
-            return;
-        }
-        try {
-            parser.feed(new String(frame.getPayload(), StandardCharsets.UTF_8));
-        } catch (RuntimeException ignored) {
-            // progress is cosmetic: it must never disturb a run
         }
     }
 
@@ -160,17 +128,6 @@ public class DockerSandbox implements SandboxRunner {
             docker.removeContainerCmd(containerId).withForce(true).withRemoveVolumes(true).exec();
         } catch (RuntimeException e) {
             log.warn("Could not remove sandbox {}: {}", shortId(containerId), e.getMessage());
-        }
-    }
-
-    private static void closeLogs(ResultCallback.Adapter<Frame> logs) {
-        try {
-            logs.awaitCompletion(LOG_FLUSH_SECONDS, TimeUnit.SECONDS);
-            logs.close();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } catch (IOException ignored) {
-            // nothing more to read
         }
     }
 

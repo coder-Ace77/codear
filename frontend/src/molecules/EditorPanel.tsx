@@ -5,8 +5,8 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useResolvedTheme } from "@/hooks/useResolvedTheme";
 import { defineProofThemes } from "@/lib/monacoTheme";
-import { useSubmissionProgress } from "@/hooks/useSubmissionProgress";
-import SubmissionProgress from "@/molecules/SubmissionProgress";
+import { useSubmissionResult } from "@/hooks/useSubmissionResult";
+import SubmissionResultPanel from "@/molecules/SubmissionResultPanel";
 
 
 const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, onSubmissionFinished, attemptId = null }) => {
@@ -17,7 +17,7 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const theme = useResolvedTheme();
-  const watch = useSubmissionProgress();
+  const watch = useSubmissionResult();
 
   const [isRunningTest, setIsRunningTest] = useState(false);
 
@@ -213,9 +213,9 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, 
         </label>
       </section>
 
-      {watch.progress && (
-        <SubmissionProgress
-          progress={watch.progress}
+      {watch.phase !== "idle" && (
+        <SubmissionResultPanel
+          result={watch.result}
           phase={watch.phase}
           connectionLost={watch.connectionLost}
           slow={watch.slow}

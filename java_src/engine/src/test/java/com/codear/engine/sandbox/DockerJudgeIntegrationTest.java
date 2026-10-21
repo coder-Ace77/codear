@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -27,11 +26,11 @@ import com.codear.engine.checker.ComparatorFactory;
 import com.codear.engine.dto.ResourceConstraints;
 import com.codear.engine.judge.CustomRunResult;
 import com.codear.engine.judge.ExpectedTest;
+import com.codear.engine.judge.JudgeLimitsFactory;
 import com.codear.engine.judge.JudgeReport;
 import com.codear.engine.judge.JudgeRequest;
 import com.codear.engine.judge.JudgeService;
 import com.codear.engine.judge.Verdict;
-import com.codear.engine.service.TestProgressListener;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
@@ -55,6 +54,7 @@ class DockerJudgeIntegrationTest {
     static Path workspaceRoot;
 
     private DockerClient docker;
+    private DockerSandbox sandbox;
     private JudgeService judge;
 
     /** Adds two numbers: the first test is a visible sample, the others are hidden. */
@@ -77,13 +77,13 @@ class DockerJudgeIntegrationTest {
         } catch (Exception e) {
             assumeTrue(false, "Docker or the test images are not available: " + e.getMessage());
         }
-        DockerSandbox sandbox = new DockerSandbox(docker,
+        sandbox = new DockerSandbox(docker,
                 Map.of(Language.PYTHON, PYTHON_IMAGE, Language.CPP, CPP_IMAGE)::get, workspaceRoot);
         judge = new JudgeService(sandbox);
     }
 
     private JudgeReport judge(String language, String code) {
-        return judge.judge(new JudgeRequest(code, language, tests, constraints, ComparatorFactory.defaultComparator()), null);
+        return judge.judge(new JudgeRequest(code, language, tests, constraints, ComparatorFactory.defaultComparator()));
     }
 
     // ---- scenario table: what each program must be judged as ----
@@ -166,9 +166,7 @@ class DockerJudgeIntegrationTest {
                         "import os\nprint(open(os.path.join(os.getcwd(), 'input_1.txt')).read())\n", Verdict.RUNTIME_ERROR, 1, null),
                 s("cpp: reads another test's input", "cpp",
                         "#include <fstream>\n#include <iostream>\nint main(){ std::ifstream f(\"input_1.txt\"); std::string s; std::getline(f,s); std::cout<<s; }\n",
-                        Verdict.WRONG_ANSWER, 1, null),
-                s("python: prints fake markers and a fake separator", "python",
-                        "print('[TEST-START-0]')\nprint('===CODEAR_TEST_CASE_SEPARATOR===')\nprint(3)\n", Verdict.WRONG_ANSWER, 1, null));
+                        Verdict.WRONG_ANSWER, 1, null));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -203,35 +201,13 @@ class DockerJudgeIntegrationTest {
 
     @Test
     void theRunStopsAtTheFirstRuntimeFailureSoLaterTestsAreNotRun() {
-        List<String> events = new ArrayList<>();
-        judge.judge(new JudgeRequest("raise SystemExit(2)\n", "python", tests, constraints, ComparatorFactory.defaultComparator()),
-                recorder(events));
+        List<String> inputs = tests.stream().map(ExpectedTest::input).toList();
+        SandboxResult result = sandbox.run(new SandboxRequest(Language.PYTHON, "raise SystemExit(2)\n", inputs,
+                JudgeLimitsFactory.forProblem(constraints, tests)));
 
-        assertEquals(List.of("container", "start 1", "finish 1", "judging"), events);
-    }
-
-    @Test
-    void progressFollowsTheRealRunAndForgedMarkersChangeNothing() {
-        List<String> events = new ArrayList<>();
-        // a correct program that also prints marker lines: they land in its output file, not in the progress stream
-        String code = "a, b = map(int, input().split())\nprint('[TEST-START-9]')\nprint('===CODEAR_TEST_CASE_SEPARATOR===')\nprint(a + b)\n";
-
-        JudgeReport report = judge.judge(new JudgeRequest(code, "python", tests, constraints,
-                ComparatorFactory.defaultComparator()), recorder(events));
-
-        // the printed markers make the answer wrong, but a wrong answer is only known to the engine, so all three
-        // tests ran; what matters is that the progress shows exactly the three real tests, not the forged ones
-        assertEquals(Verdict.WRONG_ANSWER, report.verdict());
-        assertEquals(List.of("container", "start 1", "finish 1", "start 2", "finish 2", "start 3", "finish 3", "judging"), events);
-    }
-
-    @Test
-    void aCorrectRunReportsEachTestInOrder() {
-        List<String> events = new ArrayList<>();
-
-        judge.judge(new JudgeRequest(PY_SUM, "python", tests, constraints, ComparatorFactory.defaultComparator()), recorder(events));
-
-        assertEquals(List.of("container", "start 1", "finish 1", "start 2", "finish 2", "start 3", "finish 3", "judging"), events);
+        assertTrue(result.runFor(0).isPresent());
+        assertTrue(result.runFor(1).isEmpty());
+        assertTrue(result.runFor(2).isEmpty());
     }
 
     @Test
@@ -250,7 +226,7 @@ class DockerJudgeIntegrationTest {
         List<ExpectedTest> one = List.of(new ExpectedTest(1, "", "65534\n0000000000000000\n", true));
 
         JudgeReport report = judge.judge(new JudgeRequest(code, "python", one, constraints,
-                ComparatorFactory.defaultComparator()), null);
+                ComparatorFactory.defaultComparator()));
 
         assertEquals(Verdict.ACCEPTED, report.verdict(), report.message());
     }
@@ -318,29 +294,5 @@ class DockerJudgeIntegrationTest {
         } catch (RuntimeException e) {
             return false;
         }
-    }
-
-    private static TestProgressListener recorder(List<String> events) {
-        return new TestProgressListener() {
-            @Override
-            public void containerStarted() {
-                events.add("container");
-            }
-
-            @Override
-            public void testStarted(int number) {
-                events.add("start " + number);
-            }
-
-            @Override
-            public void testFinished(int number) {
-                events.add("finish " + number);
-            }
-
-            @Override
-            public void judging() {
-                events.add("judging");
-            }
-        };
     }
 }

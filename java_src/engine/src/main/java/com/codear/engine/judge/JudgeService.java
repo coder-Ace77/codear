@@ -13,7 +13,6 @@ import com.codear.engine.sandbox.SandboxRequest;
 import com.codear.engine.sandbox.SandboxResult;
 import com.codear.engine.sandbox.SandboxRunner;
 import com.codear.engine.sandbox.TestRun;
-import com.codear.engine.service.TestProgressListener;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +30,7 @@ public class JudgeService {
      * Never throws for a bad submission or a sandbox failure: both come back as a report, so the person always
      * gets an answer and the queue message is not lost.
      */
-    public JudgeReport judge(JudgeRequest request, TestProgressListener progress) {
+    public JudgeReport judge(JudgeRequest request) {
         List<ExpectedTest> tests = request.tests();
         int total = tests.size();
 
@@ -56,15 +55,12 @@ public class JudgeService {
 
         SandboxResult result;
         try {
-            result = sandbox.run(new SandboxRequest(language, request.code(), inputs, limits), progress);
+            result = sandbox.run(new SandboxRequest(language, request.code(), inputs, limits));
         } catch (SandboxException e) {
             log.error("Sandbox failed: {}", e.getMessage(), e);
             return JudgeReport.systemError(total, FailureMessages.judgeFailure());
         }
 
-        if (progress != null) {
-            progress.judging();
-        }
         return new VerdictResolver(request.comparator()).resolve(result, tests, limits);
     }
 
@@ -85,7 +81,7 @@ public class JudgeService {
         JudgeLimits limits = JudgeLimitsFactory.forCustomRun(constraints);
         SandboxResult result;
         try {
-            result = sandbox.run(new SandboxRequest(language, code, List.of(input == null ? "" : input), limits), null);
+            result = sandbox.run(new SandboxRequest(language, code, List.of(input == null ? "" : input), limits));
         } catch (SandboxException e) {
             log.error("Sandbox failed on a custom run: {}", e.getMessage(), e);
             return new CustomRunResult(FailureMessages.judgeFailure(), false);

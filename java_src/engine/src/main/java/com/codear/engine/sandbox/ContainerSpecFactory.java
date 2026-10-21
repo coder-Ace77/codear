@@ -33,8 +33,7 @@ public final class ContainerSpecFactory {
                 SandboxProtocol.ENV_MEMORY_LIMIT_BYTES + "=" + limits.memoryLimitBytes(),
                 SandboxProtocol.ENV_OUTPUT_LIMIT_BYTES + "=" + limits.outputLimitBytes(),
                 SandboxProtocol.ENV_COMPILE_TIMEOUT_S + "=" + limits.compileTimeoutSeconds(),
-                SandboxProtocol.ENV_RUN_AS + "=" + SANDBOX_RUN_AS,
-                SandboxProtocol.ENV_TEST_SEPARATOR + "=" + SandboxProtocol.TEST_SEPARATOR);
+                SandboxProtocol.ENV_RUN_AS + "=" + SANDBOX_RUN_AS);
     }
 
     public HostConfig hostConfig(JudgeLimits limits) {

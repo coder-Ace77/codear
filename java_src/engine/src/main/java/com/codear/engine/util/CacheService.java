@@ -1,4 +1,4 @@
-package com.codear.engine.service;
+package com.codear.engine.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,19 +19,19 @@ public class CacheService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper; 
 
-    public void setValue(String key, String value, long timeout, TimeUnit unit) {
+    public void set(String key, String value, long timeout, TimeUnit unit) {
         redisTemplate.opsForValue().set(key, value, timeout, unit);
     }
     
-    public void setValue(String key, String value) {
-        setValue(key, value, 500, TimeUnit.MINUTES);
+    public void set(String key, String value) {
+        set(key, value, 500, TimeUnit.MINUTES);
     }
 
-    public String getValue(String key) {
+    public String get(String key) {
         return redisTemplate.opsForValue().get(key);
     }
 
-    public void setObjectValue(String key, Object value, long timeout, TimeUnit unit) {
+    public void set(String key, Object value, long timeout, TimeUnit unit) {
         try {
             String jsonValue = objectMapper.writeValueAsString(value);
             redisTemplate.opsForValue().set(key, jsonValue, timeout, unit);
@@ -40,12 +40,12 @@ public class CacheService {
         }
     }
     
-    public void setObjectValue(String key, Object value) {
-        setObjectValue(key, value, 500, TimeUnit.MINUTES);
+    public void set(String key, Object value) {
+        set(key, value, 500, TimeUnit.MINUTES);
     }
 
 
-    public <T> T getObjectValue(String key, Class<T> clazz) {
+    public <T> T get(String key, Class<T> clazz) {
         String jsonValue = redisTemplate.opsForValue().get(key);
         if (jsonValue == null) {
             return null;
@@ -58,7 +58,7 @@ public class CacheService {
         }
     }
 
-    public <T> List<T> getObjectListValue(String key, Class<T> elementClass) {
+    public <T> List<T> getList(String key, Class<T> elementClass) {
         String jsonValue = redisTemplate.opsForValue().get(key);
         if (jsonValue == null) {
             return null;
@@ -71,7 +71,7 @@ public class CacheService {
         }
     }
     
-    public void deleteKey(String key) {
+    public void del(String key) {
         redisTemplate.delete(key);
     }
 }

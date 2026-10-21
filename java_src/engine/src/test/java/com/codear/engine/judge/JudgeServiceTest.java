@@ -20,7 +20,6 @@ import com.codear.engine.sandbox.SandboxException;
 import com.codear.engine.sandbox.SandboxRequest;
 import com.codear.engine.sandbox.SandboxResult;
 import com.codear.engine.sandbox.SandboxRunner;
-import com.codear.engine.service.TestProgressListener;
 
 class JudgeServiceTest {
 
@@ -31,7 +30,7 @@ class JudgeServiceTest {
         RuntimeException failure;
 
         @Override
-        public SandboxResult run(SandboxRequest request, TestProgressListener progress) {
+        public SandboxResult run(SandboxRequest request) {
             requests.add(request);
             if (failure != null) {
                 throw failure;
@@ -53,7 +52,7 @@ class JudgeServiceTest {
     void aGoodSubmissionIsRunWithTheProblemsLimitsAndAccepted() {
         sandbox.result = finished(ok(0, "1"), ok(1, "2"));
 
-        JudgeReport report = service.judge(request("print(1)", "python", tests), null);
+        JudgeReport report = service.judge(request("print(1)", "python", tests));
 
         assertEquals(Verdict.ACCEPTED, report.verdict());
         SandboxRequest sent = sandbox.requests.get(0);
@@ -65,7 +64,7 @@ class JudgeServiceTest {
     @Test
     void emptySourceNeverStartsASandbox() {
         for (String code : new String[] {"", "   \n\t", null}) {
-            JudgeReport report = service.judge(request(code, "python", tests), null);
+            JudgeReport report = service.judge(request(code, "python", tests));
 
             assertEquals(Verdict.COMPILE_ERROR, report.verdict());
             assertEquals("The source code is empty.", report.message());
@@ -75,7 +74,7 @@ class JudgeServiceTest {
 
     @Test
     void oversizedSourceIsRejected() {
-        JudgeReport report = service.judge(request("x".repeat(70_000), "python", tests), null);
+        JudgeReport report = service.judge(request("x".repeat(70_000), "python", tests));
 
         assertEquals(Verdict.COMPILE_ERROR, report.verdict());
         assertTrue(report.message().contains("too long"));
@@ -84,7 +83,7 @@ class JudgeServiceTest {
 
     @Test
     void anUnsupportedLanguageIsExplained() {
-        JudgeReport report = service.judge(request("code", "brainfuck", tests), null);
+        JudgeReport report = service.judge(request("code", "brainfuck", tests));
 
         assertEquals(Verdict.COMPILE_ERROR, report.verdict());
         assertEquals("Unsupported language: brainfuck.", report.message());
@@ -93,7 +92,7 @@ class JudgeServiceTest {
 
     @Test
     void aProblemWithoutTestsIsAJudgeErrorNeverAnAccept() {
-        JudgeReport report = service.judge(request("print(1)", "python", List.of()), null);
+        JudgeReport report = service.judge(request("print(1)", "python", List.of()));
 
         assertEquals(Verdict.SYSTEM_ERROR, report.verdict());
         assertFalse(report.verdict().isAccepted());
@@ -104,26 +103,10 @@ class JudgeServiceTest {
     void aSandboxFailureBecomesASystemErrorReportNotAnException() {
         sandbox.failure = new SandboxException("docker is down");
 
-        JudgeReport report = service.judge(request("print(1)", "python", tests), null);
+        JudgeReport report = service.judge(request("print(1)", "python", tests));
 
         assertEquals(Verdict.SYSTEM_ERROR, report.verdict());
         assertFalse(report.message().contains("docker"), "internal details must not reach the person");
-    }
-
-    @Test
-    void theProgressListenerIsToldWhenJudgingStarts() {
-        sandbox.result = finished(ok(0, "1"), ok(1, "2"));
-        boolean[] judging = {false};
-        TestProgressListener listener = new TestProgressListener() {
-            @Override
-            public void judging() {
-                judging[0] = true;
-            }
-        };
-
-        service.judge(request("print(1)", "python", tests), listener);
-
-        assertTrue(judging[0]);
     }
 
     @Test

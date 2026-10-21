@@ -31,7 +31,6 @@ public class SqsReceiver {
     private final ObjectMapper mapper;
     private final ProblemCrudService problemCrudService;
     private final SubmissionService submissionService;
-    private final ProgressReporterFactory progressFactory;
     private final JudgeService judgeService;
 
     @SqsListener(value = "codear-queue",
@@ -40,7 +39,6 @@ public class SqsReceiver {
             messageVisibilitySeconds = JudgeDefaults.LISTENER_VISIBILITY_SECONDS)
     public void listen(String message) {
         Code code = null;
-        ProgressReporter progress = null;
         try {
             code = mapper.readValue(message, Code.class);
             String submissionId = code.getSubmissionId();
@@ -50,24 +48,18 @@ public class SqsReceiver {
             }
 
             long startedAt = System.currentTimeMillis();
-            progress = progressFactory.create(submissionId);
-            progress.preparing();
-
             List<ExpectedTest> tests = loadTests(code.getProblemId());
-            progress.totalKnown(tests.size());
             ResourceConstraints constraints = problemCrudService.getPromblemConstraints(code.getProblemId());
 
             JudgeReport report = judgeService.judge(
-                    new JudgeRequest(code.getCode(), code.getLanguage(), tests, constraints, comparatorFor(constraints)),
-                    progress);
+                    new JudgeRequest(code.getCode(), code.getLanguage(), tests, constraints, comparatorFor(constraints)));
 
             submissionService.recordVerdict(submissionId, report);
-            progress.done();
             log.info("Judged {} as {} in {} ms", submissionId, report.verdict(), System.currentTimeMillis() - startedAt);
         } catch (Exception e) {
             log.error("Error processing SQS submission: {}", e.getMessage(), e);
             log.error("Raw message: {}", message);
-            failSubmission(code, progress);
+            failSubmission(code);
         }
     }
 
@@ -101,8 +93,8 @@ public class SqsReceiver {
                 .toList();
     }
 
-    /** Judging itself failed, so tell the person waiting instead of leaving the progress bar hanging. */
-    private void failSubmission(Code code, ProgressReporter progress) {
+    /** Judging itself failed, so record that instead of leaving the submission in progress forever. */
+    private void failSubmission(Code code) {
         if (code == null || code.getSubmissionId() == null) {
             return;
         }
@@ -111,9 +103,6 @@ public class SqsReceiver {
                     JudgeReport.systemError(0, FailureMessages.judgeFailure()));
         } catch (Exception e) {
             log.error("Could not record the failure of submission {}: {}", code.getSubmissionId(), e.getMessage());
-        }
-        if (progress != null) {
-            progress.error();
         }
     }
 }

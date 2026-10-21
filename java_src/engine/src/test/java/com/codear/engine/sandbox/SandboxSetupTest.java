@@ -39,7 +39,7 @@ class SandboxSetupTest {
 
         assertTrue(script.startsWith("#!/bin/sh"));
         for (String name : List.of("LANGUAGE", "NUM_TESTS", "TIME_LIMIT_MS", "CPU_LIMIT_S", "WALL_LIMIT_S",
-                "MEMORY_LIMIT_BYTES", "OUTPUT_LIMIT_BYTES", "COMPILE_TIMEOUT_S", "RUN_AS", "TEST_SEPARATOR")) {
+                "MEMORY_LIMIT_BYTES", "OUTPUT_LIMIT_BYTES", "COMPILE_TIMEOUT_S", "RUN_AS")) {
             assertTrue(script.contains(name), "the runner does not read " + name);
         }
         for (String file : List.of("compile.status", "compile.txt", "code_", "meta_", "out_", "err_", "done")) {
@@ -83,7 +83,6 @@ class SandboxSetupTest {
         assertTrue(env.contains("OUTPUT_LIMIT_BYTES=200000"));
         assertTrue(env.contains("COMPILE_TIMEOUT_S=20"));
         assertTrue(env.contains("RUN_AS=65534:65534"));
-        assertTrue(env.contains("TEST_SEPARATOR=" + com.codear.engine.constants.SandboxProtocol.TEST_SEPARATOR));
     }
 
     @Test
