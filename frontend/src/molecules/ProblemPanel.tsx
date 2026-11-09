@@ -19,19 +19,19 @@ interface ProblemPanelProps {
   submissionId: string | null;
   submissionsVersion?: number;
   /** Solving as part of a test: statement only, no editorial, no submissions list, no difficulty. */
-  testMode?: boolean;
+  assessmentMode?: boolean;
 }
-const ProblemPanel: React.FC<ProblemPanelProps> = ({ problem, activeTab, setActiveTab, submissionId, submissionsVersion = 0, testMode = false }) => {
+const ProblemPanel: React.FC<ProblemPanelProps> = ({ problem, activeTab, setActiveTab, submissionId, submissionsVersion = 0, assessmentMode = false }) => {
 
   const renderTabContent = () => {
     switch (activeTab) {
       case "problem":
-        return <ProblemDescription problem={problem} hideDifficulty={testMode} />;
+        return <ProblemDescription problem={problem} hideDifficulty={assessmentMode} />;
       case "submissions":
-        if (testMode) return null;
+        if (assessmentMode) return null;
         return <SubmissionsContent problemId={problem.id} reloadKey={submissionsVersion} />;
       case "editorial":
-        if (testMode) return null;
+        if (assessmentMode) return null;
         return <EditorialTab problemId={problem.id} />;
       default:
         return null;
@@ -53,8 +53,8 @@ const ProblemPanel: React.FC<ProblemPanelProps> = ({ problem, activeTab, setActi
     <div className="flex h-[560px] w-full shrink-0 flex-col border-b border-border lg:h-full lg:min-h-0 lg:border-b-0 lg:border-r">
       <div role="tablist" className="flex gap-6 border-b border-border px-6 pt-4">
         <TabButton tabId="problem" label="Statement" />
-        {!testMode && <TabButton tabId="editorial" label="Editorial" />}
-        {!testMode && <TabButton tabId="submissions" label="Submissions" />}
+        {!assessmentMode && <TabButton tabId="editorial" label="Editorial" />}
+        {!assessmentMode && <TabButton tabId="submissions" label="Submissions" />}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {renderTabContent()}

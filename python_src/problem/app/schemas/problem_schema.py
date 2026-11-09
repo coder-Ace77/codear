@@ -71,7 +71,7 @@ class CodeRequest(BaseModel):
 
     _code_not_blank = field_validator("code")(_not_blank)
 
-class TestDTO(BaseModel):
+class RunRequest(BaseModel):
     userId: Optional[int] = None
     code: str = Field(max_length=65536)
     language: str = Field(max_length=16)
@@ -79,7 +79,7 @@ class TestDTO(BaseModel):
     input: str = Field(max_length=65536)
     output: Optional[str] = None
     status: Optional[str] = "IN_PROGRESS"
-    submissionId: Optional[str] = None
+    runId: Optional[str] = None
 
     _code_not_blank = field_validator("code")(_not_blank)
 

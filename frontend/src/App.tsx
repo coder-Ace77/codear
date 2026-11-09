@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import Navbar from "@/molecules/Navbar";
 import Home from "./pages/Home";
 import Explore from "./pages/Explore";
@@ -14,12 +14,15 @@ import Admin from "./pages/Admin";
 import Developers from "./pages/Developers";
 import NotFound from "./pages/NotFound";
 import SubmissionResult from "./pages/SubmissionResult";
-import Tests from "./pages/Tests";
-import TakeTest from "./pages/TakeTest";
-import TestAttempt from "./pages/TestAttempt";
+import Assessments from "./pages/Assessments";
+import TakeAssessment from "./pages/TakeAssessment";
+import AssessmentAttempt from "./pages/AssessmentAttempt";
 import ToastProvider from "./components/providers/ToastProvider";
 
 import BackendHealthCheck from "@/components/ui/BackendHealthCheck";
+
+const OldInviteLink = () => <Navigate to={`/assessment/${useParams().token}`} replace />;
+const OldAttemptLink = () => <Navigate to={`/assessment/attempt/${useParams().attemptId}`} replace />;
 
 const queryClient = new QueryClient();
 
@@ -41,9 +44,12 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/developers" element={<Developers />} />
-            <Route path="/tests" element={<Tests />} />
-            <Route path="/test/attempt/:attemptId" element={<TestAttempt />} />
-            <Route path="/test/:token" element={<TakeTest />} />
+            <Route path="/assessments" element={<Assessments />} />
+            <Route path="/assessment/attempt/:attemptId" element={<AssessmentAttempt />} />
+            <Route path="/assessment/:token" element={<TakeAssessment />} />
+            <Route path="/tests" element={<Navigate to="/assessments" replace />} />
+            <Route path="/test/attempt/:attemptId" element={<OldAttemptLink />} />
+            <Route path="/test/:token" element={<OldInviteLink />} />
             <Route path="/submissions/:submissionId" element={<SubmissionResult />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -99,8 +99,8 @@ class Editorial(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.datetime.utcnow)
 
-class CustomTest(Base):
-    """A test an admin put together: a set of problems drawn at random when someone starts it,
+class Assessment(Base):
+    """An assessment an admin put together: a set of problems drawn at random when someone starts it,
     optionally timed, either open to everyone or reached only through per-user invite links."""
     __tablename__ = "custom_tests"
 
@@ -121,17 +121,17 @@ class CustomTest(Base):
     created_by = Column(BigInteger, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    invites = relationship("TestInvite", back_populates="test", cascade="all, delete-orphan")
-    attempts = relationship("TestAttempt", back_populates="test", cascade="all, delete-orphan")
+    invites = relationship("AssessmentInvite", back_populates="assessment", cascade="all, delete-orphan")
+    attempts = relationship("AssessmentAttempt", back_populates="assessment", cascade="all, delete-orphan")
 
 
-class TestInvite(Base):
+class AssessmentInvite(Base):
     """A link for one user. The token in the URL is the only secret; the signed-in user must also be
     the invited one. A single-use invite stops working once its attempt is finished or has run out of time."""
     __tablename__ = "test_invites"
 
     id = Column(Integer, primary_key=True, index=True)
-    test_id = Column(Integer, ForeignKey("custom_tests.id"), nullable=False, index=True)
+    assessment_id = Column("test_id", Integer, ForeignKey("custom_tests.id"), nullable=False, index=True)
     user_id = Column(BigInteger, nullable=False)
     token = Column(String(64), unique=True, index=True, nullable=False)
     single_use = Column(Boolean, nullable=False, default=True)
@@ -139,15 +139,15 @@ class TestInvite(Base):
     revoked_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    test = relationship("CustomTest", back_populates="invites")
+    assessment = relationship("Assessment", back_populates="invites")
 
 
-class TestAttempt(Base):
-    """One user taking one test. The problems are drawn when it starts and fixed from then on."""
+class AssessmentAttempt(Base):
+    """One user taking one assessment. The problems are drawn when it starts and fixed from then on."""
     __tablename__ = "test_attempts"
 
     id = Column(Integer, primary_key=True, index=True)
-    test_id = Column(Integer, ForeignKey("custom_tests.id"), nullable=False, index=True)
+    assessment_id = Column("test_id", Integer, ForeignKey("custom_tests.id"), nullable=False, index=True)
     invite_id = Column(Integer, ForeignKey("test_invites.id"), nullable=True, index=True)
     user_id = Column(BigInteger, nullable=False, index=True)
     problem_ids = Column(ARRAY(BigInteger), nullable=False)
@@ -157,4 +157,4 @@ class TestAttempt(Base):
     expires_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
 
-    test = relationship("CustomTest", back_populates="attempts")
+    assessment = relationship("Assessment", back_populates="attempts")

@@ -2,27 +2,27 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { formatClock, useAttemptClock } from "@/hooks/useAttemptClock";
-import { apiErrorText, testService, type Attempt } from "@/service/testService";
+import { apiErrorText, assessmentService, type Attempt } from "@/service/assessmentService";
 
-export const TEST_BANNER_HEIGHT = "2.5rem";
+export const ASSESSMENT_BANNER_HEIGHT = "2.5rem";
 
-/** Strip above the editor while solving a problem as part of a test: title, countdown and Finish. */
-const TestBanner = ({ attemptId }: { attemptId: number }) => {
+/** Strip above the editor while solving a problem as part of an assessment: title, countdown and Finish. */
+const AssessmentBanner = ({ attemptId }: { attemptId: number }) => {
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const load = useCallback(() => {
-    testService.attempt(attemptId).then(setAttempt).catch(() => {});
+    assessmentService.attempt(attemptId).then(setAttempt).catch(() => {});
   }, [attemptId]);
   useEffect(load, [load]);
   const { remaining, elapsed } = useAttemptClock(attempt, load);
 
   const finish = async () => {
-    if (!window.confirm("Finish the test? You will not be able to come back to it.")) return;
+    if (!window.confirm("Finish the assessment? You will not be able to come back to it.")) return;
     try {
-      await testService.finish(attemptId);
-      navigate(`/test/attempt/${attemptId}`);
+      await assessmentService.finish(attemptId);
+      navigate(`/assessment/attempt/${attemptId}`);
     } catch (e) {
-      toast.error(apiErrorText(e, "Could not finish the test"));
+      toast.error(apiErrorText(e, "Could not finish the assessment"));
     }
   };
 
@@ -30,14 +30,14 @@ const TestBanner = ({ attemptId }: { attemptId: number }) => {
   return (
     <div
       className="flex items-center justify-between gap-4 border-b border-border bg-paper-sunken px-4 text-sm"
-      style={{ height: TEST_BANNER_HEIGHT }}
+      style={{ height: ASSESSMENT_BANNER_HEIGHT }}
     >
-      <Link to={`/test/attempt/${attempt.attemptId}`} className="truncate underline">
+      <Link to={`/assessment/attempt/${attempt.attemptId}`} className="truncate underline">
         {attempt.title}
       </Link>
       <div className="flex items-center gap-4">
         {attempt.finished ? (
-          <span className="text-danger">Test over</span>
+          <span className="text-danger">Assessment over</span>
         ) : (
           <>
             {remaining !== null ? (
@@ -53,7 +53,7 @@ const TestBanner = ({ attemptId }: { attemptId: number }) => {
               onClick={finish}
               className="inline-flex h-7 items-center rounded-sm border border-input px-3 text-[13px] font-semibold transition-colors hover:border-foreground hover:bg-highlight-wash"
             >
-              Finish test
+              Finish assessment
             </button>
           </>
         )}
@@ -62,4 +62,4 @@ const TestBanner = ({ attemptId }: { attemptId: number }) => {
   );
 };
 
-export default TestBanner;
+export default AssessmentBanner;

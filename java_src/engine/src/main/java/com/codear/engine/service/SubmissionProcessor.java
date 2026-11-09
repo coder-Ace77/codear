@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import com.codear.engine.checker.ComparatorFactory;
 import com.codear.engine.dto.Code;
 import com.codear.engine.dto.ResourceConstraints;
-import com.codear.engine.dto.TestDTO;
+import com.codear.engine.dto.RunRequest;
 import com.codear.engine.dto.judge.RunReport;
 import com.codear.engine.dto.judge.ExpectedTest;
 import com.codear.engine.dto.judge.JudgeLimits;
@@ -54,14 +54,14 @@ public class SubmissionProcessor {
         }
     }
 
-    public void processTestRun(TestDTO request) {
+    public void processRun(RunRequest request) {
         try {
             ResourceConstraints constraints = problemCrudService.getPromblemConstraints(request.getProblemId());
             RunReport result = run(
                     request.getCode(), request.getLanguage(), request.getInput(), constraints);
-            submissionService.updateTestResult(request.getSubmissionId(), result.getText());
+            submissionService.saveRunResult(request.getRunId(), result.getText());
         } catch (RuntimeException e) {
-            log.error("Error running test {}: {}", request.getSubmissionId(), e.getMessage(), e);
+            log.error("Error on run {}: {}", request.getRunId(), e.getMessage(), e);
         }
     }
 

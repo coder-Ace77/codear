@@ -47,8 +47,8 @@ shown; everything else is "hidden".
 
 ## Comparing answers
 
-`CheckerMode` is stored per problem: `TOKENS` (default: word by word, spacing ignored, case matters),
-`TOKENS_IGNORE_CASE`, `EXACT_LINES`, `FLOAT` (numbers within a tolerance).
+The checker is stored per problem: `TOKENS` (default: word by word, spacing ignored, case matters) or `FLOAT`
+(numbers within a tolerance). `ComparatorFactory` treats any other value as `TOKENS`.
 
 ## Tests
 

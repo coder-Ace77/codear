@@ -1,14 +1,8 @@
 import asyncio
 import uuid
-from datetime import datetime
 
 from app.models.problem import Submission, SubmissionStatus
 from app.core import cache, sqs
-
-from app.schemas.problem_schema import ProblemDTO, TestCaseDTO
-from app.models.problem import Problem,TestCase
-
-from app.services.cache_service import CacheService
 
 class SubmissionService:
     def __init__(self, db):
@@ -44,18 +38,13 @@ class SubmissionService:
         return sub_id
 
     async def long_poll_submission(self, sub_id: str, user):
-        """The submission, once judged (or after 10s). None when it does not exist or is not the
-        caller's; admins may read any submission."""
         submission = self.db.query(Submission).filter(Submission.submission_id == sub_id).first()
         if not submission or (submission.user_id != user.id and not user.is_admin):
             return None
-
-        # The database only allows a handful of connections in total, and the session would otherwise
-        # keep one checked out for the whole wait. Ending the transaction hands it back; the wait
-        # below only talks to Redis, and the final query opens a fresh connection.
+        
         self.db.rollback()
 
-        max_wait = 10  # seconds
+        max_wait = 10
         waited = 0
         while waited < max_wait:
             status = cache.get_cache(sub_id)
@@ -67,54 +56,11 @@ class SubmissionService:
         return self.db.query(Submission).filter(Submission.submission_id == sub_id).first()
 
     def get_submissions_by_user_and_problem(self, user_id: int, problem_id: int) -> list[Submission]:
-        """Equivalent to getSubmissionByIdAndProblem in Java."""
         return (
             self.db.query(Submission)
             .filter(Submission.user_id == user_id)
             .filter(Submission.problem_id == problem_id)
-            .filter(Submission.attempt_id.is_(None))  # test submissions belong to the test, not the problem
-            .order_by(Submission.submitted_at.desc()) # Added ordering for better UX
+            .filter(Submission.attempt_id.is_(None))
+            .order_by(Submission.submitted_at.desc()) 
             .all()
         )
-    
-    def add_problem(self, problem_dto: ProblemDTO) -> Problem:
-        # 1. Initialize the Problem Model (Matches your Java Entity)
-        db_problem = Problem(
-            title=problem_dto.title,
-            description=problem_dto.description,
-            input_description=problem_dto.inputDescription,
-            output_description=problem_dto.outputDescription,
-            constraints=problem_dto.constraints,
-            difficulty=problem_dto.difficulty,
-            tags=problem_dto.tags,
-            time_limit_ms=problem_dto.timeLimitMs,
-            memory_limit_mb=problem_dto.memoryLimitMb
-        )
-
-        # 2. Handle nested TestCases (The 'forEach' logic)
-        if problem_dto.testCases:
-            # In SQLAlchemy, adding items to the relationship list 
-            # is equivalent to testCase.setProblem(problem)
-            db_problem.test_cases = [
-                TestCase(
-                    input=tc.input,
-                    output=tc.output,
-                    is_sample=tc.isSample
-                ) for tc in problem_dto.testCases
-            ]
-
-        try:
-            # 3. Save Problem and all TestCases (CascadeType.ALL)
-            self.db.add(db_problem)
-            self.db.commit()
-            self.db.refresh(db_problem)
-
-            # 4. Clear Cache Keys (Matches Java cacheService.deleteKey)
-            CacheService.delete("all_problems_summary")
-            CacheService.delete(self.PROBLEM_COUNT_KEY)
-            
-            return db_problem
-        except Exception as e:
-            self.db.rollback()
-            print(f"Error adding problem: {e}")
-            raise e

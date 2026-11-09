@@ -10,18 +10,18 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { DEFAULT_QUERY } from "@/lib/problemQueryUrl";
 import { searchProblems } from "@/service/problemService";
 import {
-  testAdminService,
+  assessmentAdminService,
   type AttemptResult,
-  type CreateTestInput,
-  type TestHistory,
+  type CreateAssessmentInput,
+  type AssessmentHistory,
   type SlotDifficulty,
-  type TestDetail,
-  type TestSelectionMode,
-  type TestSummary,
-  type TestVisibility,
+  type AssessmentDetail,
+  type AssessmentSelectionMode,
+  type AssessmentSummary,
+  type AssessmentVisibility,
 } from "@/service/adminService";
-import type { ApiError } from "@/service/testService";
-import TestHistoryView from "@/molecules/TestHistoryView";
+import type { ApiError } from "@/service/assessmentService";
+import AssessmentHistoryView from "@/molecules/AssessmentHistoryView";
 import { formatDuration } from "@/lib/time";
 import type { ProblemSummary } from "@/types/problemSearch";
 
@@ -45,16 +45,16 @@ const copy = async (text: string) => {
 
 const minutes = (from: string, to: string) => Math.max(0, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 60000));
 
-/** Who took the test and what they solved. */
-const Results = ({ testId }: { testId: number }) => {
+/** Who took the assessment and what they solved. */
+const Results = ({ assessmentId }: { assessmentId: number }) => {
   const [rows, setRows] = useState<AttemptResult[] | null>(null);
   useEffect(() => {
     setRows(null);
-    testAdminService.results(testId).then(setRows).catch((e) => toast.error(errorText(e, "Failed to load results")));
-  }, [testId]);
+    assessmentAdminService.results(assessmentId).then(setRows).catch((e) => toast.error(errorText(e, "Failed to load results")));
+  }, [assessmentId]);
 
   if (rows === null) return <p className="text-sm text-muted-foreground">Loading results…</p>;
-  if (rows.length === 0) return <p className="text-sm text-muted-foreground">Nobody has started this test yet.</p>;
+  if (rows.length === 0) return <p className="text-sm text-muted-foreground">Nobody has started this assessment yet.</p>;
   const ranked = [...rows].sort((a, b) => b.solvedCount - a.solvedCount || a.attemptId - b.attemptId);
   return (
     <div className="overflow-x-auto">
@@ -97,10 +97,10 @@ const Results = ({ testId }: { testId: number }) => {
   );
 };
 
-/** Look up any user's past test attempts. */
+/** Look up any user's past assessment attempts. */
 const UserHistory = () => {
   const [username, setUsername] = useState("");
-  const [history, setHistory] = useState<TestHistory | null>(null);
+  const [history, setHistory] = useState<AssessmentHistory | null>(null);
   const [busy, setBusy] = useState(false);
 
   const lookUp = async (e: React.FormEvent) => {
@@ -108,7 +108,7 @@ const UserHistory = () => {
     if (!username.trim()) return;
     setBusy(true);
     try {
-      setHistory(await testAdminService.history(username.trim()));
+      setHistory(await assessmentAdminService.history(username.trim()));
     } catch (err) {
       setHistory(null);
       toast.error(errorText(err, "Failed to load history"));
@@ -129,7 +129,7 @@ const UserHistory = () => {
       {history && (
         <>
           <p className="mb-3 text-sm text-muted-foreground">{history.username}</p>
-          <TestHistoryView history={history} emptyText="This user has not finished any tests." />
+          <AssessmentHistoryView history={history} emptyText="This user has not finished any assessments." />
         </>
       )}
     </section>
@@ -139,8 +139,8 @@ const UserHistory = () => {
 const EMPTY_FORM = {
   title: "",
   description: "",
-  visibility: "PUBLIC" as TestVisibility,
-  selectionMode: "ALL_PROBLEMS" as TestSelectionMode,
+  visibility: "PUBLIC" as AssessmentVisibility,
+  selectionMode: "ALL_PROBLEMS" as AssessmentSelectionMode,
   problemCount: 3,
   advanced: false,
   slots: ["ANY", "ANY", "ANY"] as SlotDifficulty[],
@@ -151,7 +151,7 @@ const EMPTY_FORM = {
   expiresAt: "",
 };
 
-/** Picks problems for a test's pool by searching the problem set. */
+/** Picks problems for an assessment's pool by searching the problem set. */
 const PoolPicker = ({
   selected,
   onChange,
@@ -213,19 +213,19 @@ const PoolPicker = ({
   );
 };
 
-/** Admin tab: build timed or untimed tests, public or sent to named users by one-off link, and manage them. */
-const AdminTests = () => {
+/** Admin tab: build timed or untimed assessments, public or sent to named users by one-off link, and manage them. */
+const AdminAssessments = () => {
   const [form, setForm] = useState(EMPTY_FORM);
   const [pool, setPool] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
-  const [tests, setTests] = useState<TestSummary[]>([]);
-  const [open, setOpen] = useState<TestDetail | null>(null);
+  const [assessments, setAssessments] = useState<AssessmentSummary[]>([]);
+  const [open, setOpen] = useState<AssessmentDetail | null>(null);
 
   const reload = useCallback(async () => {
     try {
-      setTests(await testAdminService.list());
+      setAssessments(await assessmentAdminService.list());
     } catch (e) {
-      toast.error(errorText(e, "Failed to load tests"));
+      toast.error(errorText(e, "Failed to load assessments"));
     }
   }, []);
   useEffect(() => {
@@ -245,7 +245,7 @@ const AdminTests = () => {
   const set = <K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const inviteInput = (usernames: string[]): CreateTestInput["invites"] => ({
+  const inviteInput = (usernames: string[]): CreateAssessmentInput["invites"] => ({
     usernames,
     expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,
   });
@@ -259,7 +259,7 @@ const AdminTests = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      const created = await testAdminService.create({
+      const created = await assessmentAdminService.create({
         title: form.title,
         description: form.description || undefined,
         visibility: form.visibility,
@@ -271,14 +271,14 @@ const AdminTests = () => {
         multipleAttempts: !form.oneAttemptOnly,
         invites: inviteInput(form.visibility === "PRIVATE" ? names : []),
       });
-      toast.success("Test created");
+      toast.success("Assessment created");
       reportUnknown(created.unknownUsernames);
       setForm(EMPTY_FORM);
       setPool({});
-      setOpen(created.test);
+      setOpen(created.assessment);
       reload();
     } catch (err) {
-      toast.error(errorText(err, "Failed to create test"));
+      toast.error(errorText(err, "Failed to create assessment"));
     } finally {
       setSaving(false);
     }
@@ -286,16 +286,16 @@ const AdminTests = () => {
 
   const show = async (id: number) => {
     try {
-      setOpen(await testAdminService.get(id));
+      setOpen(await assessmentAdminService.get(id));
     } catch (e) {
-      toast.error(errorText(e, "Failed to load test"));
+      toast.error(errorText(e, "Failed to load assessment"));
     }
   };
 
   const act = async (fn: () => Promise<unknown>, failure: string) => {
     try {
       await fn();
-      if (open) setOpen(await testAdminService.get(open.id));
+      if (open) setOpen(await assessmentAdminService.get(open.id));
       reload();
     } catch (e) {
       toast.error(errorText(e, failure));
@@ -304,17 +304,17 @@ const AdminTests = () => {
 
   const addInvites = () =>
     act(async () => {
-      const res = await testAdminService.addInvites(open!.id, inviteInput(names));
+      const res = await assessmentAdminService.addInvites(open!.id, inviteInput(names));
       reportUnknown(res.unknownUsernames);
       set("usernames", "");
     }, "Failed to add invites");
 
-  const remove = (t: TestSummary) => {
+  const remove = (t: AssessmentSummary) => {
     if (!window.confirm(`Delete "${t.title}" and every attempt and link for it?`)) return;
     act(async () => {
-      await testAdminService.remove(t.id);
+      await assessmentAdminService.remove(t.id);
       if (open?.id === t.id) setOpen(null);
-    }, "Failed to delete test");
+    }, "Failed to delete assessment");
   };
 
   const isPrivate = form.visibility === "PRIVATE";
@@ -323,13 +323,13 @@ const AdminTests = () => {
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
       <form onSubmit={create} className="space-y-5">
         <div>
-          <Label htmlFor="test-title">Test title</Label>
-          <Input id="test-title" value={form.title} onChange={(e) => set("title", e.target.value)} required maxLength={200} />
+          <Label htmlFor="assessment-title">Assessment title</Label>
+          <Input id="assessment-title" value={form.title} onChange={(e) => set("title", e.target.value)} required maxLength={200} />
         </div>
         <div>
-          <Label htmlFor="test-desc">Instructions (optional)</Label>
+          <Label htmlFor="assessment-desc">Instructions (optional)</Label>
           <textarea
-            id="test-desc"
+            id="assessment-desc"
             rows={3}
             value={form.description}
             onChange={(e) => set("description", e.target.value)}
@@ -339,23 +339,23 @@ const AdminTests = () => {
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div>
-            <Label htmlFor="test-visibility">Who can take it</Label>
-            <Select id="test-visibility" value={form.visibility} onChange={(e) => set("visibility", e.target.value as TestVisibility)}>
+            <Label htmlFor="assessment-visibility">Who can take it</Label>
+            <Select id="assessment-visibility" value={form.visibility} onChange={(e) => set("visibility", e.target.value as AssessmentVisibility)}>
               <option value="PUBLIC">Public: anyone signed in</option>
               <option value="PRIVATE">Private: chosen users, by link</option>
             </Select>
           </div>
           <div>
-            <Label htmlFor="test-mode">Problems drawn from</Label>
-            <Select id="test-mode" value={form.selectionMode} onChange={(e) => set("selectionMode", e.target.value as TestSelectionMode)}>
+            <Label htmlFor="assessment-mode">Problems drawn from</Label>
+            <Select id="assessment-mode" value={form.selectionMode} onChange={(e) => set("selectionMode", e.target.value as AssessmentSelectionMode)}>
               <option value="ALL_PROBLEMS">The whole problem set</option>
               <option value="POOL">Problems I pick</option>
             </Select>
           </div>
           <div>
-            <Label htmlFor="test-count">Random problems per attempt</Label>
+            <Label htmlFor="assessment-count">Random problems per attempt</Label>
             <Input
-              id="test-count"
+              id="assessment-count"
               type="number"
               min={1}
               max={50}
@@ -364,9 +364,9 @@ const AdminTests = () => {
             />
           </div>
           <div>
-            <Label htmlFor="test-timed">Time limit</Label>
+            <Label htmlFor="assessment-timed">Time limit</Label>
             <div className="flex items-center gap-3">
-              <input id="test-timed" type="checkbox" checked={form.timed} onChange={(e) => set("timed", e.target.checked)} />
+              <input id="assessment-timed" type="checkbox" checked={form.timed} onChange={(e) => set("timed", e.target.checked)} />
               <Input
                 type="number"
                 min={1}
@@ -410,7 +410,7 @@ const AdminTests = () => {
           </label>
           <p className="mt-1 text-[13px] text-muted-foreground">
             {form.oneAttemptOnly
-              ? "Each user gets a single attempt. For private tests the link stops working once it is finished or time runs out."
+              ? "Each user gets a single attempt. For private assessments the link stops working once it is finished or time runs out."
               : "Users may start again after finishing or running out of time. Each attempt draws new problems."}
           </p>
         </div>
@@ -425,9 +425,9 @@ const AdminTests = () => {
         {isPrivate && (
           <div className="space-y-4 border-t border-border pt-4">
             <div>
-              <Label htmlFor="test-users">Usernames to invite</Label>
+              <Label htmlFor="assessment-users">Usernames to invite</Label>
               <textarea
-                id="test-users"
+                id="assessment-users"
                 rows={2}
                 placeholder="alice, bob"
                 value={form.usernames}
@@ -437,25 +437,25 @@ const AdminTests = () => {
               <p className="mt-1 text-[13px] text-muted-foreground">Each user gets their own link, only they can open it.</p>
             </div>
             <div className="md:w-1/2">
-              <Label htmlFor="test-expires">Link expires (optional)</Label>
-              <Input id="test-expires" type="datetime-local" value={form.expiresAt} onChange={(e) => set("expiresAt", e.target.value)} />
+              <Label htmlFor="assessment-expires">Link expires (optional)</Label>
+              <Input id="assessment-expires" type="datetime-local" value={form.expiresAt} onChange={(e) => set("expiresAt", e.target.value)} />
             </div>
           </div>
         )}
 
         <Button type="submit" disabled={saving || (form.selectionMode === "POOL" && poolIds.length === 0)}>
-          {saving ? "Creating…" : "Create test"}
+          {saving ? "Creating…" : "Create assessment"}
         </Button>
       </form>
 
       <div className="space-y-8">
         <section>
-          <h2 className="mb-3 font-serif text-2xl">Tests</h2>
-          {tests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tests yet.</p>
+          <h2 className="mb-3 font-serif text-2xl">Assessments</h2>
+          {assessments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No assessments yet.</p>
           ) : (
             <ul className="divide-y divide-border border-y border-border">
-              {tests.map((t) => (
+              {assessments.map((t) => (
                 <li key={t.id} className="flex items-center justify-between gap-3 py-2">
                   <button type="button" onClick={() => show(t.id)} className="min-w-0 flex-1 text-left">
                     <span className="block truncate text-sm font-medium">{t.title}</span>
@@ -489,7 +489,7 @@ const AdminTests = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => act(() => testAdminService.setActive(open.id, !open.isActive), "Failed to update test")}
+                onClick={() => act(() => assessmentAdminService.setActive(open.id, !open.isActive), "Failed to update assessment")}
               >
                 {open.isActive ? "Turn off" : "Turn on"}
               </Button>
@@ -513,7 +513,7 @@ const AdminTests = () => {
                           variant="ghost"
                           size="sm"
                           aria-label="Revoke link"
-                          onClick={() => act(() => testAdminService.revokeInvite(open.id, i.id), "Failed to revoke link")}
+                          onClick={() => act(() => assessmentAdminService.revokeInvite(open.id, i.id), "Failed to revoke link")}
                         >
                           <X size={14} />
                         </Button>
@@ -531,15 +531,15 @@ const AdminTests = () => {
                     Add links
                   </Button>
                 </div>
-                <p className="text-[13px] text-muted-foreground">New links follow the attempt setting of this test and use the expiry from the form on the left.</p>
+                <p className="text-[13px] text-muted-foreground">New links follow the attempt setting of this assessment and use the expiry from the form on the left.</p>
               </>
             ) : (
-              <p className="text-sm text-muted-foreground">Public tests need no link: they are listed for every signed-in user.</p>
+              <p className="text-sm text-muted-foreground">Public assessments need no link: they are listed for every signed-in user.</p>
             )}
 
             <div className="border-t border-border pt-4">
               <h4 className="mb-2 font-serif text-lg">Results</h4>
-              <Results testId={open.id} />
+              <Results assessmentId={open.id} />
             </div>
           </section>
         )}
@@ -550,4 +550,4 @@ const AdminTests = () => {
   );
 };
 
-export default AdminTests;
+export default AdminAssessments;

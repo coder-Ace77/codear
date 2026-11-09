@@ -29,3 +29,9 @@ def test_extract_user_id_returns_none_for_foreign_signature():
     tampered = token[:-4] + ("aaaa" if not token.endswith("aaaa") else "bbbb")
 
     assert security.extract_user_id(tampered) is None
+
+
+def test_token_lifetime_is_capped(monkeypatch):
+    monkeypatch.setenv("JWT_EXPIRY", "86400000")
+
+    assert security.token_minutes() == security.MAX_TOKEN_MINUTES

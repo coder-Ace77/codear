@@ -3,19 +3,19 @@ import { Link, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import Button from "@/atoms/Button";
 import { formatClock, useAttemptClock } from "@/hooks/useAttemptClock";
-import { apiErrorText, testService, type ApiError, type Attempt } from "@/service/testService";
+import { apiErrorText, assessmentService, type ApiError, type Attempt } from "@/service/assessmentService";
 
-/** The running test: timer, the problems that were drawn, and a way to finish. */
-const TestAttempt = () => {
+/** The running assessment: timer, the problems that were drawn, and a way to finish. */
+const AssessmentAttempt = () => {
   const { attemptId } = useParams<{ attemptId: string }>();
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setAttempt(await testService.attempt(Number(attemptId)));
+      setAttempt(await assessmentService.attempt(Number(attemptId)));
     } catch (e) {
-      setError((e as ApiError)?.response?.status === 401 ? "Sign in to see this test." : apiErrorText(e, "Test not found."));
+      setError((e as ApiError)?.response?.status === 401 ? "Sign in to see this assessment." : apiErrorText(e, "Assessment not found."));
     }
   }, [attemptId]);
   useEffect(() => {
@@ -26,11 +26,11 @@ const TestAttempt = () => {
   const { remaining, elapsed } = useAttemptClock(attempt, load);
 
   const finish = async () => {
-    if (!window.confirm("Finish the test? You will not be able to come back to it.")) return;
+    if (!window.confirm("Finish the assessment? You will not be able to come back to it.")) return;
     try {
-      setAttempt(await testService.finish(Number(attemptId)));
+      setAttempt(await assessmentService.finish(Number(attemptId)));
     } catch (e) {
-      toast.error(apiErrorText(e, "Could not finish the test"));
+      toast.error(apiErrorText(e, "Could not finish the assessment"));
     }
   };
 
@@ -71,7 +71,7 @@ const TestAttempt = () => {
 
       {over ? (
         <p className="mt-3 border-l-2 border-border pl-4 text-muted-foreground">
-          This test is over. {remaining === 0 ? "Time ran out." : "You finished it."}
+          This assessment is over. {remaining === 0 ? "Time ran out." : "You finished it."}
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-border border-y border-border">
@@ -96,11 +96,11 @@ const TestAttempt = () => {
 
       {!over && (
         <Button variant="outline" className="mt-6" onClick={finish}>
-          Finish test
+          Finish assessment
         </Button>
       )}
     </main>
   );
 };
 
-export default TestAttempt;
+export default AssessmentAttempt;

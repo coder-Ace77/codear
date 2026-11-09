@@ -104,7 +104,7 @@ class AdminStatsService:
             "generatedAt": now.isoformat() + "Z",
             "queues": [
                 _queue_depth("submissions", sqs.DEFAULT_QUEUE_URL),
-                _queue_depth("test runs", sqs.TEST_QUEUE_URL),
+                _queue_depth("runs", sqs.RUN_QUEUE_URL),
             ],
             "submissions": {
                 "total": int(windows[0]),

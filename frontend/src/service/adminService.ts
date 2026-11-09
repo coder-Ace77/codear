@@ -59,20 +59,20 @@ export const adminService = {
   },
 };
 
-export type TestVisibility = "PUBLIC" | "PRIVATE";
+export type AssessmentVisibility = "PUBLIC" | "PRIVATE";
 export type SlotDifficulty = "ANY" | "EASY" | "MEDIUM" | "HARD";
-export type TestSelectionMode = "ALL_PROBLEMS" | "POOL";
+export type AssessmentSelectionMode = "ALL_PROBLEMS" | "POOL";
 
-export interface CreateTestInput {
+export interface CreateAssessmentInput {
   title: string;
   description?: string;
-  visibility: TestVisibility;
-  selectionMode: TestSelectionMode;
+  visibility: AssessmentVisibility;
+  selectionMode: AssessmentSelectionMode;
   poolProblemIds?: number[];
   problemCount: number;
   /** One entry per problem, in order. Omit for no preference. */
   slotDifficulties?: SlotDifficulty[];
-  /** Omit for an untimed test. */
+  /** Omit for an untimed assessment. */
   durationMinutes?: number;
   /** false: one attempt per user. */
   multipleAttempts: boolean;
@@ -80,7 +80,7 @@ export interface CreateTestInput {
   invites: { usernames: string[]; singleUse?: boolean; expiresAt?: string };
 }
 
-export interface TestInvite {
+export interface AssessmentInvite {
   id: number;
   userId: number;
   username: string | null;
@@ -88,17 +88,17 @@ export interface TestInvite {
   singleUse: boolean;
   expiresAt: string | null;
   revokedAt: string | null;
-  /** Path of the link on this site, e.g. /test/<token>. */
+  /** Path of the link on this site, e.g. /assessment/<token>. */
   path: string;
   used: boolean;
 }
 
-export interface TestSummary {
+export interface AssessmentSummary {
   id: number;
   title: string;
   description: string | null;
-  visibility: TestVisibility;
-  selectionMode: TestSelectionMode;
+  visibility: AssessmentVisibility;
+  selectionMode: AssessmentSelectionMode;
   problemCount: number;
   slotDifficulties: SlotDifficulty[] | null;
   durationMinutes: number | null;
@@ -109,27 +109,27 @@ export interface TestSummary {
   invites: number;
 }
 
-export interface TestDetail extends TestSummary {
+export interface AssessmentDetail extends AssessmentSummary {
   poolProblemIds: number[] | null;
-  inviteList: TestInvite[];
+  inviteList: AssessmentInvite[];
 }
 
-export interface CreatedTest {
-  test: TestDetail;
+export interface CreatedAssessment {
+  assessment: AssessmentDetail;
   /** Usernames that matched nobody. */
   unknownUsernames: string[];
 }
 
 export interface AttemptResult {
   attemptId: number;
-  testId: number;
-  testTitle: string;
+  assessmentId: number;
+  assessmentTitle: string;
   userId: number;
   username: string | null;
   startedAt: string;
   finishedAt: string | null;
   expiresAt: string | null;
-  /** The test's time limit; null when untimed. */
+  /** The assessment's time limit; null when untimed. */
   durationMinutes: number | null;
   over: boolean;
   outcome: "FINISHED" | "TIME_UP" | "IN_PROGRESS";
@@ -140,8 +140,8 @@ export interface AttemptResult {
   problems: { id: number; title: string; solved: boolean; submissions: number; solvedAt: string | null }[];
 }
 
-/** One user's completed test attempts, newest first, with totals. */
-export interface TestHistory {
+/** One user's completed assessment attempts, newest first, with totals. */
+export interface AssessmentHistory {
   userId: number;
   username: string | null;
   attemptsTaken: number;
@@ -151,32 +151,32 @@ export interface TestHistory {
   attempts: AttemptResult[];
 }
 
-export const testAdminService = {
+export const assessmentAdminService = {
   async history(username: string) {
-    return (await apiClient.get<TestHistory>("/problem/admin/tests/history", { params: { username } })).data;
+    return (await apiClient.get<AssessmentHistory>("/problem/admin/assessments/history", { params: { username } })).data;
   },
   async results(id: number) {
-    return (await apiClient.get<AttemptResult[]>(`/problem/admin/tests/${id}/results`)).data;
+    return (await apiClient.get<AttemptResult[]>(`/problem/admin/assessments/${id}/results`)).data;
   },
   async list() {
-    return (await apiClient.get<TestSummary[]>("/problem/admin/tests")).data;
+    return (await apiClient.get<AssessmentSummary[]>("/problem/admin/assessments")).data;
   },
   async get(id: number) {
-    return (await apiClient.get<TestDetail>(`/problem/admin/tests/${id}`)).data;
+    return (await apiClient.get<AssessmentDetail>(`/problem/admin/assessments/${id}`)).data;
   },
-  async create(input: CreateTestInput) {
-    return (await apiClient.post<CreatedTest>("/problem/admin/tests", input)).data;
+  async create(input: CreateAssessmentInput) {
+    return (await apiClient.post<CreatedAssessment>("/problem/admin/assessments", input)).data;
   },
-  async addInvites(id: number, invites: CreateTestInput["invites"]) {
-    return (await apiClient.post<CreatedTest>(`/problem/admin/tests/${id}/invites`, invites)).data;
+  async addInvites(id: number, invites: CreateAssessmentInput["invites"]) {
+    return (await apiClient.post<CreatedAssessment>(`/problem/admin/assessments/${id}/invites`, invites)).data;
   },
   async setActive(id: number, isActive: boolean) {
-    return (await apiClient.patch<TestDetail>(`/problem/admin/tests/${id}`, { isActive })).data;
+    return (await apiClient.patch<AssessmentDetail>(`/problem/admin/assessments/${id}`, { isActive })).data;
   },
-  async revokeInvite(testId: number, inviteId: number) {
-    await apiClient.delete(`/problem/admin/tests/${testId}/invites/${inviteId}`);
+  async revokeInvite(assessmentId: number, inviteId: number) {
+    await apiClient.delete(`/problem/admin/assessments/${assessmentId}/invites/${inviteId}`);
   },
   async remove(id: number) {
-    await apiClient.delete(`/problem/admin/tests/${id}`);
+    await apiClient.delete(`/problem/admin/assessments/${id}`);
   },
 };

@@ -13,13 +13,13 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, 
   const [language, setLanguage] = useState(() => localStorage.getItem("preferred-language") || "python");
   const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem("preferred-font-size")) || 14);
   const [output, setOutput] = useState("");
-  const [testInput, setTestInput] = useState("");
+  const [runInput, setRunInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const theme = useResolvedTheme();
   const watch = useSubmissionResult();
 
-  const [isRunningTest, setIsRunningTest] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
   const intervalRef = useRef(null);
 
@@ -103,30 +103,30 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, 
     }
   };
 
-  const handleTestCase = async () => {
+  const handleRun = async () => {
     try {
-      const toastId = toast.loading("Testing code");
-      setIsRunningTest(true);
+      const toastId = toast.loading("Running code");
+      setIsRunning(true);
 
-      const { submissionId } = await codingService.runCode(problemId, code, language, testInput);
+      const { runId } = await codingService.runCode(problemId, code, language, runInput);
 
       const fetchStatus = async () => {
         try {
-          const data = await codingService.getRunStatus(submissionId);
+          const data = await codingService.getRunStatus(runId);
           if (data.status === "COMPLETED") {
-            toast.success("Test run completed", { id: toastId });
+            toast.success("Run completed", { id: toastId });
             clearInterval(intervalRef.current);
             setOutput(data.output);
-            setIsRunningTest(false);
+            setIsRunning(false);
           }
         } catch (error) {
           clearInterval(intervalRef.current);
-          toast.error("Error Running tests", { id: toastId });
+          toast.error("Error running code", { id: toastId });
         }
       };
       fetchStatus();
       intervalRef.current = setInterval(fetchStatus, 3000);
-      setIsRunningTest(false);
+      setIsRunning(false);
 
     } catch (err) {
       console.error(err);
@@ -197,8 +197,8 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, 
         <label className="block">
           <span className="overline mb-1 block">Input</span>
           <textarea
-            onChange={(e) => setTestInput(e.target.value)}
-            value={testInput}
+            onChange={(e) => setRunInput(e.target.value)}
+            value={runInput}
             className="h-28 w-full resize-none rounded-md border border-input bg-card p-2 font-mono text-[13px] leading-5 text-foreground"
           />
         </label>
@@ -228,8 +228,8 @@ const EditorPanel = ({ code, setCode, problemId, setAcitveTab, setSubmissionId, 
       <div className="flex justify-end gap-3">
         <button
           className="inline-flex h-9 items-center rounded-sm border border-input px-4 text-sm font-semibold transition-colors hover:border-foreground hover:bg-highlight-wash disabled:cursor-not-allowed disabled:border-border disabled:text-muted-foreground"
-          onClick={handleTestCase}
-          disabled={isRunningTest}
+          onClick={handleRun}
+          disabled={isRunning}
         >
           Run tests
         </button>
