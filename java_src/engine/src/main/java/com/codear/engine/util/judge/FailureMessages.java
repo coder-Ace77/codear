@@ -79,10 +79,6 @@ public final class FailureMessages {
         return "The program did not finish" + where.phrase() + ".";
     }
 
-    public static String noTests() {
-        return "This problem has no test cases yet, so it cannot be judged.";
-    }
-
     public static String judgeFailure() {
         return "The judge hit an internal error while checking this submission. Please submit again.";
     }

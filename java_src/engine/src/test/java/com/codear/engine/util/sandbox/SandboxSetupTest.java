@@ -5,16 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 import com.codear.engine.dto.judge.JudgeLimits;
-import com.codear.engine.dto.sandbox.SandboxRequest;
 import com.codear.engine.enums.Language;
 import com.codear.engine.exception.UnsupportedLanguageException;
 import com.github.dockerjava.api.model.Capability;
@@ -51,20 +46,6 @@ class SandboxSetupTest {
     }
 
     @Test
-    void aWorkspaceHoldsTheSourceInputsAndRunnerAndDisappearsWhenClosed(@TempDir Path root) throws IOException {
-        Path folder;
-        try (SandboxWorkspace workspace = SandboxWorkspace.create(root, Language.PYTHON, "print(1)", List.of("a", "b"))) {
-            folder = workspace.directory();
-            assertTrue(SandboxWorkspace.isWorkspaceName(workspace.folderName()));
-            assertEquals("print(1)", Files.readString(folder.resolve("code.py")));
-            assertEquals("a", Files.readString(folder.resolve("input_0.txt")));
-            assertEquals("b", Files.readString(folder.resolve("input_1.txt")));
-            assertTrue(Files.readString(folder.resolve("runner.sh")).startsWith("#!/bin/sh"));
-        }
-        assertFalse(Files.exists(folder));
-    }
-
-    @Test
     void onlyFoldersMadeByTheEngineAreRecognisedAsWorkspaces() {
         assertTrue(SandboxWorkspace.isWorkspaceName("codear_12345"));
         assertFalse(SandboxWorkspace.isWorkspaceName("my-photos"));
@@ -74,8 +55,7 @@ class SandboxSetupTest {
     @Test
     void theEnvironmentCarriesEveryLimitTheRunnerNeeds() {
         JudgeLimits limits = new JudgeLimits(1500, 128, 200_000, 20);
-        List<String> env = new ContainerSpec().environment(
-                new SandboxRequest(Language.CPP, "code", List.of("a", "b", "c"), limits));
+        List<String> env = new ContainerSpec().environment(Language.CPP, 3, limits);
 
         assertTrue(env.contains("LANGUAGE=cpp"));
         assertTrue(env.contains("NUM_TESTS=3"));

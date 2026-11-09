@@ -25,8 +25,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS_ORIGINS is a comma-separated list of allowed frontend origins. Auth is a Bearer header,
-# not a cookie, so credentials are never needed (and "*" with credentials is not allowed).
 _origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 
 app.add_middleware(

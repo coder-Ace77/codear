@@ -39,20 +39,29 @@ public final class VerdictResolver {
 
         long maxTimeMs = 0;
         long peakKb = 0;
-        for (ExpectedTest test : tests) {
-            Optional<TestRun> recorded = result.runFor(test.getNumber() - 1);
-            if (recorded.isEmpty()) {
+
+        for (ExpectedTest test : tests){
+
+            // Get result for this run
+            Optional<TestRun> recorded = result.getRunFromIndex(test.getNumber() - 1);
+            
+            // result is empty run was not finished checking reason oom or timeout
+            if(recorded.isEmpty()){
                 return unfinished(result, test, total, limits, maxTimeMs, peakKb);
             }
+            
             TestRun run = recorded.get();
             maxTimeMs = Math.max(maxTimeMs, run.getCpuMs());
             peakKb = Math.max(peakKb, run.getPeakKb());
 
             TestLocation where = new TestLocation(test.getNumber(), total);
             RunOutcome outcome = classifier.classify(run, limits);
-            if (outcome != RunOutcome.OK) {
+            
+            if(outcome != RunOutcome.OK){
+                // Generate the roport for the failed run
                 return failedRun(outcome, where, test, run, limits, maxTimeMs, peakKb);
             }
+            
             if (!comparator.matches(test.getExpectedOutput(), run.getStdout())) {
                 String message = FailureMessages.wrongAnswer(where, test.isVisible(), test.getExpectedOutput(), run.getStdout());
                 return JudgeReport.failedOnTest(Verdict.WRONG_ANSWER, test.getNumber(), total, message, "", maxTimeMs, peakKb);

@@ -1,7 +1,6 @@
 package com.codear.engine.sandbox;
 
 import java.nio.file.Path;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -12,8 +11,6 @@ import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
-
-import com.codear.engine.enums.Language;
 
 @Configuration
 @EnableScheduling
@@ -40,8 +37,7 @@ public class SandboxConfig {
     public SandboxRunner sandboxRunner(DockerClient docker, Path sandboxWorkspaceRoot,
             @Value("${judge.image.python:codear-python:latest}") String pythonImage,
             @Value("${judge.image.cpp:codear-cpp:latest}") String cppImage) {
-        Map<Language, String> images = Map.of(Language.PYTHON, pythonImage, Language.CPP, cppImage);
-        return new DockerSandbox(docker, images::get, sandboxWorkspaceRoot);
+        return new DockerSandbox(docker, pythonImage, cppImage, sandboxWorkspaceRoot);
     }
 
     @Bean

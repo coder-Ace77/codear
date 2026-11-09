@@ -15,7 +15,7 @@ public class SandboxResult {
     boolean finished;
     boolean oomKilled;
 
-    public Optional<TestRun> runFor(int index) {
+    public Optional<TestRun> getRunFromIndex(int index) {
         return runs.stream().filter(run -> run.getIndex() == index).findFirst();
     }
 

@@ -17,7 +17,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.codear.engine.checker.ComparatorFactory;
+import com.codear.engine.checker.TokenComparator;
 import com.codear.engine.dto.judge.ExpectedTest;
 import com.codear.engine.dto.judge.JudgeReport;
 import com.codear.engine.enums.RunStatus;
@@ -25,7 +25,7 @@ import com.codear.engine.enums.Verdict;
 
 class VerdictResolverTest {
 
-    private final VerdictResolver resolver = new VerdictResolver(ComparatorFactory.defaultComparator());
+    private final VerdictResolver resolver = new VerdictResolver(new TokenComparator());
 
     private final List<ExpectedTest> threeTests = List.of(sample(1, "1"), hidden(2, "2"), hidden(3, "3"));
 

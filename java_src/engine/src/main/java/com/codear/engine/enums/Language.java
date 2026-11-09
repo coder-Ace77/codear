@@ -32,4 +32,9 @@ public enum Language {
                 .findFirst()
                 .orElseThrow(() -> new UnsupportedLanguageException(name));
     }
+
+    public static boolean isSupported(String name) {
+        return Arrays.stream(values())
+                .anyMatch(language -> language.id.equalsIgnoreCase(name == null ? "" : name.trim()));
+    }
 }

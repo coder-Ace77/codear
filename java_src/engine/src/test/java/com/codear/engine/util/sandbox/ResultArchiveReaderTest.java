@@ -58,14 +58,14 @@ class ResultArchiveReaderTest {
         assertTrue(result.isFinished());
         assertEquals(CompileStatus.OK, result.getCompile().getStatus());
         assertEquals(2, result.getRuns().size());
-        TestRun first = result.runFor(0).orElseThrow();
+        TestRun first = result.getRunFromIndex(0).orElseThrow();
         assertEquals(0, first.getExitCode());
         assertEquals(40, first.getWallMs());
         assertEquals(40, first.getCpuMs());
         assertEquals(9000, first.getPeakKb());
         assertEquals("3\n", first.getStdout());
         assertEquals(2, first.getStdoutBytes());
-        assertEquals("30\n", result.runFor(1).orElseThrow().getStdout());
+        assertEquals("30\n", result.getRunFromIndex(1).orElseThrow().getStdout());
     }
 
     @Test
@@ -76,11 +76,11 @@ class ResultArchiveReaderTest {
                 "out_0", "", "err_0", "timeout: the monitored command dumped core",
                 "done", "")), 3, 1_000_000, false);
 
-        TestRun run = result.runFor(0).orElseThrow();
+        TestRun run = result.getRunFromIndex(0).orElseThrow();
         assertEquals(139, run.getExitCode());
         assertEquals(100, run.getCpuMs());
         assertEquals("timeout: the monitored command dumped core", run.getStderrTail());
-        assertTrue(result.runFor(1).isEmpty(), "the runner stopped after the crash");
+        assertTrue(result.getRunFromIndex(1).isEmpty(), "the runner stopped after the crash");
     }
 
     @Test
@@ -108,7 +108,7 @@ class ResultArchiveReaderTest {
                 "compile.status", "0", "code_0", "153", "meta_0", "0.1 0.1 0 1", "out_0", "x".repeat(10_000),
                 "err_0", "", "done", "")), 1, 1_000, false);
 
-        assertEquals(1_001, result.runFor(0).orElseThrow().getStdoutBytes());
+        assertEquals(1_001, result.getRunFromIndex(0).orElseThrow().getStdoutBytes());
     }
 
     @Test
@@ -119,7 +119,7 @@ class ResultArchiveReaderTest {
                 "compile.status", "0", "code_0", "1", "meta_0", "0.1 0.1 0 1", "out_0", "", "err_0", stderr,
                 "done", "")), 1, 1_000_000, false);
 
-        String tail = result.runFor(0).orElseThrow().getStderrTail();
+        String tail = result.getRunFromIndex(0).orElseThrow().getStderrTail();
         assertEquals(4096, tail.length());
         assertTrue(tail.endsWith("THE-END"));
     }
@@ -166,6 +166,6 @@ class ResultArchiveReaderTest {
 
         SandboxResult result = reader.read(new ByteArrayInputStream(bytes.toByteArray()), 1, 1_000, false);
 
-        assertTrue(result.runFor(0).orElseThrow().getStdout().startsWith("ok"));
+        assertTrue(result.getRunFromIndex(0).orElseThrow().getStdout().startsWith("ok"));
     }
 }

@@ -11,13 +11,10 @@ import lombok.Value;
 public class JudgeReport {
 
     Verdict verdict;
-    /** 1-based number of the first test that failed; null when none did (accepted, compile error) */
     Integer failedTest;
     int totalTests;
     int passedTests;
-    /** what the person sees */
     String message;
-    /** extra detail kept with the submission (not shown by default) */
     String diagnostics;
     long maxTimeMs;
     long peakMemoryKb;
