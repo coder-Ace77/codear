@@ -4,7 +4,6 @@ from sqlalchemy import func, desc, text
 from app.models.problem import Problem, Submission, TestCase, Editorial
 from app.schemas.problem_schema import ProblemDTO, ProblemSendDTO, ProblemSummaryDTO
 from app.services.cache_service import CacheService
-from app.core.local_cache import LocalCache
 from app.core.search_options import SEARCH_CACHE_SECONDS
 from app.schemas.search_schema import SearchQuery
 from app.services.problem_search import ProblemSearch
@@ -60,12 +59,7 @@ class ProblemService:
             self.db.refresh(db_problem)
 
             CacheService.delete("all_problems_summary")
-            CacheService.delete(self.PROBLEM_COUNT_KEY) 
-            
-            LocalCache.delete(self.PROBLEM_COUNT_KEY)
-            LocalCache.invalidate_prefix(self.PROBLEM_SEARCH_KEY) 
-            LocalCache.delete(self.ALL_TAGS_KEY)
-
+            CacheService.delete(self.PROBLEM_COUNT_KEY)
             CacheService.delete_pattern(f"{self.PROBLEM_SEARCH_KEY}*")
             CacheService.delete(self.ALL_TAGS_KEY)
             
@@ -83,19 +77,11 @@ class ProblemService:
         if cached_problem and "testCases" in cached_problem:
             return cached_problem
             
-        # 2. Query DB
-        # Use joinedload to eagerly load test_cases if not already handled by lazy loading efficiently enough
-        # But here we filter in Python for simplicity as the number of TCs isn't massive, just their content could be.
-        # Alternatively, we could filter in the query itself:
-        # db_problem = self.db.query(Problem).options(joinedload(Problem.test_cases)).filter(Problem.id == problem_id).first()
-        
         db_problem = self.db.query(Problem).filter(Problem.id == problem_id).first()
         
         if not db_problem:
             return None
             
-        # 3. Map to DTO format
-        # Filter test cases: Only return IS_SAMPLE ones
         public_test_cases = [tc for tc in db_problem.test_cases if tc.is_sample]
 
         problem_data = {
@@ -132,53 +118,30 @@ class ProblemService:
         ]
 
     def get_problem_cnt(self) -> int:
-        # L1: Local Cache
-        local_count = LocalCache.get(self.PROBLEM_COUNT_KEY)
-        if local_count is not None:
-            return int(local_count)
-
-        # L2: Redis Cache
         cached_count = CacheService.get_value(self.PROBLEM_COUNT_KEY)
         if cached_count:
-            # Populate L1
-            LocalCache.set(self.PROBLEM_COUNT_KEY, int(cached_count), ttl=None)
             return int(cached_count)
-            
+
         count = self.db.query(Problem).count()
-        
-        # Set L2 and L1
         CacheService.set_object(self.PROBLEM_COUNT_KEY, count, expire_seconds=1800)
-        LocalCache.set(self.PROBLEM_COUNT_KEY, count, ttl=None)
         return count
 
     def get_tags_for_problem(self) -> List[str]:
-        # L1
-        local_tags = LocalCache.get(self.ALL_TAGS_KEY)
-        if local_tags:
-            return local_tags
-
-        # L2
         cached_tags = CacheService.get_object(self.ALL_TAGS_KEY)
         if cached_tags:
-            LocalCache.set(self.ALL_TAGS_KEY, cached_tags, ttl=None)
             return cached_tags
-            
+
         query = text("SELECT DISTINCT UNNEST(tags) as tag FROM problems WHERE tags IS NOT NULL")
         result = self.db.execute(query).fetchall()
         tags = sorted([r.tag for r in result if r.tag])
-        
         CacheService.set_object(self.ALL_TAGS_KEY, tags, expire_seconds=86400)
-        LocalCache.set(self.ALL_TAGS_KEY, tags, ttl=None)
         return tags
 
     def search_problems(self, query: SearchQuery) -> dict:
-        """One page of problems plus the total that match. Plain browsing (no search words) is cached briefly;
-        free-text searches are not, because every different phrase would add a cache entry for almost no reuse."""
         cache_key = self._search_cache_key(query) if not query.text else None
         if cache_key:
-            cached = LocalCache.get(cache_key) or CacheService.get_object(cache_key)
+            cached = CacheService.get_object(cache_key)
             if cached:
-                LocalCache.set(cache_key, cached, ttl=SEARCH_CACHE_SECONDS)
                 return cached
 
         page = ProblemSearch(self.db).search(query)
@@ -189,18 +152,15 @@ class ProblemService:
         }
         if cache_key:
             CacheService.set_object(cache_key, result, expire_seconds=SEARCH_CACHE_SECONDS)
-            LocalCache.set(cache_key, result, ttl=SEARCH_CACHE_SECONDS)
         return result
 
     def tag_counts(self) -> list:
         key = f"{self.PROBLEM_SEARCH_KEY}:tags"
-        cached = LocalCache.get(key) or CacheService.get_object(key)
+        cached = CacheService.get_object(key)
         if cached:
-            LocalCache.set(key, cached, ttl=SEARCH_CACHE_SECONDS)
             return cached
         counts = ProblemSearch(self.db).tag_counts()
         CacheService.set_object(key, counts, expire_seconds=SEARCH_CACHE_SECONDS)
-        LocalCache.set(key, counts, ttl=SEARCH_CACHE_SECONDS)
         return counts
 
     def _search_cache_key(self, query: SearchQuery) -> str:
@@ -254,11 +214,7 @@ class ProblemService:
             CacheService.delete(self.PROBLEM_COUNT_KEY)
             CacheService.delete(self.ALL_TAGS_KEY)
             CacheService.delete_pattern(f"{self.PROBLEM_SEARCH_KEY}*")
-            
-            LocalCache.delete(self.PROBLEM_COUNT_KEY)
-            LocalCache.invalidate_prefix(self.PROBLEM_SEARCH_KEY)
-            LocalCache.delete(self.ALL_TAGS_KEY) # Tags might change
-            
+
             return True
         except Exception as e:
             self.db.rollback()
