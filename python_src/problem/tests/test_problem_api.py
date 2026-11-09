@@ -20,6 +20,13 @@ def test_add_problem_persists_it(client, problem_payload, admin_header):
     assert body["tags"] == payload["tags"]
 
 
+def test_add_problem_without_test_cases_is_rejected(client, problem_payload, admin_header):
+    response = client.post(f"{BASE}/addproblem", json=problem_payload(testCases=[]), headers=admin_header)
+
+    assert response.status_code == 400
+    assert "at least one test case" in response.json()["detail"]
+
+
 def test_get_problem_by_id_hides_non_sample_tests(client, created_problem):
     problem_id, payload = created_problem
 

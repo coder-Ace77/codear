@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, text
 from app.models.problem import Problem, Submission, TestCase, Editorial
@@ -37,6 +38,9 @@ class ProblemService:
         self.PROBLEM_SEARCH_KEY = "Search_problem"
 
     def add_problem(self, problem_dto: ProblemDTO) -> Problem:
+        if not problem_dto.testCases:
+            raise HTTPException(status_code=400, detail="A problem needs at least one test case.")
+
         # 1. Initialize the Problem Model 
         # Use the camelCase names defined in your ProblemDTO
         db_problem = Problem(
@@ -55,14 +59,13 @@ class ProblemService:
 
         # 2. Handle nested TestCases
         # Fix: problem_dto.testCases (NOT test_cases)
-        if problem_dto.testCases:
-            db_problem.test_cases = [
-                TestCase(
-                    input=tc.input,
-                    output=tc.output,
-                    is_sample=tc.isSample # Use tc.isSample from TestCaseDTO
-                ) for tc in problem_dto.testCases
-            ]
+        db_problem.test_cases = [
+            TestCase(
+                input=tc.input,
+                output=tc.output,
+                is_sample=tc.isSample # Use tc.isSample from TestCaseDTO
+            ) for tc in problem_dto.testCases
+        ]
 
         try:
             self.db.add(db_problem)

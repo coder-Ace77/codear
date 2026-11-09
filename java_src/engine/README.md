@@ -21,7 +21,7 @@ SqsReceiver            takes work off the queue and wires the pieces together (n
 ```
 
 `judge`, `checker` and the record types in `sandbox` are pure: no Docker, no database, no clock. They are covered by
-fast unit tests. `DockerJudgeIntegrationTest` runs the whole pipeline against real hostile programs in Docker.
+fast unit tests.
 
 ## The sandbox
 
@@ -53,15 +53,7 @@ shown; everything else is "hidden".
 ## Tests
 
 ```
-./mvnw test                                  # everything; Docker tests skip themselves if Docker or the images are missing
-```
-
-To run the Docker tests, build two local images (the names are fixed in the test):
-
-```
-docker build -f docker/Dockerfile.python -t codear-python-test docker
-# a smaller C++ image than gcc:latest is enough:
-printf 'FROM debian:bookworm-slim\nRUN apt-get update && apt-get install -y --no-install-recommends g++ libc6-dev time && rm -rf /var/lib/apt/lists/*\nWORKDIR /app\n' | docker build -t codear-cpp-test -
+./mvnw test                                  # unit tests only: no Docker, database or network needed
 ```
 
 Against a deployed system, `python3 -m scripts.judge_selftest` (repo root) submits about 30 hostile programs through

@@ -24,8 +24,6 @@ public class Problem {
     private String title;
     @Column(columnDefinition = "TEXT")
     private String description;
-    // The problem service creates these as unbounded VARCHAR; without TEXT here, ddl-auto=update would shrink
-    // them to varchar(255) on every engine start and longer descriptions would be rejected.
     @Column(columnDefinition = "TEXT")
     private String inputDescription;
     @Column(columnDefinition = "TEXT")
@@ -40,7 +38,6 @@ public class Problem {
     private Integer memoryLimitMb;
     private Long timeLimitMs;
 
-    /** A CheckerMode name; empty means the default (TOKENS). */
     private String checker;
     /** For the FLOAT checker: how far apart two numbers may be. */
     private Double checkerTolerance;

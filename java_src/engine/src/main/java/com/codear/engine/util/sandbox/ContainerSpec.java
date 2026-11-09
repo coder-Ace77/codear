@@ -13,17 +13,16 @@ import java.util.Map;
 
 import com.codear.engine.constants.SandboxProtocol;
 import com.codear.engine.dto.judge.JudgeLimits;
-import com.codear.engine.dto.sandbox.SandboxRequest;
+import com.codear.engine.enums.Language;
 import com.github.dockerjava.api.model.Capability;
 import com.github.dockerjava.api.model.HostConfig;
 
 public final class ContainerSpec {
 
-    public List<String> environment(SandboxRequest request) {
-        JudgeLimits limits = request.getLimits();
+    public List<String> environment(Language language, int numTests, JudgeLimits limits) {
         return List.of(
-                SandboxProtocol.ENV_LANGUAGE + "=" + request.getLanguage().id(),
-                SandboxProtocol.ENV_NUM_TESTS + "=" + request.getInputs().size(),
+                SandboxProtocol.ENV_LANGUAGE + "=" + language.id(),
+                SandboxProtocol.ENV_NUM_TESTS + "=" + numTests,
                 SandboxProtocol.ENV_TIME_LIMIT_MS + "=" + limits.getTimeLimitMs(),
                 SandboxProtocol.ENV_CPU_LIMIT_S + "=" + limits.cpuLimitSeconds(),
                 SandboxProtocol.ENV_WALL_LIMIT_S + "=" + limits.wallLimitSeconds(),

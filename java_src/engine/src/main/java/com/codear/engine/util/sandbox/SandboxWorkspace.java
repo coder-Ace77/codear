@@ -28,7 +28,7 @@ public final class SandboxWorkspace implements AutoCloseable {
         this.directory = directory;
     }
 
-    public static SandboxWorkspace create(Path root, Language language, String code, List<String> inputs)
+    public static SandboxWorkspace createWorkSpaceWithFiles(Path root, Language language, String code, List<String> inputs)
             throws IOException {
         Files.createDirectories(root);
         Path directory = Files.createTempDirectory(root, PREFIX);
