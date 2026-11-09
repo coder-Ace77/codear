@@ -2,7 +2,7 @@ package com.codear.engine.service;
 
 import org.springframework.stereotype.Service;
 
-import com.codear.engine.dto.TestDTO;
+import com.codear.engine.dto.RunRequest;
 import com.codear.engine.dto.judge.JudgeReport;
 import com.codear.engine.enums.RunStatus;
 import com.codear.engine.repository.SubmissionRepository;
@@ -57,14 +57,14 @@ public class SubmissionService {
         }
     }
 
-    public void updateTestResult(String submissionId, String result) {
-        TestDTO testDTO = cacheService.get(submissionId, TestDTO.class);
-        if (testDTO == null) {
-            log.warn("Test run {} expired before its result was ready", submissionId);
+    public void saveRunResult(String runId, String result) {
+        RunRequest run = cacheService.get(runId, RunRequest.class);
+        if (run == null) {
+            log.warn("Run {} expired before its result was ready", runId);
             return;
         }
-        testDTO.setStatus(RunStatus.COMPLETED.toString());
-        testDTO.setOutput(result);
-        cacheService.set(submissionId, testDTO);
+        run.setStatus(RunStatus.COMPLETED.toString());
+        run.setOutput(result);
+        cacheService.set(runId, run);
     }
 }

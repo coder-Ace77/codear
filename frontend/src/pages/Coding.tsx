@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import TestBanner, { TEST_BANNER_HEIGHT } from "@/molecules/TestBanner";
+import AssessmentBanner, { ASSESSMENT_BANNER_HEIGHT } from "@/molecules/AssessmentBanner";
 import EditorPanel from "@/molecules/EditorPanel";
 import ProblemPanel from "@/molecules/ProblemPanel";
 import { Problem } from "@/types/problem";
@@ -46,16 +46,16 @@ const Coding = () => {
 
   return (
     <>
-    {attemptId !== null && <TestBanner attemptId={attemptId} />}
+    {attemptId !== null && <AssessmentBanner attemptId={attemptId} />}
     <div
       className="relative flex w-full overflow-y-auto bg-background lg:overflow-hidden"
-      style={{ height: `calc(100vh - 3.5rem - ${attemptId !== null ? TEST_BANNER_HEIGHT : "0rem"})` }}
+      style={{ height: `calc(100vh - 3.5rem - ${attemptId !== null ? ASSESSMENT_BANNER_HEIGHT : "0rem"})` }}
     >
       <div className="flex min-h-full w-full flex-col lg:h-full lg:min-h-0 lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-[minmax(0,1fr)]">
         <ProblemPanel
           problem={problem}
           activeTab={activeTab}
-          testMode={attemptId !== null}
+          assessmentMode={attemptId !== null}
           setActiveTab={setActiveTab}
           submissionId={submissionId}
           submissionsVersion={submissionsVersion}

@@ -18,16 +18,6 @@ from functools import wraps
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def profile_time(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        logger.info(f"Execution time for {func.__name__}: {end_time - start_time:.4f} seconds")
-        return result
-    return wrapper
-
 class ProblemService:
     def __init__(self, db: Session):
         self.db = db
@@ -42,7 +32,6 @@ class ProblemService:
             raise HTTPException(status_code=400, detail="A problem needs at least one test case.")
 
         # 1. Initialize the Problem Model 
-        # Use the camelCase names defined in your ProblemDTO
         db_problem = Problem(
             title=problem_dto.title,
             description=problem_dto.description,
@@ -57,8 +46,6 @@ class ProblemService:
             checker_tolerance=problem_dto.checkerTolerance
         )
 
-        # 2. Handle nested TestCases
-        # Fix: problem_dto.testCases (NOT test_cases)
         db_problem.test_cases = [
             TestCase(
                 input=tc.input,
@@ -72,17 +59,13 @@ class ProblemService:
             self.db.commit()
             self.db.refresh(db_problem)
 
-            # 4. Clear Cache Keys
             CacheService.delete("all_problems_summary")
-            # Ensure PROBLEM_COUNT_KEY is defined in your class or passed correctly
             CacheService.delete(self.PROBLEM_COUNT_KEY) 
             
-            # Clear Local Cache
             LocalCache.delete(self.PROBLEM_COUNT_KEY)
-            LocalCache.invalidate_prefix(self.PROBLEM_SEARCH_KEY) # Invalidate all search results
+            LocalCache.invalidate_prefix(self.PROBLEM_SEARCH_KEY) 
             LocalCache.delete(self.ALL_TAGS_KEY)
 
-            # Clear Redis Search Keys
             CacheService.delete_pattern(f"{self.PROBLEM_SEARCH_KEY}*")
             CacheService.delete(self.ALL_TAGS_KEY)
             
@@ -92,7 +75,6 @@ class ProblemService:
             print(f"Error adding problem: {e}")
             raise e
 
-    @profile_time
     def get_problem_by_id(self, problem_id: int):
         key = f"{self.PROBLEM_KEY_PREFIX}{problem_id}"
         
@@ -141,7 +123,6 @@ class ProblemService:
         CacheService.set_object(key, problem_data, expire_seconds=3600)
         return problem_data
 
-    @profile_time
     def get_all_problems(self) -> List[dict]:
         """Equivalent to Java findAllSummaries."""
         db_list = self.db.query(Problem.id, Problem.title, Problem.tags, Problem.difficulty).all()
@@ -150,7 +131,6 @@ class ProblemService:
             for p in db_list
         ]
 
-    @profile_time
     def get_problem_cnt(self) -> int:
         # L1: Local Cache
         local_count = LocalCache.get(self.PROBLEM_COUNT_KEY)
@@ -171,7 +151,6 @@ class ProblemService:
         LocalCache.set(self.PROBLEM_COUNT_KEY, count, ttl=None)
         return count
 
-    @profile_time
     def get_tags_for_problem(self) -> List[str]:
         # L1
         local_tags = LocalCache.get(self.ALL_TAGS_KEY)
@@ -192,7 +171,6 @@ class ProblemService:
         LocalCache.set(self.ALL_TAGS_KEY, tags, ttl=None)
         return tags
 
-    @profile_time
     def search_problems(self, query: SearchQuery) -> dict:
         """One page of problems plus the total that match. Plain browsing (no search words) is cached briefly;
         free-text searches are not, because every different phrase would add a cache entry for almost no reuse."""

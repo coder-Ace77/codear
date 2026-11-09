@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-MAX_PROBLEMS_PER_TEST = 50
+MAX_PROBLEMS_PER_ASSESSMENT = 50
 MAX_DURATION_MINUTES = 12 * 60
 MAX_INVITEES = 200
 
@@ -28,7 +28,7 @@ class SlotDifficulty(str, Enum):
 
 class InviteSettings(BaseModel):
     usernames: List[str] = Field(default_factory=list, max_length=MAX_INVITEES)
-    # None: follow the test's multipleAttempts setting
+    # None: follow the assessment's multipleAttempts setting
     singleUse: Optional[bool] = None
     # links stop working at this moment, whether or not they were used
     expiresAt: Optional[datetime] = None
@@ -45,21 +45,21 @@ class InviteSettings(BaseModel):
         return out
 
 
-class CreateTestRequest(BaseModel):
+class CreateAssessmentRequest(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=5000)
     visibility: Visibility
     selectionMode: SelectionMode
     # required for POOL, ignored otherwise
     poolProblemIds: Optional[List[int]] = None
-    problemCount: int = Field(ge=1, le=MAX_PROBLEMS_PER_TEST)
+    problemCount: int = Field(ge=1, le=MAX_PROBLEMS_PER_ASSESSMENT)
     # Optional: the difficulty wanted for each problem, in order (one entry per problem). Leave out for any.
     slotDifficulties: Optional[List[SlotDifficulty]] = None
     # None = untimed
     durationMinutes: Optional[int] = Field(None, ge=1, le=MAX_DURATION_MINUTES)
     # False: one attempt per user. True: a user may start again after finishing or running out of time
     multipleAttempts: bool = False
-    # PRIVATE tests: who gets a link and how it behaves
+    # PRIVATE assessments: who gets a link and how it behaves
     invites: InviteSettings = Field(default_factory=InviteSettings)
 
     @field_validator("title")
@@ -87,7 +87,7 @@ class CreateTestRequest(BaseModel):
         else:
             self.poolProblemIds = None
         if self.visibility == Visibility.PUBLIC and self.invites.usernames:
-            raise ValueError("invites only apply to PRIVATE tests")
+            raise ValueError("invites only apply to PRIVATE assessments")
         return self
 
 
@@ -103,12 +103,12 @@ class InviteOut(BaseModel):
     singleUse: bool
     expiresAt: Optional[datetime] = None
     revokedAt: Optional[datetime] = None
-    # "/test/<token>"; the frontend prefixes its own origin
+    # "/assessment/<token>"; the frontend prefixes its own origin
     path: str
     used: bool = False
 
 
-class TestSummary(BaseModel):
+class AssessmentSummary(BaseModel):
     id: int
     title: str
     description: Optional[str] = None
@@ -124,40 +124,40 @@ class TestSummary(BaseModel):
     invites: int = 0
 
 
-class PublicTest(TestSummary):
+class PublicAssessment(AssessmentSummary):
     # the caller's standing: NOT_STARTED, IN_PROGRESS (attemptId is the one to resume),
-    # DONE (one-attempt test already taken) or RETAKE (taken before, may start again)
+    # DONE (one-attempt assessment already taken) or RETAKE (taken before, may start again)
     myStatus: str = "NOT_STARTED"
     myAttemptId: Optional[int] = None
 
 
-class TestDetail(TestSummary):
+class AssessmentDetail(AssessmentSummary):
     poolProblemIds: Optional[List[int]] = None
     inviteList: List[InviteOut] = Field(default_factory=list)
 
 
-class CreatedTest(BaseModel):
-    test: TestDetail
+class CreatedAssessment(BaseModel):
+    assessment: AssessmentDetail
     # usernames that matched nobody, so the admin can fix typos
     unknownUsernames: List[str] = Field(default_factory=list)
 
 
 class AttemptProblem(BaseModel):
-    # no difficulty here on purpose: it is not shown while a test is running
+    # no difficulty here on purpose: it is not shown while an assessment is running
     id: int
     title: str
 
 
 class AttemptOut(BaseModel):
     attemptId: int
-    testId: int
+    assessmentId: int
     title: str
     description: Optional[str] = None
     startedAt: datetime
     expiresAt: Optional[datetime] = None
     # seconds left, None when untimed; 0 once time is up
     secondsRemaining: Optional[int] = None
-    # seconds since it started, stopping when it ended; lets untimed tests show a clock too
+    # seconds since it started, stopping when it ended; lets untimed assessments show a clock too
     secondsElapsed: int = 0
     finished: bool
     problems: List[AttemptProblem]
@@ -175,14 +175,14 @@ class ProblemResult(BaseModel):
 
 class AttemptResult(BaseModel):
     attemptId: int
-    testId: int
-    testTitle: str
+    assessmentId: int
+    assessmentTitle: str
     userId: int
     username: Optional[str] = None
     startedAt: datetime
     finishedAt: Optional[datetime] = None
     expiresAt: Optional[datetime] = None
-    # the test's time limit, None when untimed
+    # the assessment's time limit, None when untimed
     durationMinutes: Optional[int] = None
     over: bool
     # FINISHED (the user ended it), TIME_UP (the clock ran out) or IN_PROGRESS
@@ -194,8 +194,8 @@ class AttemptResult(BaseModel):
     problems: List[ProblemResult]
 
 
-class TestHistory(BaseModel):
-    """One user's completed test attempts, newest first, with totals across them."""
+class AssessmentHistory(BaseModel):
+    """One user's completed assessment attempts, newest first, with totals across them."""
     userId: int
     username: Optional[str] = None
     attemptsTaken: int
@@ -208,7 +208,7 @@ class TestHistory(BaseModel):
 
 class ActiveAttempt(BaseModel):
     attemptId: int
-    testId: int
+    assessmentId: int
     title: str
     startedAt: datetime
     expiresAt: Optional[datetime] = None

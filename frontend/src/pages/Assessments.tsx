@@ -3,25 +3,25 @@ import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import Button from "@/atoms/Button";
 import { formatClock } from "@/hooks/useAttemptClock";
-import TestHistoryView from "@/molecules/TestHistoryView";
-import type { TestHistory } from "@/service/adminService";
-import { apiErrorText, testService, type ActiveAttempt, type ApiError, type PublicTest } from "@/service/testService";
+import AssessmentHistoryView from "@/molecules/AssessmentHistoryView";
+import type { AssessmentHistory } from "@/service/adminService";
+import { apiErrorText, assessmentService, type ActiveAttempt, type ApiError, type PublicAssessment } from "@/service/assessmentService";
 
-/** Public tests anyone signed in can start. */
-const Tests = () => {
+/** Public assessments anyone signed in can start. */
+const Assessments = () => {
   const navigate = useNavigate();
-  const [tests, setTests] = useState<PublicTest[] | null>(null);
+  const [assessments, setAssessments] = useState<PublicAssessment[] | null>(null);
   const [needsLogin, setNeedsLogin] = useState(false);
   const [starting, setStarting] = useState<number | null>(null);
   const [active, setActive] = useState<ActiveAttempt[]>([]);
   const [, setTick] = useState(0);
-  const [history, setHistory] = useState<TestHistory | null>(null);
-  const loadHistory = () => testService.history().then(setHistory).catch(() => {});
+  const [history, setHistory] = useState<AssessmentHistory | null>(null);
+  const loadHistory = () => assessmentService.history().then(setHistory).catch(() => {});
   useEffect(() => {
     loadHistory();
   }, []);
 
-  const loadActive = () => testService.activeAttempts().then(setActive).catch(() => {});
+  const loadActive = () => assessmentService.activeAttempts().then(setActive).catch(() => {});
   useEffect(() => {
     loadActive();
     const timer = setInterval(() => setTick((t) => t + 1), 1000); // redraw the countdowns
@@ -31,40 +31,40 @@ const Tests = () => {
   const finish = async (a: ActiveAttempt) => {
     if (!window.confirm(`Finish "${a.title}"? You will not be able to come back to it.`)) return;
     try {
-      await testService.finish(a.attemptId);
+      await assessmentService.finish(a.attemptId);
       loadActive();
-      loadTests(); // its Start button may now be Done
+      loadAssessments(); // its Start button may now be Done
       loadHistory();
     } catch (e) {
-      toast.error(apiErrorText(e, "Could not finish the test"));
+      toast.error(apiErrorText(e, "Could not finish the assessment"));
     }
   };
 
-  const loadTests = () =>
-    testService
-      .publicTests()
-      .then(setTests)
+  const loadAssessments = () =>
+    assessmentService
+      .publicAssessments()
+      .then(setAssessments)
       .catch((e) => {
         if ((e as ApiError)?.response?.status === 401) setNeedsLogin(true);
-        else toast.error(apiErrorText(e, "Failed to load tests"));
-        setTests([]);
+        else toast.error(apiErrorText(e, "Failed to load assessments"));
+        setAssessments([]);
       });
   useEffect(() => {
-    loadTests();
+    loadAssessments();
   }, []);
 
-  const start = async (test: PublicTest) => {
-    const attempts = test.multipleAttempts ? "You can take it again later." : "You only get one attempt.";
-    const warning = test.durationMinutes
-      ? `Start "${test.title}"? The ${test.durationMinutes} minute timer begins now. ${attempts}`
-      : `Start "${test.title}"? ${attempts}`;
+  const start = async (assessment: PublicAssessment) => {
+    const attempts = assessment.multipleAttempts ? "You can take it again later." : "You only get one attempt.";
+    const warning = assessment.durationMinutes
+      ? `Start "${assessment.title}"? The ${assessment.durationMinutes} minute timer begins now. ${attempts}`
+      : `Start "${assessment.title}"? ${attempts}`;
     if (!window.confirm(warning)) return;
-    setStarting(test.id);
+    setStarting(assessment.id);
     try {
-      const attempt = await testService.startPublic(test.id);
-      navigate(`/test/attempt/${attempt.attemptId}`);
+      const attempt = await assessmentService.startPublic(assessment.id);
+      navigate(`/assessment/attempt/${attempt.attemptId}`);
     } catch (e) {
-      toast.error(apiErrorText(e, "Could not start the test"));
+      toast.error(apiErrorText(e, "Could not start the assessment"));
     } finally {
       setStarting(null);
     }
@@ -72,7 +72,7 @@ const Tests = () => {
 
   return (
     <main className="mx-auto max-w-3xl px-6 pb-16 pt-12">
-      <h1 className="font-serif text-5xl font-medium leading-[1.05] tracking-[-0.02em]">Tests</h1>
+      <h1 className="font-serif text-5xl font-medium leading-[1.05] tracking-[-0.02em]">Assessments</h1>
       <p className="mt-1 text-muted-foreground">Timed sets of problems, drawn at random when you start.</p>
 
       {active.length > 0 && (
@@ -91,7 +91,7 @@ const Tests = () => {
                     </span>
                   </div>
                   <div className="flex gap-2">
-                    <Link to={`/test/attempt/${a.attemptId}`}>
+                    <Link to={`/assessment/attempt/${a.attemptId}`}>
                       <Button size="sm">Resume</Button>
                     </Link>
                     <Button size="sm" variant="outline" onClick={() => finish(a)}>
@@ -106,17 +106,17 @@ const Tests = () => {
       )}
 
       <div className="mt-8">
-        {tests === null ? (
+        {assessments === null ? (
           <p className="text-muted-foreground">Loading…</p>
         ) : needsLogin ? (
           <p>
-            <Link to="/login?next=/tests" className="underline">Sign in</Link> to see the available tests.
+            <Link to="/login?next=/assessments" className="underline">Sign in</Link> to see the available assessments.
           </p>
-        ) : tests.length === 0 ? (
-          <p className="text-muted-foreground">No public tests right now.</p>
+        ) : assessments.length === 0 ? (
+          <p className="text-muted-foreground">No public assessments right now.</p>
         ) : (
           <ul className="divide-y divide-border border-y border-border">
-            {tests.map((t) => (
+            {assessments.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-4 py-4">
                 <div className="min-w-0">
                   <h2 className="font-serif text-xl">{t.title}</h2>
@@ -128,11 +128,11 @@ const Tests = () => {
                   </p>
                 </div>
                 {t.myStatus === "DONE" ? (
-                  <Button disabled title="You have already taken this test">
+                  <Button disabled title="You have already taken this assessment">
                     Done
                   </Button>
                 ) : t.myStatus === "IN_PROGRESS" && t.myAttemptId ? (
-                  <Link to={`/test/attempt/${t.myAttemptId}`}>
+                  <Link to={`/assessment/attempt/${t.myAttemptId}`}>
                     <Button>Resume</Button>
                   </Link>
                 ) : (
@@ -149,11 +149,11 @@ const Tests = () => {
       {history && (
         <section className="mt-12">
           <h2 className="mb-4 font-serif text-2xl">Your history</h2>
-          <TestHistoryView history={history} emptyText="Tests you finish will show up here." />
+          <AssessmentHistoryView history={history} emptyText="Assessments you finish will show up here." />
         </section>
       )}
     </main>
   );
 };
 
-export default Tests;
+export default Assessments;

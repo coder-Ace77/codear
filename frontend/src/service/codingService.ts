@@ -39,14 +39,14 @@ export const codingService = {
     return response.data;
   },
 
-  async getRunStatus(submissionId) {
-    const response = await apiClient.get(`/problem/submissions/test/${submissionId}`);
+  async getRunStatus(runId) {
+    const response = await apiClient.get(`/problem/runs/${runId}`);
     return response.data; 
   },
 
   async runCode(problemId, code, language,input){
     const body = { problemId, code, language, input};
-    const response = await apiClient.post("/problem/test", body);
+    const response = await apiClient.post("/problem/run", body);
     return response.data; 
   },
 };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { formatClock } from "@/hooks/useAttemptClock";
 import { formatDuration } from "@/lib/time";
-import type { AttemptResult, TestHistory } from "@/service/adminService";
+import type { AttemptResult, AssessmentHistory } from "@/service/adminService";
 
 const OUTCOME = {
   FINISHED: "Finished",
@@ -28,7 +28,7 @@ const AttemptRow = ({ a }: { a: AttemptResult }) => {
         className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 py-3 text-left hover:bg-highlight-wash sm:grid-cols-[minmax(0,1fr)_6rem_7rem_8rem]"
       >
         <span className="min-w-0">
-          <span className="block truncate font-medium">{a.testTitle}</span>
+          <span className="block truncate font-medium">{a.assessmentTitle}</span>
           <span className="text-[13px] text-muted-foreground">
             {started.toLocaleDateString()} {started.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
@@ -67,13 +67,13 @@ const AttemptRow = ({ a }: { a: AttemptResult }) => {
 };
 
 /** Totals and the list of past attempts; click an attempt for its problems. */
-const TestHistoryView = ({ history, emptyText }: { history: TestHistory; emptyText: string }) => {
+const AssessmentHistoryView = ({ history, emptyText }: { history: AssessmentHistory; emptyText: string }) => {
   if (history.attempts.length === 0) return <p className="text-sm text-muted-foreground">{emptyText}</p>;
   const rate = history.problemsGiven ? Math.round((100 * history.problemsSolved) / history.problemsGiven) : 0;
   return (
     <div className="space-y-6">
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Tile label="Tests taken" value={history.attemptsTaken} />
+        <Tile label="Assessments taken" value={history.attemptsTaken} />
         <Tile label="Problems solved" value={`${history.problemsSolved}/${history.problemsGiven}`} />
         <Tile label="Solve rate" value={`${rate}%`} />
         <Tile
@@ -90,4 +90,4 @@ const TestHistoryView = ({ history, emptyText }: { history: TestHistory; emptyTe
   );
 };
 
-export default TestHistoryView;
+export default AssessmentHistoryView;

@@ -8,7 +8,7 @@ import Select from "@/atoms/Select";
 import Badge from "@/atoms/Badge";
 import { CHECKER_OPTIONS, DEFAULT_CHECKER, DEFAULT_FLOAT_TOLERANCE } from "@/constants/checkerModes";
 import AdminLive from "@/molecules/AdminLive";
-import AdminTests from "@/molecules/AdminTests";
+import AdminAssessments from "@/molecules/AdminAssessments";
 import { Plus, X, Trash2 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { Textarea } from "@/components/ui/textarea";
@@ -186,10 +186,10 @@ const Admin = () => {
               Manage problems
             </TabsTrigger>
             <TabsTrigger
-              value="tests"
+              value="assessments"
               className="rounded-none border-0 bg-transparent px-0 pb-2 pt-0 text-sm font-medium text-muted-foreground shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-[inset_0_-2px_0_hsl(var(--ink))]"
             >
-              Tests
+              Assessments
             </TabsTrigger>
             <TabsTrigger
               value="live"
@@ -460,8 +460,8 @@ const Admin = () => {
               )}
             </div>
           </TabsContent>
-          <TabsContent value="tests">
-            {activeTab === "tests" && <AdminTests />}
+          <TabsContent value="assessments">
+            {activeTab === "assessments" && <AdminAssessments />}
           </TabsContent>
 
           <TabsContent value="live">

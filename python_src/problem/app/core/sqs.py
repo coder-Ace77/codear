@@ -18,7 +18,7 @@ sqs_client = boto3.client(
 
 # Reconcile the names with your .env
 DEFAULT_QUEUE_URL = os.getenv('SQS_QUEUE_URL') 
-TEST_QUEUE_URL = os.getenv('SQS_TEST_QUEUE')
+RUN_QUEUE_URL = os.getenv('SQS_TEST_QUEUE')
 
 def send_to_queue(message: dict, queue_url: str = None):
     # Use the provided URL, or fallback to the default from .env

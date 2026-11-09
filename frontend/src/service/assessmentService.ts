@@ -1,7 +1,7 @@
 import apiClient from "@/lib/apiClient";
-import type { TestHistory, TestSummary } from "@/service/adminService";
+import type { AssessmentHistory, AssessmentSummary } from "@/service/adminService";
 
-/** No difficulty on purpose: it is not shown while a test is running. */
+/** No difficulty on purpose: it is not shown while an assessment is running. */
 export interface AttemptProblem {
   id: number;
   title: string;
@@ -9,7 +9,7 @@ export interface AttemptProblem {
 
 export interface ActiveAttempt {
   attemptId: number;
-  testId: number;
+  assessmentId: number;
   title: string;
   startedAt: string;
   expiresAt: string | null;
@@ -20,7 +20,7 @@ export interface ActiveAttempt {
 
 export interface Attempt {
   attemptId: number;
-  testId: number;
+  assessmentId: number;
   title: string;
   description: string | null;
   startedAt: string;
@@ -36,33 +36,33 @@ export interface Attempt {
   solved: number[];
 }
 
-/** A public test, with where the caller stands on it. */
-export interface PublicTest extends TestSummary {
+/** A public assessment, with where the caller stands on it. */
+export interface PublicAssessment extends AssessmentSummary {
   myStatus: "NOT_STARTED" | "IN_PROGRESS" | "DONE" | "RETAKE";
   myAttemptId: number | null;
 }
 
-export const testService = {
-  async publicTests() {
-    return (await apiClient.get<PublicTest[]>("/problem/tests/public")).data;
+export const assessmentService = {
+  async publicAssessments() {
+    return (await apiClient.get<PublicAssessment[]>("/problem/assessments/public")).data;
   },
-  async startPublic(testId: number) {
-    return (await apiClient.post<Attempt>(`/problem/tests/public/${testId}/start`)).data;
+  async startPublic(assessmentId: number) {
+    return (await apiClient.post<Attempt>(`/problem/assessments/public/${assessmentId}/start`)).data;
   },
   async startWithInvite(token: string) {
-    return (await apiClient.post<Attempt>(`/problem/tests/invite/${encodeURIComponent(token)}/start`)).data;
+    return (await apiClient.post<Attempt>(`/problem/assessments/invite/${encodeURIComponent(token)}/start`)).data;
   },
   async history() {
-    return (await apiClient.get<TestHistory>("/problem/tests/history")).data;
+    return (await apiClient.get<AssessmentHistory>("/problem/assessments/history")).data;
   },
   async activeAttempts() {
-    return (await apiClient.get<ActiveAttempt[]>("/problem/tests/attempts/active")).data;
+    return (await apiClient.get<ActiveAttempt[]>("/problem/assessments/attempts/active")).data;
   },
   async attempt(attemptId: number) {
-    return (await apiClient.get<Attempt>(`/problem/tests/attempts/${attemptId}`)).data;
+    return (await apiClient.get<Attempt>(`/problem/assessments/attempts/${attemptId}`)).data;
   },
   async finish(attemptId: number) {
-    return (await apiClient.post<Attempt>(`/problem/tests/attempts/${attemptId}/finish`)).data;
+    return (await apiClient.post<Attempt>(`/problem/assessments/attempts/${attemptId}/finish`)).data;
   },
 };
 

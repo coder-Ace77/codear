@@ -28,38 +28,7 @@ jobs:
       run:
         working-directory: python_src/user
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
     env:
-      DB_USER: postgres
-      PASSWORD: postgres
-      DB_HOST: localhost
-      DB_PORT: 5432
-      DB_NAME: postgres
-      DB_SSL_MODE: disable
-      REDIS_HOST: localhost
-      REDIS_PORT: 6379
-      REDIS_SSL: 'false'
       JWT_SECRET: test-secret
       JWT_EXPIRY: '60'
 

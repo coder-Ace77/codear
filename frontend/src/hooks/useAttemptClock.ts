@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { Attempt } from "@/service/testService";
+import type { Attempt } from "@/service/assessmentService";
 
 export interface AttemptClock {
-  /** Seconds left; null when the test is untimed. */
+  /** Seconds left; null when the assessment is untimed. */
   remaining: number | null;
   /** Seconds since the attempt started, frozen once it is over. */
   elapsed: number;
@@ -10,7 +10,7 @@ export interface AttemptClock {
 
 /**
  * Counts locally from the numbers the server sent (so a wrong clock on the user's machine changes nothing):
- * down for timed tests, up for every test. Calls onExpire once when a timed test reaches zero.
+ * down for timed assessments, up for every assessment. Calls onExpire once when a timed assessment reaches zero.
  */
 export const useAttemptClock = (attempt: Attempt | null, onExpire?: () => void): AttemptClock => {
   const [clock, setClock] = useState<AttemptClock>({ remaining: null, elapsed: 0 });

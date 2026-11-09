@@ -4,7 +4,7 @@ import org.springframework.stereotype.Service;
 
 import com.codear.engine.constants.JudgeDefaults;
 import com.codear.engine.dto.Code;
-import com.codear.engine.dto.TestDTO;
+import com.codear.engine.dto.RunRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -36,11 +36,11 @@ public class SqsReceiver {
             maxConcurrentMessages = JudgeDefaults.LISTENER_MAX_CONCURRENT_MESSAGES,
             maxMessagesPerPoll = JudgeDefaults.LISTENER_MAX_MESSAGES_PER_POLL,
             messageVisibilitySeconds = JudgeDefaults.LISTENER_VISIBILITY_SECONDS)
-    public void listenTest(String message) {
+    public void listenRun(String message) {
         try {
-            submissionProcessor.processTestRun(mapper.readValue(message, TestDTO.class));
+            submissionProcessor.processRun(mapper.readValue(message, RunRequest.class));
         } catch (JsonProcessingException e) {
-            log.error("Unreadable test message: {}", message, e);
+            log.error("Unreadable run message: {}", message, e);
         }
     }
 }

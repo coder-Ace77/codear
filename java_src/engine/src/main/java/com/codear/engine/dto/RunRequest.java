@@ -8,13 +8,13 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class TestDTO {
+public class RunRequest {
     private Long userId;
     private String code;
     private String language;
     private Long problemId;
-    private String input;   
+    private String input;
     private String output;
     private String status;
-    private String submissionId; 
+    private String runId;
 }

@@ -7,12 +7,8 @@ from app.schemas.search_schema import SearchQuery, parse_search_query
 from app.services.problem_service import ProblemService
 from sqlalchemy.orm import Session
 from app.services.submission_service import SubmissionService
-from app.services.test_service import TestService
+from app.services.assessment_service import AssessmentService
 from app.schemas.problem_schema import  ProblemDTO, ProblemSendDTO, ProblemsMetaData, ProblemSummaryDTO, CodeRequest, SubmissionResponse
-import uuid
-from app.schemas.problem_schema import TestDTO
-from app.core.sqs import send_to_queue, TEST_QUEUE_URL
-from app.services.cache_service import CacheService
 import time
 import logging
 from functools import wraps
@@ -46,20 +42,6 @@ def tags(db=Depends(get_db)):
     return ProblemService(db).tag_counts()
 
 
-@router.post("/test")
-async def run_test_case(test_data: TestDTO, user: CurrentUser = Depends(get_current_user)):
-    submission_id = str(uuid.uuid4())
-    test_data.submissionId = submission_id
-    test_data.status = "IN_PROGRESS"
-    test_data.userId = user.id  # always the caller, whatever the body says
-    send_to_queue(test_data.model_dump(), queue_url=TEST_QUEUE_URL)
-    CacheService.set_object(submission_id, test_data.model_dump(), expire_seconds=600)
-
-    return {
-        "message": "Test in queue",
-        "submissionId": submission_id
-    }
-
 @router.post("/submit")
 async def submit(
     data: CodeRequest,
@@ -67,7 +49,7 @@ async def submit(
     db=Depends(get_db)
 ):
     if data.attemptId is not None:
-        TestService(db).check_can_submit(data.attemptId, data.problemId, user)
+        AssessmentService(db).check_can_submit(data.attemptId, data.problemId, user)
     service = SubmissionService(db)
     res = await service.submit_code(data, user.id)
     return {"message": "Code submitted successfully", "submissionId": res}
