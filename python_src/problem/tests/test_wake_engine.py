@@ -5,7 +5,7 @@ from app.core import sqs
 
 def _reset(monkeypatch, instance_id):
     monkeypatch.setattr(sqs, "ENGINE_INSTANCE_ID", instance_id)
-    monkeypatch.setattr(sqs, "_last_wake", 0.0)
+    monkeypatch.setattr(sqs, "_last_wake", float("-inf"))
     ec2 = MagicMock()
     monkeypatch.setattr(sqs, "_ec2_client", ec2)
     return ec2
