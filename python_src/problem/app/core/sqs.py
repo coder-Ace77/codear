@@ -39,7 +39,7 @@ def send_to_queue(message: dict, queue_url: str = None):
 ENGINE_INSTANCE_ID = os.getenv('ENGINE_INSTANCE_ID')
 WAKE_EVERY_SECONDS = 60
 _ec2_client = None
-_last_wake = 0.0
+_last_wake = float("-inf")
 
 
 def wake_engine():
